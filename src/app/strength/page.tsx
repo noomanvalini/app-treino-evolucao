@@ -10,25 +10,15 @@ import {
   Dumbbell, Plus, History, Calendar, Calculator, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle
 } from 'lucide-react';
-
-const MUSCLE_GROUPS = [
-  'Peito',
-  'Costas',
-  'Ombro',
-  'Bíceps',
-  'Tríceps',
-  'Antebraço',
-  'Glúteos',
-  'Quadríceps',
-  'Posterior de Coxa',
-  'Panturrilha/Canela'
-];
+import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
 interface Exercise {
   id: string;
   nomeExercicio: string;
   muscleGroup: string;
-  dataCriacao: any;
+  dataCriacao?: any;
+  thumbnailUrl?: string;
+  isPredefined?: boolean;
 }
 
 interface StrengthLog {
@@ -94,26 +84,40 @@ function StrengthContent() {
     if (!user) return;
     setLoadingData(true);
     try {
-      // 1. Fetch exercises for this muscle
+      // 1. Fetch exercises for this muscle from Firestore
       const exQuery = query(
         collection(db, 'exercises'),
         where('userId', '==', user.uid),
         where('muscleGroup', '==', selectedMuscle)
       );
       const exSnap = await getDocs(exQuery);
-      const exList: Exercise[] = [];
+      const customExList: Exercise[] = [];
       exSnap.forEach((doc) => {
         const d = doc.data();
-        exList.push({
+        customExList.push({
           id: doc.id,
           nomeExercicio: d.nomeExercicio,
           muscleGroup: d.muscleGroup,
-          dataCriacao: d.dataCriacao
+          dataCriacao: d.dataCriacao,
+          isPredefined: false
         });
       });
-      // Sort exercises alphabetically
-      exList.sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio));
-      setExercises(exList);
+
+      // 2. Map predefined exercises for this muscle group
+      const predefinedForMuscle = PREDEFINED_EXERCISES
+        .filter((pe) => pe.muscleGroup === selectedMuscle)
+        .map((pe) => ({
+          id: pe.id,
+          nomeExercicio: pe.nome,
+          muscleGroup: pe.muscleGroup,
+          thumbnailUrl: pe.thumbnailUrl,
+          isPredefined: true
+        }));
+
+      // Combine both lists and sort alphabetically
+      const combinedExList = [...predefinedForMuscle, ...customExList];
+      combinedExList.sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio));
+      setExercises(combinedExList);
 
       // 2. Fetch all logs for this muscle group
       const logsQuery = query(
@@ -388,16 +392,40 @@ function StrengthContent() {
               return (
                 <div
                   key={exercise.id}
-                  className="bg-slate-card border border-border rounded-2xl overflow-hidden shadow"
+                  className="bg-slate-card border border-border rounded-2xl overflow-hidden shadow flex flex-col"
                 >
-                  {/* Card Main Info */}
-                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-bold text-slate-100">{exercise.nomeExercicio}</h3>
+                  {/* Card Header with Thumbnail */}
+                  <div className="flex p-4 gap-4 items-center">
+                    {/* Thumbnail Image Container */}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-900 border border-border/50 flex-shrink-0 flex items-center justify-center relative">
+                      {exercise.thumbnailUrl ? (
+                        <img
+                          src={exercise.thumbnailUrl}
+                          alt={exercise.nomeExercicio}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-500">
+                          <Dumbbell className="h-6 w-6 text-slate-600" />
+                          <span className="text-[8px] mt-1 text-slate-500 font-bold uppercase tracking-wider">Custom</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <h3 className="text-sm font-bold text-slate-100 truncate">{exercise.nomeExercicio}</h3>
+                        {exercise.isPredefined ? (
+                          <span className="text-[8px] bg-lime-neon/10 text-lime-neon border border-lime-neon/20 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Padrão</span>
+                        ) : (
+                          <span className="text-[8px] bg-slate-card-light text-slate-400 border border-border px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Criado</span>
+                        )}
+                      </div>
+                      
                       {latest ? (
                         <p className="text-xs text-slate-400">
                           Última: <span className="text-slate-200 font-semibold">{latest.cargaKg}kg</span> x {latest.reps} reps
-                          <span className="text-[10px] text-slate-500 ml-2">
+                          <span className="text-[9px] text-slate-500 ml-1.5">
                             ({latest.data?.seconds 
                               ? new Date(latest.data.seconds * 1000).toLocaleDateString('pt-BR') 
                               : new Date(latest.data).toLocaleDateString('pt-BR')})
@@ -407,18 +435,21 @@ function StrengthContent() {
                         <p className="text-[11px] text-slate-500">Sem cargas registradas</p>
                       )}
                     </div>
+                  </div>
 
-                    <div className="flex items-center gap-3 self-end sm:self-auto">
+                  {/* Carga, 1RM, Delta & Button */}
+                  <div className="px-4 pb-4 flex items-center justify-between border-t border-border/10 pt-3">
+                    <div className="flex gap-4">
                       {latest && (
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block leading-tight">1RM Estimado</span>
+                        <div>
+                          <span className="text-[9px] text-slate-500 block leading-tight">1RM Estimado</span>
                           <span className="text-xs font-bold text-lime-neon">{latest.oneRmCalculado} kg</span>
                         </div>
                       )}
 
                       {delta !== null && (
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block leading-tight">Evolução</span>
+                        <div>
+                          <span className="text-[9px] text-slate-500 block leading-tight">Evolução</span>
                           {delta >= 0 ? (
                             <span className="text-xs font-bold text-success">▲ +{delta.toFixed(1)}%</span>
                           ) : (
@@ -426,14 +457,14 @@ function StrengthContent() {
                           )}
                         </div>
                       )}
-
-                      <button
-                        onClick={() => openLogModal(exercise)}
-                        className="bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold px-3 py-1.5 rounded-lg text-xs transition-colors"
-                      >
-                        + Carga
-                      </button>
                     </div>
+
+                    <button
+                      onClick={() => openLogModal(exercise)}
+                      className="bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold px-3.5 py-1.5 rounded-xl text-xs transition-colors"
+                    >
+                      + Carga
+                    </button>
                   </div>
 
                   {/* Accordion Trigger */}

@@ -8,19 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
 import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
-
-const MUSCLE_GROUPS = [
-  'Peito',
-  'Costas',
-  'Ombro',
-  'Bíceps',
-  'Tríceps',
-  'Antebraço',
-  'Glúteos',
-  'Quadríceps',
-  'Posterior de Coxa',
-  'Panturrilha/Canela'
-];
+import BodyMap from '@/components/BodyMap';
+import { MUSCLE_GROUPS } from '@/data/exercises';
 
 interface StrengthLog {
   exerciseId: string;
@@ -38,6 +27,9 @@ export default function Dashboard() {
   const [generalScore, setGeneralScore] = useState<number>(0);
   const [timedOut, setTimedOut] = useState(false);
   const [localDbError, setLocalDbError] = useState<string | null>(null);
+  
+  // State for interactive body map selection
+  const [selectedMuscle, setSelectedMuscle] = useState<string>('');
 
   useEffect(() => {
     if (!authLoading) {
@@ -312,6 +304,61 @@ export default function Dashboard() {
             Média de evolução de força baseada na diferença entre as duas últimas medições de cada exercício cadastrado.
           </p>
         </div>
+      </div>
+
+      {/* Interactive Body Map */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visualizar Força Muscular</h2>
+          <span className="text-[10px] text-slate-500">Toque nos músculos do boneco</span>
+        </div>
+        <BodyMap selectedMuscle={selectedMuscle} onMuscleSelect={setSelectedMuscle} />
+
+        {/* Selected Muscle detail panel */}
+        {selectedMuscle && (() => {
+          const val = muscleEvolutions[selectedMuscle] || 0;
+          const hasData = val !== 0;
+          const isPositive = val >= 0;
+
+          return (
+            <div className="bg-slate-card border border-lime-neon/20 bg-lime-neon/5 rounded-2xl p-4 shadow-md space-y-3 animate-fade-in max-w-sm mx-auto">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Grupo Selecionado</span>
+                <span className="text-sm font-bold text-lime-neon">{selectedMuscle}</span>
+              </div>
+              <div className="flex items-center justify-between border-t border-border/30 pt-3">
+                <div>
+                  <span className="text-[10px] text-slate-400 block">Evolução Geral</span>
+                  {hasData ? (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      {isPositive ? (
+                        <>
+                          <TrendingUp className="h-4 w-4 text-success" />
+                          <span className="text-sm font-bold text-success">+{val}%</span>
+                        </>
+                      ) : (
+                        <>
+                          <TrendingDown className="h-4 w-4 text-danger" />
+                          <span className="text-sm font-bold text-danger">{val}%</span>
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500 font-medium block mt-0.5">Sem dados cadastrados</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => router.push(`/strength?muscle=${encodeURIComponent(selectedMuscle)}`)}
+                  className="bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1"
+                >
+                  Ver Exercícios
+                  <ChevronRight className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Muscle Groups Grid */}

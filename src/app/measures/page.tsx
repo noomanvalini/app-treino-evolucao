@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc } from 'fireb
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
+import BodyMap from '@/components/BodyMap';
 import { 
   Ruler, Plus, Calendar, TrendingUp, TrendingDown, ChevronDown, 
   ChevronUp, X, Loader2, Save, Sparkles, Activity
@@ -57,6 +58,50 @@ export default function Measures() {
 
   // Selected metric for chart mapping
   const [selectedChartMetric, setSelectedChartMetric] = useState<string>('peso');
+
+  // Convert chart metric key (e.g. 'torax') to body map muscle name (e.g. 'Peito')
+  const getMuscleFromMetric = (metric: string): string => {
+    if (metric === 'peso') return '';
+    const reverseMap: Record<string, string> = {
+      torax: 'Peito',
+      bracoD: 'Bíceps',
+      bracoE: 'Bíceps',
+      antebracoD: 'Antebraço',
+      antebracoE: 'Antebraço',
+      cintura: 'Abdômen',
+      quadril: 'Glúteos',
+      coxaD: 'Quadríceps',
+      coxaE: 'Quadríceps',
+      panturrilhaD: 'Panturrilha/Canela',
+      panturrilhaE: 'Panturrilha/Canela',
+    };
+    return reverseMap[metric] || '';
+  };
+
+  // Convert body map muscle name to chart metric key
+  const handleMuscleSelectFromMap = (muscle: string) => {
+    if (!muscle) {
+      setSelectedChartMetric('peso');
+      return;
+    }
+    const mapToMetric: Record<string, string> = {
+      'Peito': 'torax',
+      'Costas': 'torax',
+      'Ombro': 'torax',
+      'Bíceps': 'bracoD',
+      'Antebraço': 'antebracoD',
+      'Abdômen': 'cintura',
+      'Quadríceps': 'coxaD',
+      'Posterior de Coxa': 'coxaD',
+      'Glúteos': 'quadril',
+      'Panturrilha/Canela': 'panturrilhaD',
+      'Tríceps': 'bracoD',
+    };
+    const metric = mapToMetric[muscle];
+    if (metric) {
+      setSelectedChartMetric(metric);
+    }
+  };
 
   // Accordion state
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -404,6 +449,20 @@ export default function Measures() {
         >
           <Plus className="h-4 w-4" /> Nova Medição
         </button>
+      </div>
+
+      {/* Body Map for Measurement Selection */}
+      <div className="bg-slate-card border border-border rounded-2xl p-4 shadow-lg flex flex-col items-center space-y-3">
+        <div className="w-full flex justify-between items-center">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Ruler className="h-4 w-4 text-lime-neon" /> Selecionar Parte do Corpo
+          </h2>
+          <span className="text-[10px] text-slate-500">Toque no boneco para filtrar os gráficos</span>
+        </div>
+        <BodyMap 
+          selectedMuscle={getMuscleFromMetric(selectedChartMetric)} 
+          onMuscleSelect={handleMuscleSelectFromMap} 
+        />
       </div>
 
       {/* SVG Chart */}
