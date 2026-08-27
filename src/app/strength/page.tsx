@@ -238,6 +238,39 @@ function StrengthContent() {
     }
   };
 
+  const handleAddPredefined = async (predefinedId: string, name: string) => {
+    setExerciseError('');
+    setSubmittingExercise(true);
+    try {
+      const docRef = await addDoc(collection(db, 'exercises'), {
+        userId: user?.uid,
+        muscleGroup: selectedMuscle,
+        nomeExercicio: name,
+        predefinedId: predefinedId,
+        dataCriacao: new Date()
+      });
+
+      // Update local state
+      const predefined = PREDEFINED_EXERCISES.find(pe => pe.id === predefinedId);
+      const newEx: Exercise = {
+        id: docRef.id,
+        nomeExercicio: name,
+        muscleGroup: selectedMuscle,
+        dataCriacao: new Date(),
+        thumbnailUrl: predefined?.thumbnailUrl,
+        isPredefined: true
+      };
+
+      setExercises((prev) => [...prev, newEx].sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio)));
+      setIsExerciseModalOpen(false);
+    } catch (err) {
+      console.error(err);
+      setExerciseError('Erro ao adicionar exercício padrão. Tente novamente.');
+    } finally {
+      setSubmittingExercise(false);
+    }
+  };
+
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedExerciseForLog) return;
@@ -531,88 +564,132 @@ function StrengthContent() {
       </div>
 
       {/* Modal - New Exercise */}
-      {isExerciseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-border/50 pb-3">
-              <h3 className="font-bold text-slate-100 flex items-center gap-1.5">
-                <Dumbbell className="h-5 w-5 text-lime-neon" /> Novo Exercício
-              </h3>
-              <button
-                onClick={() => {
-                  setIsExerciseModalOpen(false);
-                  setNewExerciseName('');
-                  setExerciseError('');
-                }}
-                className="text-slate-400 hover:text-slate-200"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {isExerciseModalOpen && (() => {
+        // Calculate predefined exercises not added yet
+        const addedNames = exercises.map(ex => ex.nomeExercicio.toLowerCase());
+        const availablePredefined = PREDEFINED_EXERCISES.filter(
+          pe => pe.muscleGroup === selectedMuscle && !addedNames.includes(pe.nome.toLowerCase())
+        );
 
-            {exerciseError && (
-              <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-3 rounded-lg">
-                {exerciseError}
-              </div>
-            )}
-
-            <form onSubmit={handleAddExercise} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                  Grupo Muscular
-                </label>
-                <input
-                  type="text"
-                  value={selectedMuscle}
-                  disabled
-                  className="w-full bg-slate-card-light/40 border border-border/50 rounded-xl px-4 py-3 text-sm text-slate-400 font-semibold cursor-not-allowed"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5">
-                  Nome do Exercício
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: Supino Reto com Barra"
-                  value={newExerciseName}
-                  onChange={(e) => setNewExerciseName(e.target.value)}
-                  className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
-                  required
-                />
-              </div>
-
-              <div className="flex gap-3 pt-3">
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+            <div className="bg-slate-card border border-border rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                <h3 className="font-bold text-slate-100 flex items-center gap-1.5">
+                  <Dumbbell className="h-5 w-5 text-lime-neon" /> Novo Exercício
+                </h3>
                 <button
-                  type="button"
                   onClick={() => {
                     setIsExerciseModalOpen(false);
                     setNewExerciseName('');
                     setExerciseError('');
                   }}
-                  className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+                  className="text-slate-400 hover:text-slate-200"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingExercise}
-                  className="flex-1 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {submittingExercise ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" /> Criar
-                    </>
-                  )}
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </form>
+
+              {exerciseError && (
+                <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-3 rounded-lg">
+                  {exerciseError}
+                </div>
+              )}
+
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1 no-scrollbar">
+                {availablePredefined.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Exercícios Recomendados
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {availablePredefined.map((pe) => (
+                        <button
+                          key={pe.id}
+                          type="button"
+                          onClick={() => handleAddPredefined(pe.id, pe.nome)}
+                          disabled={submittingExercise}
+                          className="bg-slate-card-light hover:bg-slate-card-light/80 border border-border/80 hover:border-lime-neon/50 rounded-xl p-2 text-left transition-all flex items-center gap-2.5 w-full group disabled:opacity-50"
+                        >
+                          <div className="w-9 h-9 rounded-lg overflow-hidden bg-slate-900 border border-border/50 flex-shrink-0 flex items-center justify-center relative">
+                            {pe.thumbnailUrl ? (
+                              <img
+                                src={pe.thumbnailUrl}
+                                alt={pe.nome}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <Dumbbell className="h-4 w-4 text-slate-500 group-hover:text-lime-neon" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[11px] font-bold text-slate-200 block truncate group-hover:text-lime-neon transition-colors">
+                              {pe.nome}
+                            </span>
+                            <span className="text-[8px] text-slate-500 block">Adicionar com 1 toque</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative my-5">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-border/40"></div>
+                      </div>
+                      <div className="relative flex justify-center text-[9px] uppercase tracking-wider">
+                        <span className="bg-slate-card px-2 text-slate-500">Ou crie um personalizado</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleAddExercise} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                      Nome do Exercício Personalizado
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Crucifixo Inclinado com Halteres"
+                      value={newExerciseName}
+                      onChange={(e) => setNewExerciseName(e.target.value)}
+                      className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExerciseModalOpen(false);
+                        setNewExerciseName('');
+                        setExerciseError('');
+                      }}
+                      className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={submittingExercise}
+                      className="flex-1 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      {submittingExercise ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Save className="h-4 w-4" /> Criar
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Modal - New Log */}
       {isLogModalOpen && selectedExerciseForLog && (
