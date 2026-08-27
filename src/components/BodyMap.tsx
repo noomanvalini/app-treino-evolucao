@@ -44,30 +44,30 @@ const MUSCLE_SVG_PREFIXES: Record<string, string> = {
   'Panturrilha/Canela': 'panturrilha-verso',
 };
 
-// Pulsing dot coordinates centered exactly on each muscle region
+// Corrected pulsing dot coordinates shifted to match the SVG body locations
 const FRONT_DOTS: Dot[] = [
-  { muscle: 'Ombro', left: '28%', top: '16%' },
-  { muscle: 'Ombro', left: '72%', top: '16%' },
-  { muscle: 'Peito', left: '50%', top: '22%' },
-  { muscle: 'Bíceps', left: '29%', top: '27%' },
-  { muscle: 'Bíceps', left: '71%', top: '27%' },
-  { muscle: 'Antebraço', left: '21%', top: '37%' },
-  { muscle: 'Antebraço', left: '79%', top: '37%' },
-  { muscle: 'Abdômen', left: '50%', top: '34%' },
-  { muscle: 'Quadríceps', left: '40%', top: '53%' },
-  { muscle: 'Quadríceps', left: '60%', top: '53%' },
+  { muscle: 'Ombro', left: '28%', top: '25%' },
+  { muscle: 'Ombro', left: '72%', top: '25%' },
+  { muscle: 'Peito', left: '50%', top: '31%' },
+  { muscle: 'Bíceps', left: '29%', top: '35%' },
+  { muscle: 'Bíceps', left: '71%', top: '35%' },
+  { muscle: 'Antebraço', left: '21%', top: '48%' },
+  { muscle: 'Antebraço', left: '79%', top: '48%' },
+  { muscle: 'Abdômen', left: '50%', top: '43%' },
+  { muscle: 'Quadríceps', left: '40%', top: '66%' },
+  { muscle: 'Quadríceps', left: '60%', top: '66%' },
 ];
 
 const BACK_DOTS: Dot[] = [
-  { muscle: 'Costas', left: '50%', top: '22%' },
-  { muscle: 'Tríceps', left: '29%', top: '25%' },
-  { muscle: 'Tríceps', left: '71%', top: '25%' },
-  { muscle: 'Glúteos', left: '41%', top: '42%' },
-  { muscle: 'Glúteos', left: '59%', top: '42%' },
-  { muscle: 'Posterior de Coxa', left: '40%', top: '56%' },
-  { muscle: 'Posterior de Coxa', left: '60%', top: '56%' },
-  { muscle: 'Panturrilha/Canela', left: '38%', top: '75%' },
-  { muscle: 'Panturrilha/Canela', left: '62%', top: '75%' },
+  { muscle: 'Costas', left: '50%', top: '31%' },
+  { muscle: 'Tríceps', left: '29%', top: '35%' },
+  { muscle: 'Tríceps', left: '71%', top: '35%' },
+  { muscle: 'Glúteos', left: '41%', top: '53%' },
+  { muscle: 'Glúteos', left: '59%', top: '53%' },
+  { muscle: 'Posterior de Coxa', left: '40%', top: '69%' },
+  { muscle: 'Posterior de Coxa', left: '60%', top: '69%' },
+  { muscle: 'Panturrilha/Canela', left: '38%', top: '87%' },
+  { muscle: 'Panturrilha/Canela', left: '62%', top: '87%' },
 ];
 
 export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps) {
