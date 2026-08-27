@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
-import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 
 const MUSCLE_GROUPS = [
   'Peito',
@@ -30,12 +30,14 @@ interface StrengthLog {
 }
 
 export default function Dashboard() {
-  const { user, profile, loading: authLoading, isOnboarding } = useAuth();
+  const { user, profile, loading: authLoading, isOnboarding, firestoreError, logout } = useAuth();
   const router = useRouter();
 
   const [loadingData, setLoadingData] = useState(true);
   const [muscleEvolutions, setMuscleEvolutions] = useState<Record<string, number>>({});
   const [generalScore, setGeneralScore] = useState<number>(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const [localDbError, setLocalDbError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -52,6 +54,13 @@ export default function Dashboard() {
   const fetchMetrics = async () => {
     if (!user) return;
     setLoadingData(true);
+    setTimedOut(false);
+    setLocalDbError(null);
+
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 6000);
+
     try {
       // 1. Fetch all user logs
       const logsQuery = query(collection(db, 'strength_logs'), where('userId', '==', user.uid));
@@ -145,14 +154,18 @@ export default function Dashboard() {
         : 0;
       setGeneralScore(Number(generalScoreAvg.toFixed(1)));
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching dashboard metrics:', error);
+      setLocalDbError(error.message || String(error));
     } finally {
+      clearTimeout(timer);
       setLoadingData(false);
     }
   };
 
-  if (authLoading || loadingData) {
+  const dbError = firestoreError || localDbError;
+
+  if (authLoading || (loadingData && !timedOut && !dbError)) {
     return (
       <div className="flex h-[80vh] flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-lime-neon" />
@@ -161,7 +174,55 @@ export default function Dashboard() {
     );
   }
 
-  if (!profile) return null;
+  // Display helpful database error/timeout template
+  if (dbError || timedOut || !profile) {
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center py-6">
+        <div className="bg-slate-card border border-border rounded-2xl p-6 shadow-xl w-full max-w-sm text-center space-y-4">
+          <div className="rounded-full bg-danger/10 p-4 text-danger w-fit mx-auto border border-danger/20">
+            <AlertTriangle className="h-8 w-8 animate-bounce" />
+          </div>
+          <h2 className="text-base font-bold text-slate-100">Falha na conexão do Banco de Dados</h2>
+          
+          <div className="bg-slate-card-light/50 border border-border/30 rounded-xl p-3 text-xs text-slate-300 text-left space-y-2 leading-relaxed">
+            {timedOut ? (
+              <p>⏱️ **Tempo limite esgotado**: A conexão com o Firestore demorou mais que o esperado.</p>
+            ) : dbError ? (
+              <p>❌ **Erro**: {dbError}</p>
+            ) : (
+              <p>👤 **Perfil não encontrado**: Não foi possível carregar os seus dados de perfil.</p>
+            )}
+            
+            <p className="font-semibold text-lime-neon mt-2">Como resolver:</p>
+            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
+              <li>Certifique-se de que ativou o **Cloud Firestore** no console do Firebase.</li>
+              <li>Verifique se as **Regras do Firestore** estão ativadas no modo de teste ou permitem escrita/leitura.</li>
+              <li>Confirme se as chaves em `.env.local` e na Vercel estão corretas.</li>
+            </ul>
+          </div>
+
+          <button
+            onClick={() => {
+              setTimedOut(false);
+              setLocalDbError(null);
+              router.refresh();
+              fetchMetrics();
+            }}
+            className="w-full bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-3 rounded-xl text-xs transition-colors"
+          >
+            Tentar Novamente
+          </button>
+          
+          <button
+            onClick={() => logout()}
+            className="w-full bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-semibold py-2 rounded-xl text-xs transition-colors border border-border"
+          >
+            Sair da Conta
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // IMC Calculation
   // IMC = Peso / (Altura_m)^2

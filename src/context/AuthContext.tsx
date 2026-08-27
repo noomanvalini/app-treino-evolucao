@@ -20,6 +20,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   isOnboarding: boolean;
+  firestoreError: string | null;
   logout: () => Promise<void>;
   updateProfile: (profileData: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   isOnboarding: false,
+  firestoreError: null,
   logout: async () => {},
   updateProfile: async () => {},
   refreshProfile: async () => {},
@@ -40,8 +42,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isOnboarding, setIsOnboarding] = useState<boolean>(false);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
 
   const fetchProfile = async (uid: string) => {
+    setFirestoreError(null);
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
@@ -52,8 +56,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(null);
         setIsOnboarding(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user profile:', error);
+      setFirestoreError(error.message || String(error));
+      setIsOnboarding(false); // prevent redirects loops
     }
   };
 
@@ -123,6 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         profile,
         loading,
         isOnboarding,
+        firestoreError,
         logout,
         updateProfile,
         refreshProfile,

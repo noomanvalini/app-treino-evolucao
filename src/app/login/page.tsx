@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Dumbbell, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
@@ -19,6 +19,12 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [submittingAuth, setSubmittingAuth] = useState(false);
+  
+  // Forgot Password & Social Login States
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [submittingReset, setSubmittingReset] = useState(false);
+  const [submittingGoogle, setSubmittingGoogle] = useState(false);
 
   // Onboarding States
   const [idade, setIdade] = useState('');
@@ -75,11 +81,64 @@ export default function Login() {
         setAuthError('Email ou senha incorretos.');
       } else if (err.code === 'auth/weak-password') {
         setAuthError('A senha deve ter pelo menos 6 caracteres.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setAuthError('Erro: O provedor de login "E-mail/Senha" não está ativado no console do Firebase (Authentication -> Sign-in method).');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setAuthError('Erro: Este domínio não está autorizado nas configurações do Firebase Authentication (Configurações -> Domínios autorizados).');
       } else {
-        setAuthError('Ocorreu um erro. Tente novamente.');
+        setAuthError(`Erro (${err.code || 'unknown'}): ${err.message || 'Ocorreu um erro. Tente novamente.'}`);
       }
     } finally {
       setSubmittingAuth(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setAuthError('');
+    setSubmittingGoogle(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/operation-not-allowed') {
+        setAuthError('Erro: O login com Google não está ativado no console do Firebase (Authentication -> Sign-in method).');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        setAuthError('Erro: Este domínio não está autorizado nas configurações do Firebase Authentication (Configurações -> Domínios autorizados).');
+      } else {
+        setAuthError(`Erro (${err.code || 'unknown'}): ${err.message || 'Falha ao autenticar com o Google.'}`);
+      }
+    } finally {
+      setSubmittingGoogle(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setResetEmailSent(false);
+    setSubmittingReset(true);
+
+    if (!email) {
+      setAuthError('Por favor, digite seu e-mail no campo.');
+      setSubmittingReset(false);
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetEmailSent(true);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/invalid-email') {
+        setAuthError('E-mail inválido.');
+      } else if (err.code === 'auth/user-not-found') {
+        setAuthError('Nenhum usuário cadastrado com este e-mail.');
+      } else {
+        setAuthError(`Erro (${err.code || 'unknown'}): ${err.message || 'Falha ao enviar e-mail de recuperação.'}`);
+      }
+    } finally {
+      setSubmittingReset(false);
     }
   };
 
@@ -263,6 +322,82 @@ export default function Login() {
     );
   }
 
+  // Forgot Password View
+  if (!user && isForgotPassword) {
+    return (
+      <div className="flex min-h-[80vh] flex-col justify-center py-6">
+        <div className="flex flex-col items-center mb-8">
+          <div className="rounded-full bg-lime-neon/10 p-4 text-lime-neon mb-3">
+            <Dumbbell className="h-10 w-10" />
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-wider text-slate-100">ClipzBody</h1>
+          <p className="text-xs text-slate-400 mt-1">Evolua sua força e medidas corporais</p>
+        </div>
+
+        <div className="w-full bg-slate-card border border-border rounded-2xl p-6 shadow-xl space-y-4">
+          <h2 className="text-xl font-bold text-slate-100">Recuperar Senha</h2>
+          <p className="text-slate-300 text-xs leading-relaxed">
+            Digite seu e-mail abaixo e enviaremos um link de redefinição de senha para você.
+          </p>
+
+          {authError && (
+            <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-3 rounded-lg">
+              {authError}
+            </div>
+          )}
+
+          {resetEmailSent && (
+            <div className="bg-success/10 border border-success/20 text-success text-xs p-3 rounded-lg">
+              E-mail de recuperação enviado com sucesso! Verifique sua caixa de entrada.
+            </div>
+          )}
+
+          <form onSubmit={handlePasswordReset} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">Email</label>
+              <input
+                type="email"
+                placeholder="exemplo@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={submittingReset}
+              className="w-full bg-lime-neon hover:bg-lime-neon-hover disabled:bg-slate-700 disabled:text-slate-400 text-slate-900 font-bold py-3.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 mt-4"
+            >
+              {submittingReset ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                'Enviar E-mail de Recuperação'
+              )}
+            </button>
+          </form>
+
+          <div className="pt-2 text-center">
+            <button
+              onClick={() => {
+                setIsForgotPassword(false);
+                setAuthError('');
+                setResetEmailSent(false);
+              }}
+              className="text-xs text-lime-neon hover:underline font-bold"
+            >
+              Voltar para o Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Login / Register Form
   return (
     <div className="flex min-h-[80vh] flex-col justify-center py-6">
@@ -333,6 +468,22 @@ export default function Login() {
             </div>
           </div>
 
+          {!isRegister && (
+            <div className="flex justify-end mt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(true);
+                  setAuthError('');
+                  setResetEmailSent(false);
+                }}
+                className="text-xs text-slate-400 hover:text-lime-neon hover:underline"
+              >
+                Esqueci minha senha
+              </button>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={submittingAuth}
@@ -350,6 +501,34 @@ export default function Login() {
             )}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border/50"></div>
+          </div>
+          <div className="relative flex justify-center text-[10px] uppercase tracking-wider">
+            <span className="bg-slate-card px-2 text-slate-400">Ou continuar com</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          disabled={submittingGoogle}
+          onClick={handleGoogleSignIn}
+          className="w-full bg-slate-card-light hover:bg-slate-card-light/80 border border-border disabled:bg-slate-700 disabled:text-slate-400 text-slate-100 font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-3"
+        >
+          {submittingGoogle ? (
+            <Loader2 className="h-4 w-4 animate-spin text-lime-neon" />
+          ) : (
+            <svg className="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+            </svg>
+          )}
+          Entrar com o Google
+        </button>
 
         <div className="mt-6 text-center">
           <button
