@@ -44,30 +44,30 @@ const MUSCLE_SVG_PREFIXES: Record<string, string> = {
   'Panturrilha/Canela': 'panturrilha-verso',
 };
 
-// Micro-adjusted dot coordinates based on user visual feedback
+// Calibrated dot coordinates based on user specific feedback
 const FRONT_DOTS: Dot[] = [
-  { muscle: 'Ombro', left: '31%', top: '30%' },
-  { muscle: 'Ombro', left: '69%', top: '30%' },
+  { muscle: 'Ombro', left: '33%', top: '30%' },
+  { muscle: 'Ombro', left: '67%', top: '30%' },
   { muscle: 'Peito', left: '50%', top: '31%' },
   { muscle: 'Bíceps', left: '31%', top: '37%' },
   { muscle: 'Bíceps', left: '69%', top: '37%' },
-  { muscle: 'Antebraço', left: '21%', top: '41%' },
-  { muscle: 'Antebraço', left: '79%', top: '41%' },
+  { muscle: 'Antebraço', left: '24%', top: '45%' },
+  { muscle: 'Antebraço', left: '76%', top: '45%' },
   { muscle: 'Abdômen', left: '50%', top: '43%' },
-  { muscle: 'Quadríceps', left: '40%', top: '66%' },
-  { muscle: 'Quadríceps', left: '60%', top: '66%' },
+  { muscle: 'Quadríceps', left: '40%', top: '56%' },
+  { muscle: 'Quadríceps', left: '60%', top: '56%' },
 ];
 
 const BACK_DOTS: Dot[] = [
   { muscle: 'Costas', left: '50%', top: '31%' },
-  { muscle: 'Tríceps', left: '31%', top: '37%' },
-  { muscle: 'Tríceps', left: '69%', top: '37%' },
+  { muscle: 'Tríceps', left: '29%', top: '37%' },
+  { muscle: 'Tríceps', left: '71%', top: '37%' },
   { muscle: 'Glúteos', left: '41%', top: '53%' },
   { muscle: 'Glúteos', left: '59%', top: '53%' },
   { muscle: 'Posterior de Coxa', left: '40%', top: '69%' },
   { muscle: 'Posterior de Coxa', left: '60%', top: '69%' },
-  { muscle: 'Panturrilha/Canela', left: '38%', top: '87%' },
-  { muscle: 'Panturrilha/Canela', left: '62%', top: '87%' },
+  { muscle: 'Panturrilha/Canela', left: '38%', top: '77%' },
+  { muscle: 'Panturrilha/Canela', left: '62%', top: '77%' },
 ];
 
 export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps) {
