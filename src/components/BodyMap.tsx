@@ -51,11 +51,11 @@ const FRONT_DOTS: Dot[] = [
   { muscle: 'Peito', left: '50%', top: '31%' },
   { muscle: 'Bíceps', left: '31%', top: '37%' },
   { muscle: 'Bíceps', left: '69%', top: '37%' },
-  { muscle: 'Antebraço', left: '24%', top: '45%' },
-  { muscle: 'Antebraço', left: '76%', top: '45%' },
+  { muscle: 'Antebraço', left: '22%', top: '45%' },
+  { muscle: 'Antebraço', left: '78%', top: '45%' },
   { muscle: 'Abdômen', left: '50%', top: '43%' },
-  { muscle: 'Quadríceps', left: '40%', top: '56%' },
-  { muscle: 'Quadríceps', left: '60%', top: '56%' },
+  { muscle: 'Quadríceps', left: '40%', top: '62%' },
+  { muscle: 'Quadríceps', left: '60%', top: '62%' },
 ];
 
 const BACK_DOTS: Dot[] = [
@@ -64,8 +64,8 @@ const BACK_DOTS: Dot[] = [
   { muscle: 'Tríceps', left: '71%', top: '37%' },
   { muscle: 'Glúteos', left: '41%', top: '53%' },
   { muscle: 'Glúteos', left: '59%', top: '53%' },
-  { muscle: 'Posterior de Coxa', left: '40%', top: '69%' },
-  { muscle: 'Posterior de Coxa', left: '60%', top: '69%' },
+  { muscle: 'Posterior de Coxa', left: '40%', top: '62%' },
+  { muscle: 'Posterior de Coxa', left: '60%', top: '62%' },
   { muscle: 'Panturrilha/Canela', left: '38%', top: '77%' },
   { muscle: 'Panturrilha/Canela', left: '62%', top: '77%' },
 ];
