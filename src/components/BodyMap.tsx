@@ -8,6 +8,12 @@ interface BodyMapProps {
   onMuscleSelect: (muscle: string) => void;
 }
 
+interface Dot {
+  muscle: string;
+  left: string;
+  top: string;
+}
+
 // Map muscles to their respective body side
 const MUSCLE_SIDES: Record<string, 'frente' | 'verso'> = {
   'Peito': 'frente',
@@ -38,6 +44,32 @@ const MUSCLE_SVG_PREFIXES: Record<string, string> = {
   'Panturrilha/Canela': 'panturrilha-verso',
 };
 
+// Pulsing dot coordinates centered exactly on each muscle region
+const FRONT_DOTS: Dot[] = [
+  { muscle: 'Ombro', left: '28%', top: '16%' },
+  { muscle: 'Ombro', left: '72%', top: '16%' },
+  { muscle: 'Peito', left: '50%', top: '22%' },
+  { muscle: 'Bíceps', left: '29%', top: '27%' },
+  { muscle: 'Bíceps', left: '71%', top: '27%' },
+  { muscle: 'Antebraço', left: '21%', top: '37%' },
+  { muscle: 'Antebraço', left: '79%', top: '37%' },
+  { muscle: 'Abdômen', left: '50%', top: '34%' },
+  { muscle: 'Quadríceps', left: '40%', top: '53%' },
+  { muscle: 'Quadríceps', left: '60%', top: '53%' },
+];
+
+const BACK_DOTS: Dot[] = [
+  { muscle: 'Costas', left: '50%', top: '22%' },
+  { muscle: 'Tríceps', left: '29%', top: '25%' },
+  { muscle: 'Tríceps', left: '71%', top: '25%' },
+  { muscle: 'Glúteos', left: '41%', top: '42%' },
+  { muscle: 'Glúteos', left: '59%', top: '42%' },
+  { muscle: 'Posterior de Coxa', left: '40%', top: '56%' },
+  { muscle: 'Posterior de Coxa', left: '60%', top: '56%' },
+  { muscle: 'Panturrilha/Canela', left: '38%', top: '75%' },
+  { muscle: 'Panturrilha/Canela', left: '62%', top: '75%' },
+];
+
 export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps) {
   const [side, setSide] = useState<'frente' | 'verso'>('frente');
 
@@ -58,6 +90,8 @@ export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps
     const prefix = MUSCLE_SVG_PREFIXES[selectedMuscle];
     return `/images/body-map/${prefix}.svg`;
   };
+
+  const dotsList = side === 'frente' ? FRONT_DOTS : BACK_DOTS;
 
   return (
     <div className="flex flex-col items-center space-y-4 bg-slate-card border border-border rounded-2xl p-4 shadow-lg w-full max-w-sm mx-auto">
@@ -96,123 +130,39 @@ export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps
           className="w-full h-full object-contain pointer-events-none select-none"
         />
 
-        {/* Absolute Touch Hot-spots (Mapped to exact SVG viewBox coordinates) */}
-        {side === 'frente' ? (
-          <>
-            {/* Ombro */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Ombro')}
-              className="absolute left-[26%] top-[10%] w-[48%] h-[9%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Ombro"
-              aria-label="Selecionar Ombro"
-            />
-            {/* Peito */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Peito')}
-              className="absolute left-[36%] top-[19%] w-[28%] h-[9%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Peito"
-              aria-label="Selecionar Peito"
-            />
-            {/* Abdômen */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Abdômen')}
-              className="absolute left-[37%] top-[29%] w-[26%] h-[12%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Abdômen"
-              aria-label="Selecionar Abdômen"
-            />
-            {/* Bíceps (Left & Right relative to screen) */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Bíceps')}
-              className="absolute left-[20%] top-[21%] w-[13%] h-[10%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Bíceps"
-              aria-label="Selecionar Bíceps"
-            />
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Bíceps')}
-              className="absolute right-[20%] top-[21%] w-[13%] h-[10%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Bíceps"
-              aria-label="Selecionar Bíceps"
-            />
-            {/* Antebraço (Left & Right relative to screen) */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Antebraço')}
-              className="absolute left-[11%] top-[31%] w-[15%] h-[15%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Antebraço"
-              aria-label="Selecionar Antebraço"
-            />
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Antebraço')}
-              className="absolute right-[11%] top-[31%] w-[15%] h-[15%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Antebraço"
-              aria-label="Selecionar Antebraço"
-            />
-            {/* Quadríceps */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Quadríceps')}
-              className="absolute left-[34%] top-[43%] w-[32%] h-[22%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Quadríceps"
-              aria-label="Selecionar Quadríceps"
-            />
-          </>
-        ) : (
-          <>
-            {/* Costas */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Costas')}
-              className="absolute left-[34%] top-[13%] w-[32%] h-[22%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Costas"
-              aria-label="Selecionar Costas"
-            />
-            {/* Tríceps (Left & Right relative to screen) */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Tríceps')}
-              className="absolute left-[20%] top-[19%] w-[13%] h-[12%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Tríceps"
-              aria-label="Selecionar Tríceps"
-            />
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Tríceps')}
-              className="absolute right-[20%] top-[19%] w-[13%] h-[12%] rounded-full cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Tríceps"
-              aria-label="Selecionar Tríceps"
-            />
-            {/* Glúteos */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Glúteos')}
-              className="absolute left-[34%] top-[35%] w-[32%] h-[10%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Glúteos"
-              aria-label="Selecionar Glúteos"
-            />
-            {/* Posterior de Coxa */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Posterior de Coxa')}
-              className="absolute left-[34%] top-[46%] w-[32%] h-[18%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Posterior de Coxa"
-              aria-label="Selecionar Posterior de Coxa"
-            />
-            {/* Panturrilha */}
-            <button
-              type="button"
-              onClick={() => onMuscleSelect('Panturrilha/Canela')}
-              className="absolute left-[32%] top-[65%] w-[36%] h-[20%] rounded cursor-pointer hover:bg-lime-neon/15 active:bg-lime-neon/20 transition-colors"
-              title="Panturrilha/Canela"
-              aria-label="Selecionar Panturrilha/Canela"
-            />
-          </>
-        )}
+        {/* Floating Pulsing Indicator Dots Overlay */}
+        <div className="absolute inset-0 pointer-events-none">
+          {dotsList.map((dot, idx) => {
+            const isSelected = selectedMuscle === dot.muscle;
+            return (
+              <div
+                key={`${side}-dot-${idx}`}
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-30"
+                style={{ left: dot.left, top: dot.top }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onMuscleSelect(dot.muscle)}
+                  className="group relative flex items-center justify-center w-10 h-10 cursor-pointer"
+                  title={dot.muscle}
+                  aria-label={`Selecionar ${dot.muscle}`}
+                >
+                  {/* Outer pulsing neon glow halo */}
+                  <span className={`absolute w-6 h-6 rounded-full border border-lime-neon/75 bg-lime-neon/15 transition-all ${
+                    isSelected 
+                      ? 'scale-125 border-lime-neon bg-lime-neon/30 animate-pulse' 
+                      : 'scale-100 group-hover:scale-125 group-hover:border-lime-neon animate-ping opacity-60'
+                  }`} />
+                  
+                  {/* Central core dot */}
+                  <span className={`w-2.5 h-2.5 rounded-full border border-slate-900 transition-all ${
+                    isSelected ? 'bg-lime-neon scale-125' : 'bg-slate-300 group-hover:bg-lime-neon'
+                  }`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Selected Muscle Display & Clear Button */}
