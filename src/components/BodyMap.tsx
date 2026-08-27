@@ -44,15 +44,15 @@ const MUSCLE_SVG_PREFIXES: Record<string, string> = {
   'Panturrilha/Canela': 'panturrilha-verso',
 };
 
-// Corrected pulsing dot coordinates shifted to match the SVG body locations
+// Micro-adjusted dot coordinates based on user visual feedback
 const FRONT_DOTS: Dot[] = [
-  { muscle: 'Ombro', left: '28%', top: '25%' },
-  { muscle: 'Ombro', left: '72%', top: '25%' },
+  { muscle: 'Ombro', left: '31%', top: '30%' },
+  { muscle: 'Ombro', left: '69%', top: '30%' },
   { muscle: 'Peito', left: '50%', top: '31%' },
-  { muscle: 'Bíceps', left: '29%', top: '35%' },
-  { muscle: 'Bíceps', left: '71%', top: '35%' },
-  { muscle: 'Antebraço', left: '21%', top: '48%' },
-  { muscle: 'Antebraço', left: '79%', top: '48%' },
+  { muscle: 'Bíceps', left: '31%', top: '37%' },
+  { muscle: 'Bíceps', left: '69%', top: '37%' },
+  { muscle: 'Antebraço', left: '21%', top: '41%' },
+  { muscle: 'Antebraço', left: '79%', top: '41%' },
   { muscle: 'Abdômen', left: '50%', top: '43%' },
   { muscle: 'Quadríceps', left: '40%', top: '66%' },
   { muscle: 'Quadríceps', left: '60%', top: '66%' },
@@ -60,8 +60,8 @@ const FRONT_DOTS: Dot[] = [
 
 const BACK_DOTS: Dot[] = [
   { muscle: 'Costas', left: '50%', top: '31%' },
-  { muscle: 'Tríceps', left: '29%', top: '35%' },
-  { muscle: 'Tríceps', left: '71%', top: '35%' },
+  { muscle: 'Tríceps', left: '31%', top: '37%' },
+  { muscle: 'Tríceps', left: '69%', top: '37%' },
   { muscle: 'Glúteos', left: '41%', top: '53%' },
   { muscle: 'Glúteos', left: '59%', top: '53%' },
   { muscle: 'Posterior de Coxa', left: '40%', top: '69%' },
