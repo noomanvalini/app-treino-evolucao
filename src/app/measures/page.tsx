@@ -2,14 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import BodyMap from '@/components/BodyMap';
 import { 
   Ruler, Plus, Calendar, TrendingUp, TrendingDown, ChevronDown, 
-  ChevronUp, X, Loader2, Save, Sparkles, Activity
+  ChevronUp, X, Loader2, Save, Sparkles, Activity, Pencil, Trash2, AlertTriangle
 } from 'lucide-react';
 
 interface Medidas {
@@ -108,6 +108,9 @@ export default function Measures() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMeasurement, setEditingMeasurement] = useState<Measurement | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [pesoInput, setPesoInput] = useState('');
   const [medidasInput, setMedidasInput] = useState<Record<string, string>>({
     bracoD: '', bracoE: '', antebracoD: '', antebracoE: '',
@@ -165,6 +168,7 @@ export default function Measures() {
   };
 
   const handleOpenModal = () => {
+    setEditingMeasurement(null);
     // Prefill inputs with latest measurements if available
     if (measurements.length > 0) {
       const latest = measurements[0];
@@ -173,7 +177,7 @@ export default function Measures() {
       const newMedidas: Record<string, string> = {};
       Object.keys(SITE_LABELS).forEach((key) => {
         const val = latest.medidas[key as keyof Medidas];
-        newMedidas[key] = val ? val.toString() : '';
+        newMedidas[key] = val !== undefined ? val.toString() : '';
       });
       setMedidasInput(newMedidas);
     } else if (profile) {
@@ -182,6 +186,41 @@ export default function Measures() {
     setMeasureDate(new Date().toISOString().split('T')[0]);
     setIsModalOpen(true);
     setErrorMsg('');
+  };
+
+  const handleOpenEditModal = (item: Measurement) => {
+    setEditingMeasurement(item);
+    setPesoInput(item.pesoKg.toString());
+    
+    const newMedidas: Record<string, string> = {};
+    Object.keys(SITE_LABELS).forEach((key) => {
+      const val = item.medidas[key as keyof Medidas];
+      newMedidas[key] = val !== undefined ? val.toString() : '';
+    });
+    setMedidasInput(newMedidas);
+    
+    const d = item.data?.seconds ? new Date(item.data.seconds * 1000) : new Date(item.data);
+    setMeasureDate(d.toISOString().split('T')[0]);
+    setIsModalOpen(true);
+    setErrorMsg('');
+  };
+
+  const handleDeleteMeasurement = async (id: string) => {
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'body_measurements', id));
+      const updated = measurements.filter(m => m.id !== id);
+      setMeasurements(updated);
+      setDeleteConfirmId(null);
+      if (profile && updated.length > 0) {
+        await updateProfile({ pesoAtual: updated[0].pesoKg });
+      }
+    } catch (err) {
+      console.error('Error deleting measurement:', err);
+      alert('Erro ao excluir medição. Tente novamente.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSaveMeasurement = async (e: React.FormEvent) => {
@@ -212,17 +251,24 @@ export default function Measures() {
 
       const parsedDate = new Date(measureDate + 'T12:00:00');
 
-      // 1. Create document in Firestore
-      const { collection, addDoc } = await import('firebase/firestore');
-      await addDoc(collection(db, 'body_measurements'), {
-        userId: user?.uid,
-        pesoKg: pesoVal,
-        imcCalculado: Number(imcVal.toFixed(1)),
-        medidas: cleanedMedidas,
-        data: parsedDate
-      });
+      if (editingMeasurement) {
+        await updateDoc(doc(db, 'body_measurements', editingMeasurement.id), {
+          pesoKg: pesoVal,
+          imcCalculado: Number(imcVal.toFixed(1)),
+          medidas: cleanedMedidas,
+          data: parsedDate
+        });
+      } else {
+        await addDoc(collection(db, 'body_measurements'), {
+          userId: user?.uid,
+          pesoKg: pesoVal,
+          imcCalculado: Number(imcVal.toFixed(1)),
+          medidas: cleanedMedidas,
+          data: parsedDate
+        });
+      }
 
-      // 2. Update current weight in user profile
+      // Update current weight in user profile
       if (profile) {
         await updateProfile({
           pesoAtual: pesoVal
@@ -231,6 +277,7 @@ export default function Measures() {
 
       // Reset modal & refresh
       setIsModalOpen(false);
+      setEditingMeasurement(null);
       fetchMeasurements();
     } catch (err) {
       console.error(err);
@@ -535,12 +582,40 @@ export default function Measures() {
                         <span className="text-[9px] text-slate-500 block">IMC</span>
                       </div>
 
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                        className="text-slate-400 hover:text-slate-200"
-                      >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditModal(item);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-lime-neon hover:bg-slate-card-light transition-colors"
+                          title="Editar medição"
+                          aria-label="Editar medição"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmId(item.id);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-danger hover:bg-slate-card-light transition-colors"
+                          title="Excluir medição"
+                          aria-label="Excluir medição"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-card-light transition-colors"
+                          aria-label={isExpanded ? "Recolher detalhes" : "Expandir detalhes"}
+                        >
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -576,16 +651,19 @@ export default function Measures() {
         )}
       </div>
 
-      {/* Modal - New Measurement */}
+      {/* Modal - New / Edit Measurement */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
           <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm max-h-[85vh] p-6 shadow-2xl overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-border/50 pb-3">
               <h3 className="font-bold text-slate-100 flex items-center gap-1.5">
-                <Ruler className="h-5 w-5 text-lime-neon" /> Nova Medição
+                <Ruler className="h-5 w-5 text-lime-neon" /> {editingMeasurement ? 'Editar Medição' : 'Nova Medição'}
               </h3>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingMeasurement(null);
+                }}
                 className="text-slate-400 hover:text-slate-200"
               >
                 <X className="h-5 w-5" />
@@ -654,7 +732,10 @@ export default function Measures() {
               <div className="flex gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingMeasurement(null);
+                  }}
                   className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
                 >
                   Cancelar
@@ -668,12 +749,46 @@ export default function Measures() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
-                      <Save className="h-4 w-4" /> Salvar
+                      <Save className="h-4 w-4" /> {editingMeasurement ? 'Salvar Alterações' : 'Salvar Medição'}
                     </>
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Confirm Delete Measurement */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-danger">
+              <div className="p-2.5 rounded-full bg-danger/10 border border-danger/20">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-100 text-sm">Excluir Medição?</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Esta medição e todos os dados corporais deste registro serão removidos permanentemente.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => handleDeleteMeasurement(deleteConfirmId)}
+                className="flex-1 bg-danger hover:bg-danger/80 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}

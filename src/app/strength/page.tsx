@@ -2,13 +2,13 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import { 
   Dumbbell, Plus, History, Calendar, Calculator, TrendingUp, TrendingDown,
-  ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle
+  ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle, Pencil, Trash2
 } from 'lucide-react';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
@@ -52,6 +52,17 @@ function StrengthContent() {
   const [submittingExercise, setSubmittingExercise] = useState(false);
   const [exerciseError, setExerciseError] = useState('');
 
+  // Modal States - Edit Exercise
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [editExerciseName, setEditExerciseName] = useState('');
+  const [isEditExerciseModalOpen, setIsEditExerciseModalOpen] = useState(false);
+  const [submittingEditExercise, setSubmittingEditExercise] = useState(false);
+  const [editExerciseError, setEditExerciseError] = useState('');
+
+  // Delete Exercise Confirmation
+  const [deleteExerciseConfirm, setDeleteExerciseConfirm] = useState<Exercise | null>(null);
+  const [deletingExercise, setDeletingExercise] = useState(false);
+
   // Modal States - New Log
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [selectedExerciseForLog, setSelectedExerciseForLog] = useState<Exercise | null>(null);
@@ -60,6 +71,54 @@ function StrengthContent() {
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [submittingLog, setSubmittingLog] = useState(false);
   const [logError, setLogError] = useState('');
+
+  // Modal States - Edit Log
+  const [editingLog, setEditingLog] = useState<StrengthLog | null>(null);
+  const [editLogCarga, setEditLogCarga] = useState('');
+  const [editLogReps, setEditLogReps] = useState('');
+  const [editLogDate, setEditLogDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isEditLogModalOpen, setIsEditLogModalOpen] = useState(false);
+  const [submittingEditLog, setSubmittingEditLog] = useState(false);
+  const [editLogError, setEditLogError] = useState('');
+
+  // Delete Log Confirmation
+  const [deleteLogConfirmId, setDeleteLogConfirmId] = useState<string | null>(null);
+  const [deletingLog, setDeletingLog] = useState(false);
+
+  // Helper for hidden/deleted predefined exercises per user
+  const getHiddenExerciseIds = (): string[] => {
+    if (typeof window === 'undefined' || !user) return [];
+    try {
+      const stored = localStorage.getItem(`clipzbody_hidden_exercises_${user.uid}`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const addHiddenExerciseId = (id: string) => {
+    if (typeof window === 'undefined' || !user) return;
+    try {
+      const existing = getHiddenExerciseIds();
+      if (!existing.includes(id)) {
+        const updated = [...existing, id];
+        localStorage.setItem(`clipzbody_hidden_exercises_${user.uid}`, JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const removeHiddenExerciseId = (id: string) => {
+    if (typeof window === 'undefined' || !user) return;
+    try {
+      const existing = getHiddenExerciseIds();
+      const updated = existing.filter((hid) => hid !== id);
+      localStorage.setItem(`clipzbody_hidden_exercises_${user.uid}`, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Read muscle parameter from URL on mount
   useEffect(() => {
@@ -84,6 +143,8 @@ function StrengthContent() {
     if (!user) return;
     setLoadingData(true);
     try {
+      const hiddenIds = getHiddenExerciseIds();
+
       // 1. Fetch exercises for this muscle from Firestore
       const exQuery = query(
         collection(db, 'exercises'),
@@ -94,18 +155,28 @@ function StrengthContent() {
       const customExList: Exercise[] = [];
       exSnap.forEach((doc) => {
         const d = doc.data();
+        if (hiddenIds.includes(doc.id)) return;
+        const predefined = PREDEFINED_EXERCISES.find(
+          (pe) => pe.id === d.predefinedId || pe.nome.toLowerCase() === d.nomeExercicio?.toLowerCase()
+        );
         customExList.push({
           id: doc.id,
           nomeExercicio: d.nomeExercicio,
           muscleGroup: d.muscleGroup,
           dataCriacao: d.dataCriacao,
-          isPredefined: false
+          thumbnailUrl: predefined?.thumbnailUrl || d.thumbnailUrl,
+          isPredefined: !!d.predefinedId || !!predefined
         });
       });
 
-      // 2. Map predefined exercises for this muscle group
+      // 2. Map predefined exercises for this muscle group that aren't hidden or duplicated
       const predefinedForMuscle = PREDEFINED_EXERCISES
-        .filter((pe) => pe.muscleGroup === selectedMuscle)
+        .filter(
+          (pe) =>
+            pe.muscleGroup === selectedMuscle &&
+            !hiddenIds.includes(pe.id) &&
+            !customExList.some((ce) => ce.nomeExercicio.toLowerCase() === pe.nome.toLowerCase())
+        )
         .map((pe) => ({
           id: pe.id,
           nomeExercicio: pe.nome,
@@ -119,7 +190,7 @@ function StrengthContent() {
       combinedExList.sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio));
       setExercises(combinedExList);
 
-      // 2. Fetch all logs for this muscle group
+      // 3. Fetch all logs for this muscle group
       const logsQuery = query(
         collection(db, 'strength_logs'),
         where('userId', '==', user.uid),
@@ -242,6 +313,7 @@ function StrengthContent() {
     setExerciseError('');
     setSubmittingExercise(true);
     try {
+      removeHiddenExerciseId(predefinedId);
       const docRef = await addDoc(collection(db, 'exercises'), {
         userId: user?.uid,
         muscleGroup: selectedMuscle,
@@ -268,6 +340,203 @@ function StrengthContent() {
       setExerciseError('Erro ao adicionar exercício padrão. Tente novamente.');
     } finally {
       setSubmittingExercise(false);
+    }
+  };
+
+  // --- EXERCISE ACTIONS (EDIT / DELETE) ---
+  const handleOpenEditExerciseModal = (exercise: Exercise) => {
+    setEditingExercise(exercise);
+    setEditExerciseName(exercise.nomeExercicio);
+    setEditExerciseError('');
+    setIsEditExerciseModalOpen(true);
+  };
+
+  const handleSaveEditExercise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExercise || !user) return;
+    if (!editExerciseName.trim()) {
+      setEditExerciseError('Digite o nome do exercício.');
+      return;
+    }
+    setEditExerciseError('');
+    setSubmittingEditExercise(true);
+
+    try {
+      const newName = editExerciseName.trim();
+
+      if (editingExercise.id.startsWith('pre_')) {
+        // Predefined exercise being renamed: create a custom exercise record for this user
+        const docRef = await addDoc(collection(db, 'exercises'), {
+          userId: user.uid,
+          muscleGroup: selectedMuscle,
+          nomeExercicio: newName,
+          predefinedId: editingExercise.id,
+          dataCriacao: new Date()
+        });
+
+        // Hide original predefined ID
+        addHiddenExerciseId(editingExercise.id);
+
+        // Update existing logs that referenced the predefined exercise ID
+        const qLogs = query(
+          collection(db, 'strength_logs'),
+          where('userId', '==', user.uid),
+          where('exerciseId', '==', editingExercise.id)
+        );
+        const logsSnap = await getDocs(qLogs);
+        const updatePromises = logsSnap.docs.map((d) => updateDoc(d.ref, { exerciseId: docRef.id }));
+        await Promise.all(updatePromises);
+
+        // Update local state
+        setExercises((prev) =>
+          prev
+            .map((ex) =>
+              ex.id === editingExercise.id
+                ? { ...ex, id: docRef.id, nomeExercicio: newName, isPredefined: false }
+                : ex
+            )
+            .sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio))
+        );
+        setLogs((prev) =>
+          prev.map((l) => (l.exerciseId === editingExercise.id ? { ...l, exerciseId: docRef.id } : l))
+        );
+      } else {
+        // Custom exercise in Firestore: update doc directly
+        await updateDoc(doc(db, 'exercises', editingExercise.id), {
+          nomeExercicio: newName
+        });
+
+        setExercises((prev) =>
+          prev
+            .map((ex) => (ex.id === editingExercise.id ? { ...ex, nomeExercicio: newName } : ex))
+            .sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio))
+        );
+      }
+
+      setIsEditExerciseModalOpen(false);
+      setEditingExercise(null);
+    } catch (err) {
+      console.error('Error editing exercise:', err);
+      setEditExerciseError('Erro ao atualizar exercício. Tente novamente.');
+    } finally {
+      setSubmittingEditExercise(false);
+    }
+  };
+
+  const handleDeleteExercise = async () => {
+    if (!deleteExerciseConfirm || !user) return;
+    setDeletingExercise(true);
+
+    try {
+      const exId = deleteExerciseConfirm.id;
+
+      if (!exId.startsWith('pre_')) {
+        await deleteDoc(doc(db, 'exercises', exId));
+      } else {
+        addHiddenExerciseId(exId);
+      }
+
+      // Delete all strength logs belonging to this exercise
+      const qLogs = query(
+        collection(db, 'strength_logs'),
+        where('userId', '==', user.uid),
+        where('exerciseId', '==', exId)
+      );
+      const logsSnap = await getDocs(qLogs);
+      const deletePromises = logsSnap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all(deletePromises);
+
+      // Update local states
+      setExercises((prev) => prev.filter((ex) => ex.id !== exId));
+      setLogs((prev) => prev.filter((l) => l.exerciseId !== exId));
+
+      setDeleteExerciseConfirm(null);
+    } catch (err) {
+      console.error('Error deleting exercise:', err);
+    } finally {
+      setDeletingExercise(false);
+    }
+  };
+
+  // --- STRENGTH LOG ACTIONS (EDIT / DELETE) ---
+  const handleOpenEditLogModal = (log: StrengthLog) => {
+    setEditingLog(log);
+    setEditLogCarga(String(log.cargaKg));
+    setEditLogReps(String(log.reps));
+    const d = log.data?.seconds ? new Date(log.data.seconds * 1000) : new Date(log.data);
+    const dateStr = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    setEditLogDate(dateStr);
+    setEditLogError('');
+    setIsEditLogModalOpen(true);
+  };
+
+  const handleSaveEditLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLog || !user) return;
+
+    setEditLogError('');
+    setSubmittingEditLog(true);
+
+    const cargaNum = parseFloat(editLogCarga);
+    const repsNum = parseInt(editLogReps);
+
+    if (isNaN(cargaNum) || cargaNum <= 0) {
+      setEditLogError('Carga inválida (deve ser maior que zero).');
+      setSubmittingEditLog(false);
+      return;
+    }
+
+    if (isNaN(repsNum) || repsNum <= 0) {
+      setEditLogError('Repetições inválidas (deve ser maior que zero).');
+      setSubmittingEditLog(false);
+      return;
+    }
+
+    try {
+      const oneRm = calculate1RM(cargaNum, repsNum);
+      const parsedDate = new Date(editLogDate + 'T12:00:00');
+
+      await updateDoc(doc(db, 'strength_logs', editingLog.id), {
+        cargaKg: cargaNum,
+        reps: repsNum,
+        oneRmCalculado: Number(oneRm.toFixed(2)),
+        data: parsedDate
+      });
+
+      setLogs((prev) =>
+        prev.map((l) =>
+          l.id === editingLog.id
+            ? {
+                ...l,
+                cargaKg: cargaNum,
+                reps: repsNum,
+                oneRmCalculado: Number(oneRm.toFixed(2)),
+                data: Timestamp.fromDate(parsedDate)
+              }
+            : l
+        )
+      );
+
+      setIsEditLogModalOpen(false);
+      setEditingLog(null);
+    } catch (err) {
+      console.error('Error editing log:', err);
+      setEditLogError('Erro ao atualizar carga. Tente novamente.');
+    } finally {
+      setSubmittingEditLog(false);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    setDeletingLog(true);
+    try {
+      await deleteDoc(doc(db, 'strength_logs', logId));
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      setDeleteLogConfirmId(null);
+    } catch (err) {
+      console.error('Error deleting log:', err);
+    } finally {
+      setDeletingLog(false);
     }
   };
 
@@ -428,7 +697,7 @@ function StrengthContent() {
                   className="bg-slate-card border border-border rounded-2xl overflow-hidden shadow flex flex-col"
                 >
                   {/* Card Header with Thumbnail */}
-                  <div className="flex p-4 gap-4 items-center">
+                  <div className="flex p-4 gap-3 items-center">
                     {/* Thumbnail Image Container */}
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-900 border border-border/50 flex-shrink-0 flex items-center justify-center relative">
                       {exercise.thumbnailUrl ? (
@@ -467,6 +736,28 @@ function StrengthContent() {
                       ) : (
                         <p className="text-[11px] text-slate-500">Sem cargas registradas</p>
                       )}
+                    </div>
+
+                    {/* Exercise Actions (Edit & Delete) */}
+                    <div className="flex items-center gap-1 self-start">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditExerciseModal(exercise)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-lime-neon hover:bg-slate-card-light transition-colors"
+                        title="Editar exercício"
+                        aria-label="Editar exercício"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteExerciseConfirm(exercise)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-danger hover:bg-slate-card-light transition-colors"
+                        title="Excluir exercício"
+                        aria-label="Excluir exercício"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
 
@@ -529,18 +820,20 @@ function StrengthContent() {
                         return (
                           <div
                             key={logItem.id}
-                            className="flex items-center justify-between text-xs py-1.5 border-b border-border/30 last:border-b-0"
+                            className="flex items-center justify-between text-xs py-2 border-b border-border/30 last:border-b-0 gap-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                              <span className="text-slate-300">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Calendar className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                              <span className="text-slate-300 whitespace-nowrap">
                                 {logItem.data?.seconds
                                   ? new Date(logItem.data.seconds * 1000).toLocaleDateString('pt-BR')
                                   : new Date(logItem.data).toLocaleDateString('pt-BR')}
                               </span>
-                              <span className="font-bold text-slate-100 ml-2">{logItem.cargaKg}kg x {logItem.reps} reps</span>
+                              <span className="font-bold text-slate-100 ml-1 whitespace-nowrap">
+                                {logItem.cargaKg}kg x {logItem.reps} reps
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2 text-right">
+                            <div className="flex items-center gap-2 text-right flex-shrink-0">
                               <div>
                                 <span className="text-[9px] text-slate-500 mr-1">1RM:</span>
                                 <span className="font-bold text-slate-300">{logItem.oneRmCalculado}kg</span>
@@ -550,6 +843,26 @@ function StrengthContent() {
                                   {itemDelta >= 0 ? `+${itemDelta.toFixed(1)}%` : `${itemDelta.toFixed(1)}%`}
                                 </span>
                               )}
+                              <div className="flex items-center gap-0.5 ml-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditLogModal(logItem)}
+                                  className="p-1 rounded text-slate-400 hover:text-lime-neon hover:bg-slate-card transition-colors"
+                                  title="Editar carga"
+                                  aria-label="Editar carga"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteLogConfirmId(logItem.id)}
+                                  className="p-1 rounded text-slate-400 hover:text-danger hover:bg-slate-card transition-colors"
+                                  title="Excluir carga"
+                                  aria-label="Excluir carga"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -802,6 +1115,254 @@ function StrengthContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Edit Exercise */}
+      {isEditExerciseModalOpen && editingExercise && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <h3 className="font-bold text-slate-100 flex items-center gap-1.5">
+                <Pencil className="h-5 w-5 text-lime-neon" /> Editar Exercício
+              </h3>
+              <button
+                onClick={() => {
+                  setIsEditExerciseModalOpen(false);
+                  setEditingExercise(null);
+                  setEditExerciseError('');
+                }}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {editExerciseError && (
+              <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-3 rounded-lg">
+                {editExerciseError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditExercise} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                  Nome do Exercício
+                </label>
+                <input
+                  type="text"
+                  value={editExerciseName}
+                  onChange={(e) => setEditExerciseName(e.target.value)}
+                  className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditExerciseModalOpen(false);
+                    setEditingExercise(null);
+                    setEditExerciseError('');
+                  }}
+                  className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingEditExercise}
+                  className="flex-1 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {submittingEditExercise ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" /> Salvar
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Confirm Delete Exercise */}
+      {deleteExerciseConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-danger">
+              <div className="p-2.5 rounded-full bg-danger/10 border border-danger/20">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-100 text-sm">Excluir Exercício?</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Tem certeza que deseja excluir <span className="text-slate-200 font-bold">{deleteExerciseConfirm.nomeExercicio}</span>? Todo o histórico de cargas e 1RM deste exercício será removido permanentemente.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteExerciseConfirm(null)}
+                className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deletingExercise}
+                onClick={handleDeleteExercise}
+                className="flex-1 bg-danger hover:bg-danger/80 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                {deletingExercise ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Edit Log */}
+      {isEditLogModalOpen && editingLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <h3 className="font-bold text-slate-100 flex items-center gap-1.5">
+                <Pencil className="h-5 w-5 text-lime-neon" /> Editar Carga
+              </h3>
+              <button
+                onClick={() => {
+                  setIsEditLogModalOpen(false);
+                  setEditingLog(null);
+                  setEditLogError('');
+                }}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {editLogError && (
+              <div className="bg-danger/10 border border-danger/20 text-danger text-xs p-3 rounded-lg">
+                {editLogError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditLog} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                    Carga (kg)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={editLogCarga}
+                    onChange={(e) => setEditLogCarga(e.target.value)}
+                    className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                    Repetições (reps)
+                  </label>
+                  <input
+                    type="number"
+                    value={editLogReps}
+                    onChange={(e) => setEditLogReps(e.target.value)}
+                    className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                  Data
+                </label>
+                <input
+                  type="date"
+                  value={editLogDate}
+                  onChange={(e) => setEditLogDate(e.target.value)}
+                  className="w-full bg-slate-card-light border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-lime-neon text-white"
+                  required
+                />
+              </div>
+
+              {editLogCarga && editLogReps && !isNaN(parseFloat(editLogCarga)) && !isNaN(parseInt(editLogReps)) && (
+                <div className="bg-slate-card-light/40 border border-border/40 rounded-xl p-3 flex justify-between items-center text-xs">
+                  <span className="text-slate-400">1RM Estimado (Brzycki):</span>
+                  <span className="font-bold text-lime-neon">
+                    {calculate1RM(parseFloat(editLogCarga), parseInt(editLogReps)).toFixed(1)} kg
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditLogModalOpen(false);
+                    setEditingLog(null);
+                    setEditLogError('');
+                  }}
+                  className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingEditLog}
+                  className="flex-1 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {submittingEditLog ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" /> Salvar
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Confirm Delete Log */}
+      {deleteLogConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-danger">
+              <div className="p-2.5 rounded-full bg-danger/10 border border-danger/20">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-100 text-sm">Excluir Carga?</h3>
+            </div>
+            <p className="text-xs text-slate-400">
+              Este registro será removido permanentemente do histórico deste exercício.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteLogConfirmId(null)}
+                className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={deletingLog}
+                onClick={() => handleDeleteLog(deleteLogConfirmId)}
+                className="flex-1 bg-danger hover:bg-danger/80 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+              >
+                {deletingLog ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}

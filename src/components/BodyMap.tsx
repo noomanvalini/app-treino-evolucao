@@ -27,6 +27,7 @@ const MUSCLE_SIDES: Record<string, 'frente' | 'verso'> = {
   'Glúteos': 'verso',
   'Posterior de Coxa': 'verso',
   'Panturrilha/Canela': 'verso',
+  'Quadril': 'verso',
 };
 
 // Map muscles to their SVG filename prefix
@@ -42,6 +43,7 @@ const MUSCLE_SVG_PREFIXES: Record<string, string> = {
   'Glúteos': 'gluteos-verso',
   'Posterior de Coxa': 'posterior-coxa-verso',
   'Panturrilha/Canela': 'panturrilha-verso',
+  'Quadril': 'gluteos-verso',
 };
 
 // Calibrated dot coordinates based on user specific feedback
@@ -54,6 +56,8 @@ const FRONT_DOTS: Dot[] = [
   { muscle: 'Antebraço', left: '22%', top: '45%' },
   { muscle: 'Antebraço', left: '78%', top: '45%' },
   { muscle: 'Abdômen', left: '50%', top: '43%' },
+  { muscle: 'Quadril', left: '33%', top: '52%' },
+  { muscle: 'Quadril', left: '67%', top: '52%' },
   { muscle: 'Quadríceps', left: '40%', top: '62%' },
   { muscle: 'Quadríceps', left: '60%', top: '62%' },
 ];
@@ -64,6 +68,8 @@ const BACK_DOTS: Dot[] = [
   { muscle: 'Tríceps', left: '71%', top: '37%' },
   { muscle: 'Glúteos', left: '41%', top: '53%' },
   { muscle: 'Glúteos', left: '59%', top: '53%' },
+  { muscle: 'Quadril', left: '33%', top: '53%' },
+  { muscle: 'Quadril', left: '67%', top: '53%' },
   { muscle: 'Posterior de Coxa', left: '40%', top: '62%' },
   { muscle: 'Posterior de Coxa', left: '60%', top: '62%' },
   { muscle: 'Panturrilha/Canela', left: '38%', top: '77%' },
