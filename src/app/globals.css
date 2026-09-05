@@ -9,7 +9,7 @@
 
   /* Radius tokens */
   --radius-box: 14px;
-  --radius-btn: 12px;
+  --radius-btn: 8px;
 }
 
 @theme inline {
@@ -28,8 +28,14 @@
   --color-success: #D3E156;
 
   /* Custom Border Radius */
-  --radius-xl: 12px;
+  --radius-btn: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
   --radius-2xl: 14px;
+}
+
+button:not(.rounded-full):not([class*="rounded-none"]) {
+  border-radius: var(--radius-btn, 8px);
 }
 
 body {
