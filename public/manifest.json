@@ -4,8 +4,8 @@
   "description": "Acompanhamento completo de carga, força e medidas corporais",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F172A",
-  "theme_color": "#0F172A",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -19,6 +19,11 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180"
     }
   ]
 }

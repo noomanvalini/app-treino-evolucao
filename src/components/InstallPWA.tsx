@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import ClipzBodyIcon from '@/components/ClipzBodyIcon';
 
 export default function InstallPWA() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -44,8 +45,8 @@ export default function InstallPWA() {
   return (
     <div className="bg-slate-card border-b border-border text-slate-100 px-4 py-3 flex items-center justify-between text-sm md:max-w-md mx-auto md:rounded-lg md:border md:mt-4 md:shadow-lg">
       <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-lime-neon/10 text-lime-neon">
-          <Download className="h-4 w-4" />
+        <div className="p-1.5 rounded-lg bg-lime-neon/10 text-lime-neon flex items-center justify-center">
+          <ClipzBodyIcon className="h-4 w-4 text-lime-neon" />
         </div>
         <div>
           <p className="font-semibold text-xs">Instalar ClipzBody</p>
