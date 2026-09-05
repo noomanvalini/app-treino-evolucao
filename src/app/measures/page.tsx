@@ -337,8 +337,8 @@ export default function Measures() {
             {/* Definitions for Gradients */}
             <defs>
               <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#84CC16" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#84CC16" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="#D3E156" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#D3E156" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -348,7 +348,7 @@ export default function Measures() {
               y1={height - paddingY} 
               x2={width - paddingX} 
               y2={height - paddingY} 
-              stroke="#334155" 
+              stroke="rgba(255, 255, 255, 0.1)" 
               strokeWidth="1" 
               strokeDasharray="2"
             />
@@ -357,7 +357,7 @@ export default function Measures() {
               y1={paddingY} 
               x2={width - paddingX} 
               y2={paddingY} 
-              stroke="#334155" 
+              stroke="rgba(255, 255, 255, 0.1)" 
               strokeWidth="0.5" 
               strokeDasharray="2"
             />
@@ -366,7 +366,7 @@ export default function Measures() {
             <path d={areaD} fill="url(#chartGradient)" />
 
             {/* Main evolution line */}
-            <path d={pathD} fill="none" stroke="#84CC16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={pathD} fill="none" stroke="#D3E156" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
 
             {/* Render Circles for points */}
             {points.map((p, i) => (
@@ -375,8 +375,8 @@ export default function Measures() {
                   cx={p.x} 
                   cy={p.y} 
                   r="4" 
-                  fill="#0F172A" 
-                  stroke="#84CC16" 
+                  fill="#0D1117" 
+                  stroke="#D3E156" 
                   strokeWidth="2" 
                 />
                 {/* Min / Max Labels or first/last values */}
@@ -488,7 +488,7 @@ export default function Measures() {
             <p className="text-xs text-slate-400">Nenhuma medição cadastrada.</p>
             <button
               onClick={handleOpenModal}
-              className="mt-3 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+              className="mt-3 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 text-xs font-bold px-4 py-2 rounded-xl transition-colors"
             >
               Criar Primeira Medição
             </button>

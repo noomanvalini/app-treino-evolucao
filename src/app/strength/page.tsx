@@ -411,7 +411,7 @@ function StrengthContent() {
             <p className="text-xs text-slate-400">Nenhum exercício cadastrado para este grupo.</p>
             <button
               onClick={() => setIsExerciseModalOpen(true)}
-              className="mt-3 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 text-xs font-bold px-4 py-2 rounded-lg transition-colors"
+              className="mt-3 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 text-xs font-bold px-4 py-2 rounded-xl transition-colors"
             >
               Criar Primeiro Exercício
             </button>

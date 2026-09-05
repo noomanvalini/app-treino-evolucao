@@ -1,11 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0F172A;
+  --background: #0D1117;
   --foreground: #F8FAFC;
-  --card: #1E293B;
+  --card: rgba(255, 255, 255, 0.05);
   --card-foreground: #F8FAFC;
-  --border: #334155;
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* Radius tokens */
+  --radius-box: 14px;
+  --radius-btn: 12px;
 }
 
 @theme inline {
@@ -16,12 +20,16 @@
   --color-border: var(--border);
   
   /* Custom Accent Colors */
-  --color-lime-neon: #84CC16;
-  --color-lime-neon-hover: #A3E635;
-  --color-slate-card: #1E293B;
-  --color-slate-card-light: #334155;
-  --color-danger: #EF4444;
-  --color-success: #22C55E;
+  --color-lime-neon: #D3E156;
+  --color-lime-neon-hover: #E2ED72;
+  --color-slate-card: rgba(255, 255, 255, 0.05);
+  --color-slate-card-light: rgba(255, 255, 255, 0.08);
+  --color-danger: #FF6E61;
+  --color-success: #D3E156;
+
+  /* Custom Border Radius */
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
 }
 
 body {
@@ -35,14 +43,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0F172A;
+  background: #0D1117;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(255, 255, 255, 0.25);
 }
 
 @keyframes infinite-loading {
@@ -53,4 +61,3 @@ body {
 .animate-infinite-loading {
   animation: infinite-loading 1.5s infinite linear;
 }
-
