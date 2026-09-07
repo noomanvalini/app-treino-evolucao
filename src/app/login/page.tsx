@@ -85,7 +85,8 @@ export default function Login() {
       } else if (err.code === 'auth/operation-not-allowed') {
         setAuthError('Erro: O provedor de login "E-mail/Senha" não está ativado no console do Firebase (Authentication -> Sign-in method).');
       } else if (err.code === 'auth/unauthorized-domain') {
-        setAuthError('Erro: Este domínio não está autorizado nas configurações do Firebase Authentication (Configurações -> Domínios autorizados).');
+        const host = typeof window !== 'undefined' ? window.location.hostname : 'este domínio';
+        setAuthError(`Erro de Domínio: O endereço "${host}" precisa ser autorizado no console do Firebase (Authentication -> Configurações -> Domínios autorizados).`);
       } else {
         setAuthError(`Erro (${err.code || 'unknown'}): ${err.message || 'Ocorreu um erro. Tente novamente.'}`);
       }
@@ -105,7 +106,8 @@ export default function Login() {
       if (err.code === 'auth/operation-not-allowed') {
         setAuthError('Erro: O login com Google não está ativado no console do Firebase (Authentication -> Sign-in method).');
       } else if (err.code === 'auth/unauthorized-domain') {
-        setAuthError('Erro: Este domínio não está autorizado nas configurações do Firebase Authentication (Configurações -> Domínios autorizados).');
+        const host = typeof window !== 'undefined' ? window.location.hostname : 'este domínio';
+        setAuthError(`Erro de Domínio: O endereço "${host}" precisa ser autorizado no console do Firebase (Authentication -> Configurações -> Domínios autorizados). Acesse pelo link oficial: app-treino-evolucao.vercel.app`);
       } else {
         setAuthError(`Erro (${err.code || 'unknown'}): ${err.message || 'Falha ao autenticar com o Google.'}`);
       }
