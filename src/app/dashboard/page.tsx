@@ -315,6 +315,11 @@ export default function Dashboard() {
           userId={user.uid}
           userName={profile.nome}
           pesoAtual={peso}
+          userProfile={{
+            idade: profile.idade,
+            altura: profile.altura,
+            sexo: profile.sexo
+          }}
           logs={userLogs}
         />
       )}

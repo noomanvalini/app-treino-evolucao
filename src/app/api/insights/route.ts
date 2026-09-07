@@ -2,37 +2,75 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-interface InsightRequest {
-  stats: {
+export interface AsymmetryItem {
+  membro: string;
+  ladoDireito: string;
+  ladoEsquerdo: string;
+  diferenca: string;
+  ladoMaior: string;
+  status: string;
+}
+
+export interface InsightRequestStats {
+  atleta?: {
     nome?: string;
+    idade?: number;
+    alturaCm?: number;
+    sexo?: string;
+  };
+  pesoCorporal?: {
     pesoAtual?: number;
+    pesoAnterior?: number;
+    deltaPesoKg?: string;
+    imc?: number;
+  };
+  medidasCorporais?: {
+    dataAtual?: string;
+    dataAnterior?: string;
+    medidasAtuais?: Record<string, number>;
+    deltaMedidasCm?: Record<string, string>;
+  } | null;
+  assimetrias?: AsymmetryItem[];
+  treinosSemana: {
     periodo?: string;
-    totalExerciciosRealizados?: number;
-    musculosTreinados?: Array<{
+    totalExerciciosRealizados: number;
+    musculosTreinados: Array<{
       grupo: string;
       exercicios: number;
       deltaCargaMedio: string;
       melhor1RM?: string;
     }>;
-    musculosSemRegistro?: string[];
+    musculosSemRegistro: string[];
   };
 }
 
-const SYSTEM_INSTRUCTION = `Você é o treinador de alta performance e inteligência artificial do aplicativo ClipzBody.
-Sua missão é analisar os dados de treino da semana do atleta e fornecer um resumo motivador, técnico e objetivo.
+interface InsightRequest {
+  stats: InsightRequestStats;
+}
 
-Diretrizes:
-- Seja direto, encorajador e baseado em ciência da hipertrofia/força.
-- Destaque os músculos com maior evolução de carga e consistência.
-- Aponte os grupos musculares que ficaram para trás ou não foram treinados nesta semana para evitar desbalanços.
-- Forneça uma dica prática acionável para a próxima semana.
-- Use linguagem acessível e dinâmica em português do Brasil.
+const SYSTEM_INSTRUCTION = `Você é o treinador principal, fisiologista e biomecânico de elite do aplicativo ClipzBody.
+Sua missão é realizar uma análise holística, profunda e altamente técnica cruzando:
+1. PROGRESSÃO DE TREINO E CARGAS (1RM, exercícios realizados, grupos não treinados).
+2. MEDIDAS CORPORAIS E COMPOSIÇÃO (circunferências de fita métrica, variações de tórax, cintura, braços, pernas).
+3. PESO CORPORAL E IMC (ganho/perda de peso correlacionado com a diminuição ou aumento da cintura/tórax, indicando se houve hipertrofia limpa, recomposição ou ganho de gordura).
+4. ASSIMETRIAS BILATERAIS (lado direito vs esquerdo em braços, coxas, panturrilhas, antebraços) e prescrição de correção biomecânica com exercícios unilaterais.
 
-Retorne ESTRITAMENTE um objeto JSON válido com as chaves:
-- "destaqueSemanal": string destacando o músculo que mais evoluiu e o porquê
-- "pontosAtencao": string apontando músculos não treinados ou com estagnação/pouco volume
-- "dicaTecnica": string com dica prática para aplicar na próxima semana
-- "mensagemMotivacional": string curta e impactante de incentivo`;
+Diretrizes Obrigatórias:
+- Faça o cruzamento direto dos dados! Exemplo: correlacione se o aumento de carga nos exercícios de bíceps/tríceps ou pernas refletiu em ganho de perímetro de braço ou coxa.
+- Analise a composição corporal: se o peso subiu com cintura controlada ou em queda, elogie o ganho limpo de massa muscular (bulking limpo). Se a cintura subiu desproporcionalmente, recomende atenção calórica.
+- Se houver assimetria bilateral (ex: diferença > 0.5cm entre lado direito e esquerdo), aponte explicitamente e prescreva a estratégia corretiva (iniciar pelo membro mais fraco nos exercícios com halteres/unilaterais, igualar repetições, foco na cadência excêntrica).
+- Se o usuário ainda não tiver medições corporais cadastradas, analise os treinos e recomende enfaticamente cadastrar as medidas na aba Medidas para liberar a análise de assimetrias e composição.
+- Alerte com firmeza sobre músculos que ficaram sem registro na semana para evitar desbalanços anatômicos ou estéticos.
+- Seja técnico, motivador, empático e use linguagem direta e fluida em português do Brasil.
+
+Retorne ESTRITAMENTE um objeto JSON válido contendo:
+- "resumoGeral": string (visão geral integrada cruzando treinos, evolução de peso e medidas corporais)
+- "destaqueSemanal": string (músculo ou grupamento com melhor resposta mecânica e ganhos comprovados)
+- "analiseMedidasEPeso": string (análise detalhada da evolução do peso, IMC, circunferências corporais e impacto estético)
+- "analiseAssimetrias": string (diagnóstico das assimetrias corporais detectadas e prescrição biomecânica corretiva)
+- "pontosAtencao": string (grupos musculares negligenciados, riscos de estagnação ou desbalanço)
+- "dicaTecnica": string (dica prática de biomecânica, cadência excêntrica ou amplitude para aplicar na próxima semana)
+- "mensagemMotivacional": string (frase de impacto curta e motivadora no estilo ClipzBody)`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -49,15 +87,15 @@ export async function POST(req: NextRequest) {
 
     if (!stats) {
       return NextResponse.json(
-        { error: 'Dados estatísticos de treino são obrigatórios.' },
+        { error: 'Dados estatísticos são obrigatórios.' },
         { status: 400 }
       );
     }
 
     const modelsToTry = [
-      'gemini-3.6-flash',
       'gemini-3.5-flash',
       'gemini-flash-latest',
+      'gemini-3.6-flash',
       'gemini-2.5-flash-lite'
     ];
 
@@ -76,7 +114,7 @@ export async function POST(req: NextRequest) {
                 role: 'user',
                 parts: [
                   { text: SYSTEM_INSTRUCTION },
-                  { text: `Aqui estão os dados desta semana do aluno:\n${JSON.stringify(stats, null, 2)}` }
+                  { text: `Aqui estão os dados completos do aluno (treinos, peso, medidas corporais e assimetrias):\n${JSON.stringify(stats, null, 2)}` }
                 ]
               }
             ],
