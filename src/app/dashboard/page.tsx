@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
+import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import BodyMap from '@/components/BodyMap';
 import { MUSCLE_GROUPS } from '@/data/exercises';
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const router = useRouter();
 
   const [loadingData, setLoadingData] = useState(true);
+  const [userLogs, setUserLogs] = useState<StrengthLog[]>([]);
   const [muscleEvolutions, setMuscleEvolutions] = useState<Record<string, number>>({});
   const [generalScore, setGeneralScore] = useState<number>(0);
   const [timedOut, setTimedOut] = useState(false);
@@ -68,6 +70,7 @@ export default function Dashboard() {
           data: data.data
         });
       });
+      setUserLogs(logsList);
 
       // Group logs by exercise ID
       const logsByExercise: Record<string, StrengthLog[]> = {};
@@ -305,6 +308,16 @@ export default function Dashboard() {
           </p>
         </div>
       </div>
+
+      {/* Coach IA • Weekly Insights */}
+      {user && profile && (
+        <WeeklyInsightsCard
+          userId={user.uid}
+          userName={profile.nome}
+          pesoAtual={peso}
+          logs={userLogs}
+        />
+      )}
 
       {/* Interactive Body Map */}
       <div className="space-y-3">
