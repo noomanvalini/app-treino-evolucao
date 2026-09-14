@@ -1,14 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { 
   Sparkles, RefreshCw, Loader2, Trophy, AlertTriangle, Lightbulb, 
-  Flame, Scale, Layers, Activity, TrendingUp, CheckCircle2, ChevronRight
+  Flame, Scale, Layers, Activity, TrendingUp, CheckCircle2, ChevronRight,
+  ArrowDownRight, ArrowUpRight, Minus
 } from 'lucide-react';
 import { MUSCLE_GROUPS } from '@/data/exercises';
-import type { AsymmetryItem, InsightRequestStats } from '@/app/api/insights/route';
+import type { 
+  AsymmetryItem, 
+  AsymmetryEvolutionItem, 
+  PreviousAnalysisSummary, 
+  InsightRequestStats 
+} from '@/app/api/insights/route';
 
 interface Medidas {
   bracoD?: number;
@@ -32,7 +39,10 @@ interface Measurement {
   data: any;
 }
 
-interface WeeklyInsight {
+export interface WeeklyInsight {
+  id?: string;
+  weekKey?: string;
+  userId?: string;
   resumoGeral?: string;
   destaqueSemanal: string;
   analiseMedidasEPeso?: string;
@@ -41,6 +51,8 @@ interface WeeklyInsight {
   dicaTecnica: string;
   mensagemMotivacional: string;
   assimetriasDetectadas?: AsymmetryItem[];
+  evolucaoAssimetrias?: AsymmetryEvolutionItem[];
+  analiseAnteriorSnapshot?: PreviousAnalysisSummary | null;
   pesoInfo?: {
     pesoAtual: number;
     pesoAnterior?: number;
@@ -52,7 +64,7 @@ interface WeeklyInsight {
   version?: number;
 }
 
-interface StrengthLog {
+export interface StrengthLog {
   exerciseId: string;
   muscleGroup: string;
   cargaKg?: number;
@@ -71,10 +83,12 @@ export interface WeeklyInsightsCardProps {
     sexo?: string;
   };
   logs: StrengthLog[];
+  compact?: boolean;
+  onInsightGenerated?: (newInsight: WeeklyInsight) => void;
 }
 
-// Get ISO Week string like '2026-W36'
-function getWeekKey(date = new Date()): string {
+// Get ISO Week string like '2026-W37'
+export function getWeekKey(date = new Date()): string {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
   d.setUTCDate(d.getUTCDate() + 4 - dayNum);
@@ -88,7 +102,9 @@ export default function WeeklyInsightsCard({
   userName,
   pesoAtual,
   userProfile,
-  logs
+  logs,
+  compact = false,
+  onInsightGenerated
 }: WeeklyInsightsCardProps) {
   const [insight, setInsight] = useState<WeeklyInsight | null>(null);
   const [loadingCache, setLoadingCache] = useState(true);
@@ -120,8 +136,14 @@ export default function WeeklyInsightsCard({
     loadCachedInsight();
   }, [userId, currentWeekKey]);
 
-  // Aggregate stats from logs, measurements and user profile
-  const compileHolisticStats = async (): Promise<{ stats: InsightRequestStats; assimetrias: AsymmetryItem[]; pesoInfo: any }> => {
+  // Aggregate stats from logs, measurements and historical analyses
+  const compileHolisticStats = async (): Promise<{ 
+    stats: InsightRequestStats; 
+    assimetrias: AsymmetryItem[]; 
+    evolucaoAssimetrias: AsymmetryEvolutionItem[]; 
+    analiseAnterior: PreviousAnalysisSummary | null;
+    pesoInfo: any 
+  }> => {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     const oneWeekMs = oneWeekAgo.getTime();
@@ -134,6 +156,7 @@ export default function WeeklyInsightsCard({
 
     logs.forEach((log) => {
       let group = log.muscleGroup;
+      // Guarantee flexora exercises strictly map to Posterior de Coxa
       if (log.exerciseId === 'pre_mesa_flexora' || log.exerciseId?.toLowerCase().includes('flexora')) {
         group = 'Posterior de Coxa';
       }
@@ -193,7 +216,7 @@ export default function WeeklyInsightsCard({
       }
     });
 
-    // Fetch body measurements for user
+    // 1. Fetch body measurements for user
     let rawMeasures: Measurement[] = [];
     try {
       const q = query(collection(db, 'body_measurements'), where('userId', '==', userId));
@@ -219,8 +242,42 @@ export default function WeeklyInsightsCard({
       return timeB - timeA;
     });
 
+    // 2. Fetch past insights to provide continuity from previous analysis
+    let analiseAnterior: PreviousAnalysisSummary | null = null;
+    try {
+      const pastQ = query(collection(db, 'weekly_insights'), where('userId', '==', userId));
+      const pastSnap = await getDocs(pastQ);
+      const pastList: WeeklyInsight[] = [];
+      pastSnap.forEach((d) => {
+        const item = d.data() as WeeklyInsight;
+        if (item.weekKey !== currentWeekKey) {
+          pastList.push(item);
+        }
+      });
+      // Sort newest week first
+      pastList.sort((a, b) => (b.weekKey || '').localeCompare(a.weekKey || ''));
+      if (pastList.length > 0) {
+        const prevDoc = pastList[0];
+        const dateStr = prevDoc.dataGeracao?.seconds 
+          ? new Date(prevDoc.dataGeracao.seconds * 1000).toLocaleDateString('pt-BR')
+          : undefined;
+        analiseAnterior = {
+          semana: prevDoc.weekKey,
+          dataGeracao: dateStr,
+          destaqueAnterior: prevDoc.destaqueSemanal,
+          pontosAtencaoAnterior: prevDoc.pontosAtencao,
+          dicaPrescritaAnterior: prevDoc.dicaTecnica,
+          resumoGeralAnterior: prevDoc.resumoGeral
+        };
+      }
+    } catch (err) {
+      console.warn('Could not fetch previous insights:', err);
+    }
+
     let medidasCorporais: InsightRequestStats['medidasCorporais'] = null;
     let assimetrias: AsymmetryItem[] = [];
+    let evolucaoAssimetrias: AsymmetryEvolutionItem[] = [];
+
     let pesoInfo: any = {
       pesoAtual: pesoAtual || 0,
       imc: userProfile?.altura && pesoAtual ? Number((pesoAtual / Math.pow(userProfile.altura / 100, 2)).toFixed(1)) : undefined
@@ -263,12 +320,36 @@ export default function WeeklyInsightsCard({
         deltaMedidasCm: Object.keys(deltaMedidasCm).length > 0 ? deltaMedidasCm : undefined
       };
 
-      // Calculate bilateral asymmetries
+      // Calculate bilateral asymmetries and evolution between measurements
       const pairs = [
-        { membro: 'Braço', d: latest.medidas.bracoD, e: latest.medidas.bracoE },
-        { membro: 'Antebraço', d: latest.medidas.antebracoD, e: latest.medidas.antebracoE },
-        { membro: 'Coxa', d: latest.medidas.coxaD, e: latest.medidas.coxaE },
-        { membro: 'Panturrilha', d: latest.medidas.panturrilhaD, e: latest.medidas.panturrilhaE }
+        { 
+          membro: 'Braço', 
+          d: latest.medidas.bracoD, 
+          e: latest.medidas.bracoE, 
+          prevD: prev?.medidas.bracoD, 
+          prevE: prev?.medidas.bracoE 
+        },
+        { 
+          membro: 'Antebraço', 
+          d: latest.medidas.antebracoD, 
+          e: latest.medidas.antebracoE,
+          prevD: prev?.medidas.antebracoD, 
+          prevE: prev?.medidas.antebracoE 
+        },
+        { 
+          membro: 'Coxa', 
+          d: latest.medidas.coxaD, 
+          e: latest.medidas.coxaE,
+          prevD: prev?.medidas.coxaD, 
+          prevE: prev?.medidas.coxaE 
+        },
+        { 
+          membro: 'Panturrilha', 
+          d: latest.medidas.panturrilhaD, 
+          e: latest.medidas.panturrilhaE,
+          prevD: prev?.medidas.panturrilhaD, 
+          prevE: prev?.medidas.panturrilhaE 
+        }
       ];
 
       assimetrias = pairs
@@ -292,6 +373,54 @@ export default function WeeklyInsightsCard({
             status
           };
         });
+
+      // Evolution of asymmetries compared to previous measurement
+      evolucaoAssimetrias = pairs
+        .filter((p) => p.d !== undefined && p.e !== undefined && p.d > 0 && p.e > 0)
+        .map((p) => {
+          const d = p.d!;
+          const e = p.e!;
+          const currentDiff = Math.abs(d - e);
+          const ladoMaior = d > e ? 'Direito' : e > d ? 'Esquerdo' : 'Igual';
+
+          let status = 'Simetria Perfeita';
+          if (currentDiff > 1.0) status = 'Assimetria Moderada/Atenção';
+          else if (currentDiff > 0.5) status = 'Leve Assimetria';
+          else if (currentDiff > 0) status = 'Simétrico';
+
+          let assimetriaAnterior: string | undefined = undefined;
+          let deltaAssimetriaCm: string | undefined = undefined;
+          let evolucaoDescricao = 'Primeira medição com dados bilaterais';
+
+          if (p.prevD !== undefined && p.prevE !== undefined && p.prevD > 0 && p.prevE > 0) {
+            const prevDiff = Math.abs(p.prevD - p.prevE);
+            assimetriaAnterior = `${prevDiff.toFixed(1)}cm`;
+            const change = currentDiff - prevDiff;
+
+            if (change < -0.05) {
+              const melhora = Math.abs(change).toFixed(1);
+              evolucaoDescricao = `Redução de ${melhora}cm na assimetria (progresso comprovado!)`;
+              deltaAssimetriaCm = `-${melhora}cm`;
+            } else if (change > 0.05) {
+              const aumento = change.toFixed(1);
+              evolucaoDescricao = `Assimetria aumentou em ${aumento}cm (requer atenção)`;
+              deltaAssimetriaCm = `+${aumento}cm`;
+            } else {
+              evolucaoDescricao = 'Assimetria estável em relação à medição anterior';
+              deltaAssimetriaCm = '0.0cm';
+            }
+          }
+
+          return {
+            membro: p.membro,
+            assimetriaAnterior,
+            assimetriaAtual: `${currentDiff.toFixed(1)}cm`,
+            deltaAssimetriaCm,
+            ladoMaiorAtual: ladoMaior,
+            status,
+            evolucaoDescricao
+          };
+        });
     }
 
     const recentWorkoutsCount = logs.filter((l) => {
@@ -309,6 +438,8 @@ export default function WeeklyInsightsCard({
       pesoCorporal: pesoInfo,
       medidasCorporais,
       assimetrias,
+      evolucaoAssimetrias,
+      analiseAnterior,
       treinosSemana: {
         periodo: 'Últimos 7 dias',
         totalExerciciosRealizados: recentWorkoutsCount,
@@ -317,7 +448,7 @@ export default function WeeklyInsightsCard({
       }
     };
 
-    return { stats, assimetrias, pesoInfo };
+    return { stats, assimetrias, evolucaoAssimetrias, analiseAnterior, pesoInfo };
   };
 
   const handleGenerateInsight = async () => {
@@ -325,7 +456,7 @@ export default function WeeklyInsightsCard({
     setErrorMessage(null);
 
     try {
-      const { stats, assimetrias, pesoInfo } = await compileHolisticStats();
+      const { stats, assimetrias, evolucaoAssimetrias, analiseAnterior, pesoInfo } = await compileHolisticStats();
 
       const res = await fetch('/api/insights', {
         method: 'POST',
@@ -341,10 +472,14 @@ export default function WeeklyInsightsCard({
       const generatedInsight: WeeklyInsight = {
         ...data.insight,
         assimetriasDetectadas: assimetrias,
+        evolucaoAssimetrias,
+        analiseAnteriorSnapshot: analiseAnterior,
         pesoInfo,
         totalExercicios: stats.treinosSemana.totalExerciciosRealizados,
         dataGeracao: new Date(),
-        version: 2
+        weekKey: currentWeekKey,
+        userId,
+        version: 3
       };
 
       // Save to Firestore cache
@@ -356,6 +491,7 @@ export default function WeeklyInsightsCard({
       });
 
       setInsight(generatedInsight);
+      onInsightGenerated?.(generatedInsight);
     } catch (err: any) {
       console.error('Error generating insight:', err);
       setErrorMessage(err.message || 'Erro ao gerar análise com IA.');
@@ -368,6 +504,14 @@ export default function WeeklyInsightsCard({
   const getAsymmetrySummaryBadge = () => {
     if (!insight?.assimetriasDetectadas || insight.assimetriasDetectadas.length === 0) {
       return null;
+    }
+    // Check if any asymmetry had a notable reduction (progress!)
+    const improvedItem = insight.evolucaoAssimetrias?.find((a) => a.deltaAssimetriaCm?.startsWith('-'));
+    if (improvedItem) {
+      return {
+        label: `✨ Melhora: ${improvedItem.membro} (${improvedItem.deltaAssimetriaCm})`,
+        className: 'bg-success/15 text-success border-success/30 font-bold'
+      };
     }
     const hasModerate = insight.assimetriasDetectadas.find((a) => a.status.includes('Atenção'));
     if (hasModerate) {
@@ -391,10 +535,100 @@ export default function WeeklyInsightsCard({
 
   const asymmetryBadge = getAsymmetrySummaryBadge();
 
+  // --- COMPACT VIEW (DASHBOARD) ---
+  if (compact) {
+    return (
+      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden space-y-4">
+        <div className="absolute top-0 right-0 w-36 h-36 bg-lime-neon/5 rounded-full blur-2xl pointer-events-none -mr-10 -mt-10" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-lime-neon/10 text-lime-neon border border-lime-neon/20">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[9px] font-extrabold uppercase tracking-widest text-lime-neon block">
+                Coach IA ClipzBody
+              </span>
+              <h2 className="text-sm font-bold text-slate-100">Análise da Semana</h2>
+            </div>
+          </div>
+
+          <span className="text-[10px] font-bold text-slate-400 bg-slate-card-light/60 px-2.5 py-1 rounded-full border border-border/40">
+            {currentWeekKey.replace('W', 'Semana ')}
+          </span>
+        </div>
+
+        {loadingCache ? (
+          <div className="py-4 flex justify-center items-center gap-2 text-xs text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin text-lime-neon" />
+            <span>Verificando análise da semana...</span>
+          </div>
+        ) : insight ? (
+          <div className="space-y-3 relative z-10 text-xs">
+            {/* Quick Chips */}
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold">
+              {insight.pesoInfo?.pesoAtual ? (
+                <div className="bg-slate-card-light/50 border border-border/40 px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-slate-300">
+                  <Scale className="h-3 w-3 text-lime-neon" />
+                  <span>Peso: <strong className="text-slate-100 font-bold">{insight.pesoInfo.pesoAtual}kg</strong></span>
+                  {insight.pesoInfo.deltaPesoKg && (
+                    <span className={insight.pesoInfo.deltaPesoKg.startsWith('+') ? 'text-success font-bold' : 'text-danger font-bold'}>
+                      ({insight.pesoInfo.deltaPesoKg})
+                    </span>
+                  )}
+                </div>
+              ) : null}
+
+              {asymmetryBadge && (
+                <div className={`border px-2.5 py-1 rounded-lg flex items-center gap-1 ${asymmetryBadge.className}`}>
+                  <Layers className="h-3 w-3" />
+                  <span>{asymmetryBadge.label}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Destaque Curto */}
+            {insight.destaqueSemanal && (
+              <div className="bg-lime-neon/5 border border-lime-neon/20 rounded-xl p-3 space-y-1">
+                <div className="flex items-center gap-1.5 text-lime-neon font-bold text-[10px] uppercase tracking-wider">
+                  <Trophy className="h-3 w-3" /> Destaque: {insight.destaqueSemanal.split('.')[0]}
+                </div>
+              </div>
+            )}
+
+            {/* Link para aba dedicada com histórico */}
+            <Link
+              href="/insights"
+              className="w-full bg-slate-card-light hover:bg-slate-card-light/80 text-lime-neon border border-lime-neon/30 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span>Ver Análise Completa & Histórico</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Receba um diagnóstico completo cruzando cargas, medidas corporais e assimetrias.
+            </p>
+            <Link
+              href="/insights"
+              className="w-full bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" /> Ir para Aba de Análises
+            </Link>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- FULL VIEW (PAGE /INSIGHTS) ---
   return (
     <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden space-y-4">
       {/* Background Accent Glow */}
-      <div className="absolute top-0 right-0 w-44 h-44 bg-lime-neon/5 rounded-full blur-2xl pointer-events-none -mr-12 -mt-12" />
+      <div className="absolute top-0 right-0 w-48 h-48 bg-lime-neon/5 rounded-full blur-2xl pointer-events-none -mr-12 -mt-12" />
 
       {/* Header */}
       <div className="flex items-center justify-between relative z-10">
@@ -406,7 +640,7 @@ export default function WeeklyInsightsCard({
             <span className="text-[9px] font-extrabold uppercase tracking-widest text-lime-neon block">
               Coach IA ClipzBody
             </span>
-            <h2 className="text-sm font-bold text-slate-100">Análise Semanal Integrada</h2>
+            <h2 className="text-sm font-bold text-slate-100">Análise da Semana Atual</h2>
           </div>
         </div>
 
@@ -418,7 +652,7 @@ export default function WeeklyInsightsCard({
           {insight && !generating && (
             <button
               onClick={handleGenerateInsight}
-              title="Atualizar Análise Completa"
+              title="Recalcular Análise da Semana"
               className="p-1.5 rounded-lg text-slate-400 hover:text-lime-neon hover:bg-slate-card-light transition-colors border border-border/40"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -466,7 +700,7 @@ export default function WeeklyInsightsCard({
       {loadingCache ? (
         <div className="py-6 flex justify-center items-center gap-2 text-xs text-slate-400">
           <Loader2 className="h-4 w-4 animate-spin text-lime-neon" />
-          <span>Verificando insights semanais...</span>
+          <span>Carregando análise da semana...</span>
         </div>
       ) : generating ? (
         <div className="py-8 flex flex-col items-center justify-center gap-2.5 text-center">
@@ -474,10 +708,10 @@ export default function WeeklyInsightsCard({
             <Sparkles className="h-6 w-6" />
           </div>
           <span className="text-xs font-bold text-slate-200">
-            Gemini cruzando treinos, medidas, peso e assimetrias...
+            Gemini cruzando treinos, medidas, assimetrias e histórico...
           </span>
           <span className="text-[10px] text-slate-400 max-w-xs">
-            Avaliando hipertrofia limpa, assimetria de braços e pernas, balanço muscular e prescrevendo correções.
+            Comparando com a análise anterior, avaliando redução de assimetria e traçando o novo plano.
           </span>
         </div>
       ) : insight ? (
@@ -486,7 +720,7 @@ export default function WeeklyInsightsCard({
           {(!insight.resumoGeral || !insight.analiseMedidasEPeso) && (
             <div className="bg-lime-neon/10 border border-lime-neon/30 rounded-xl p-3 flex items-center justify-between gap-3">
               <span className="text-[11px] text-slate-200">
-                ✨ Nova análise expandida disponível com cruzamento de medidas e assimetrias corporais!
+                ✨ Nova análise expandida disponível com comparativo histórico e assimetrias!
               </span>
               <button
                 onClick={handleGenerateInsight}
@@ -497,7 +731,7 @@ export default function WeeklyInsightsCard({
             </div>
           )}
 
-          {/* 1. Resumo Geral Integrado (Treino + Medidas + Peso) */}
+          {/* 1. Resumo Geral Integrado (Treino + Medidas + Peso + Histórico) */}
           {insight.resumoGeral && (
             <div className="bg-slate-card-light/40 border border-lime-neon/20 rounded-xl p-3.5 space-y-1.5">
               <div className="flex items-center gap-1.5 text-lime-neon font-bold text-[11px] uppercase tracking-wider">
@@ -517,49 +751,78 @@ export default function WeeklyInsightsCard({
             </div>
           )}
 
-          {/* 3. Diagnóstico de Assimetrias & Correção */}
+          {/* 3. Diagnóstico de Assimetrias & Evolução entre Medições */}
           {insight.analiseAssimetrias && (
             <div className="bg-slate-card-light/30 border border-border/40 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-slate-200 font-bold text-[11px] uppercase tracking-wider">
-                  <Layers className="h-3.5 w-3.5 text-lime-neon" /> Diagnóstico de Assimetrias & Correção
+                  <Layers className="h-3.5 w-3.5 text-lime-neon" /> Diagnóstico de Assimetrias & Evolução
                 </div>
               </div>
 
-              {/* Bilateral Differences Visual Table/Pills */}
-              {insight.assimetriasDetectadas && insight.assimetriasDetectadas.length > 0 && (
-                <div className="grid grid-cols-2 gap-2 pt-1 pb-1">
-                  {insight.assimetriasDetectadas.map((item, idx) => {
+              {/* Bilateral Differences & Progression Visual Cards */}
+              {insight.evolucaoAssimetrias && insight.evolucaoAssimetrias.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pb-1">
+                  {insight.evolucaoAssimetrias.map((item, idx) => {
+                    const isImproved = item.deltaAssimetriaCm?.startsWith('-');
+                    const isWorse = item.deltaAssimetriaCm?.startsWith('+');
                     const isWarning = item.status.includes('Atenção');
-                    const isMild = item.status.includes('Leve');
-                    const isPerfect = item.diferenca === '0.0cm';
 
                     return (
                       <div
                         key={idx}
-                        className="bg-slate-card/80 border border-border/40 rounded-lg p-2 flex flex-col justify-between text-[10px]"
+                        className="bg-slate-card/80 border border-border/40 rounded-lg p-2.5 flex flex-col justify-between text-[10px] space-y-1"
                       >
                         <div className="flex justify-between items-center text-slate-400 font-medium">
-                          <span>{item.membro}</span>
+                          <span className="font-bold text-slate-200">{item.membro}</span>
                           <span className={`font-bold text-[9px] px-1.5 py-0.5 rounded ${
                             isWarning 
                               ? 'bg-danger/10 text-danger border border-danger/20' 
-                              : isMild 
+                              : item.status.includes('Leve') 
                               ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
                               : 'bg-success/10 text-success border border-success/20'
                           }`}>
-                            Δ {item.diferenca}
+                            Δ Atual: {item.assimetriaAtual}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center mt-1 text-slate-200">
-                          <span>D: <strong>{item.ladoDireito}</strong></span>
-                          <span>E: <strong>{item.ladoEsquerdo}</strong></span>
-                        </div>
+
+                        {item.assimetriaAnterior && item.deltaAssimetriaCm && (
+                          <div className="flex items-center justify-between text-[9px] pt-1 border-t border-border/30">
+                            <span className="text-slate-400">
+                              Anterior: {item.assimetriaAnterior} ➔ Atual: {item.assimetriaAtual}
+                            </span>
+                            <span className={`font-bold flex items-center gap-0.5 ${
+                              isImproved ? 'text-success' : isWorse ? 'text-danger' : 'text-slate-400'
+                            }`}>
+                              {isImproved && <ArrowDownRight className="h-2.5 w-2.5" />}
+                              {isWorse && <ArrowUpRight className="h-2.5 w-2.5" />}
+                              {item.deltaAssimetriaCm}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
                 </div>
-              )}
+              ) : insight.assimetriasDetectadas && insight.assimetriasDetectadas.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2 pt-1 pb-1">
+                  {insight.assimetriasDetectadas.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-slate-card/80 border border-border/40 rounded-lg p-2 flex flex-col justify-between text-[10px]"
+                    >
+                      <div className="flex justify-between items-center text-slate-400 font-medium">
+                        <span>{item.membro}</span>
+                        <span className="font-bold text-[9px] text-lime-neon">Δ {item.diferenca}</span>
+                      </div>
+                      <div className="flex justify-between items-center mt-1 text-slate-200 text-[9px]">
+                        <span>D: {item.ladoDireito}</span>
+                        <span>E: {item.ladoEsquerdo}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               <p className="text-slate-300 leading-relaxed text-xs">{insight.analiseAssimetrias}</p>
             </div>
@@ -607,7 +870,7 @@ export default function WeeklyInsightsCard({
         /* Empty State / Invitation to Generate */
         <div className="bg-slate-card-light/30 border border-dashed border-border rounded-xl p-5 text-center space-y-3">
           <p className="text-xs text-slate-300 leading-relaxed">
-            Obtenha uma análise completa cruzando seus <strong>treinos de força</strong>, <strong>medidas corporais</strong>, <strong>evolução do peso</strong> e <strong>assimetrias musculares</strong>.
+            Obtenha uma análise completa cruzando seus <strong>treinos de força</strong>, <strong>medidas corporais</strong>, <strong>evolução do peso</strong> e o <strong>histórico de assimetrias</strong>.
           </p>
           <button
             onClick={handleGenerateInsight}

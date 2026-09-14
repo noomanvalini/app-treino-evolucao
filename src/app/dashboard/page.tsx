@@ -340,7 +340,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Coach IA • Weekly Insights */}
+      {/* Coach IA • Weekly Insights (Resumo Compacto com Link para /insights) */}
       {user && profile && (
         <WeeklyInsightsCard
           userId={user.uid}
@@ -352,6 +352,7 @@ export default function Dashboard() {
             sexo: profile.sexo
           }}
           logs={userLogs}
+          compact={true}
         />
       )}
 
