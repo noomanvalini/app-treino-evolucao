@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://body.clipz.fit'),
   title: "ClipzBody - Evolução de Treino",
   description: "Acompanhamento completo de carga, força e medidas corporais",
   manifest: "/manifest.json",
