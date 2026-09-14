@@ -133,7 +133,10 @@ export default function WeeklyInsightsCard({
     });
 
     logs.forEach((log) => {
-      const group = log.muscleGroup;
+      let group = log.muscleGroup;
+      if (log.exerciseId === 'pre_mesa_flexora' || log.exerciseId?.toLowerCase().includes('flexora')) {
+        group = 'Posterior de Coxa';
+      }
       if (!muscleMap[group]) {
         muscleMap[group] = { recentLogs: [], allLogs: [] };
       }

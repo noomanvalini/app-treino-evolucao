@@ -156,6 +156,14 @@ function StrengthContent() {
       exSnap.forEach((doc) => {
         const d = doc.data();
         if (hiddenIds.includes(doc.id)) return;
+
+        // Auto-cleanup: If in Quadríceps and an exercise is Mesa Flexora (or flexora),
+        // remove it from Quadríceps in Firestore and do not display in Quadríceps
+        if (selectedMuscle === 'Quadríceps' && (d.nomeExercicio?.toLowerCase().includes('flexora') || d.predefinedId?.includes('flexora'))) {
+          deleteDoc(doc.ref).catch(console.error);
+          return;
+        }
+
         const predefined = PREDEFINED_EXERCISES.find(
           (pe) => pe.id === d.predefinedId || pe.nome.toLowerCase() === d.nomeExercicio?.toLowerCase()
         );
@@ -175,7 +183,8 @@ function StrengthContent() {
           (pe) =>
             pe.muscleGroup === selectedMuscle &&
             !hiddenIds.includes(pe.id) &&
-            !customExList.some((ce) => ce.nomeExercicio.toLowerCase() === pe.nome.toLowerCase())
+            !customExList.some((ce) => ce.nomeExercicio.toLowerCase() === pe.nome.toLowerCase()) &&
+            !(selectedMuscle === 'Quadríceps' && pe.nome.toLowerCase().includes('flexora'))
         )
         .map((pe) => ({
           id: pe.id,
@@ -200,6 +209,10 @@ function StrengthContent() {
       const logsList: StrengthLog[] = [];
       logsSnap.forEach((doc) => {
         const d = doc.data();
+        // If viewing Quadríceps, ignore any legacy logs that belonged to flexora exercises
+        if (selectedMuscle === 'Quadríceps' && (d.exerciseId?.toLowerCase().includes('flexora') || d.exerciseId === 'pre_mesa_flexora')) {
+          return;
+        }
         logsList.push({
           id: doc.id,
           exerciseId: d.exerciseId,

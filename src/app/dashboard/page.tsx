@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
@@ -10,7 +10,7 @@ import InstallPWA from '@/components/InstallPWA';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import BodyMap from '@/components/BodyMap';
-import { MUSCLE_GROUPS } from '@/data/exercises';
+import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
 interface StrengthLog {
   exerciseId: string;
@@ -102,14 +102,31 @@ export default function Dashboard() {
         }
       });
 
-      // 2. Fetch all user exercises to map them to muscle groups
+      // 2. Fetch all user exercises to map them to muscle groups (predefined + custom)
       const exercisesQuery = query(collection(db, 'exercises'), where('userId', '==', user.uid));
       const exercisesSnap = await getDocs(exercisesQuery);
       const exerciseToMuscle: Record<string, string> = {};
       
+      // Load all predefined exercises
+      PREDEFINED_EXERCISES.forEach((pe) => {
+        exerciseToMuscle[pe.id] = pe.muscleGroup;
+      });
+
+      // Load user custom exercises
       exercisesSnap.forEach((doc) => {
         const data = doc.data();
-        exerciseToMuscle[doc.id] = data.muscleGroup;
+        const name = (data.nomeExercicio || '').toLowerCase();
+
+        // Biomechanical rule: Flexora (Mesa/Cadeira) belongs strictly to Posterior de Coxa
+        if (name.includes('flexora')) {
+          exerciseToMuscle[doc.id] = 'Posterior de Coxa';
+          if (data.muscleGroup === 'Quadríceps') {
+            // Remove obsolete flexora document from Quadríceps in Firestore
+            deleteDoc(doc.ref).catch(console.error);
+          }
+        } else {
+          exerciseToMuscle[doc.id] = data.muscleGroup;
+        }
       });
 
       // Group exercise deltas by muscle group
@@ -119,7 +136,21 @@ export default function Dashboard() {
       });
 
       Object.entries(exerciseDeltas).forEach(([exerciseId, delta]) => {
-        const muscle = exerciseToMuscle[exerciseId];
+        let muscle = exerciseToMuscle[exerciseId];
+
+        // Safety fallback: if not in mapping, check log's muscleGroup
+        if (!muscle) {
+          const sampleLog = logsByExercise[exerciseId]?.[0];
+          if (sampleLog?.muscleGroup) {
+            muscle = sampleLog.muscleGroup;
+          }
+        }
+
+        // Biomechanical guarantee: Mesa Flexora is ALWAYS Posterior de Coxa, NEVER Quadríceps
+        if (exerciseId === 'pre_mesa_flexora' || exerciseId.toLowerCase().includes('flexora')) {
+          muscle = 'Posterior de Coxa';
+        }
+
         if (muscle && deltasByMuscle[muscle]) {
           deltasByMuscle[muscle].push(delta);
         }
