@@ -26,12 +26,23 @@
   --color-slate-card-light: rgba(255, 255, 255, 0.08);
   --color-danger: #FF6E61;
   --color-success: #D3E156;
+  --color-amber-gold: #F59E0B;
+  --color-amber-gold-hover: #FBBF24;
+
+  /* Font Families */
+  --font-heading: var(--font-heading), 'Oswald', sans-serif;
+  --font-sans: var(--font-sans), 'Inter', sans-serif;
 
   /* Custom Border Radius */
   --radius-btn: 8px;
   --radius-lg: 8px;
   --radius-xl: 8px;
   --radius-2xl: 14px;
+}
+
+.font-heading {
+  font-family: var(--font-heading), 'Oswald', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 button:not(.rounded-full):not([class*="rounded-none"]) {
@@ -41,7 +52,7 @@ button:not(.rounded-full):not([class*="rounded-none"]) {
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Custom Scrollbar */

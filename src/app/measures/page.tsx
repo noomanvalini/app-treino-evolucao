@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import BodyMap from '@/components/BodyMap';
+import InteractiveGainChart, { ChartDataPoint } from '@/components/InteractiveGainChart';
 import { 
   Ruler, Plus, Calendar, TrendingUp, TrendingDown, ChevronDown, 
   ChevronUp, X, Loader2, Save, Sparkles, Activity, Pencil, Trash2, AlertTriangle
@@ -287,11 +288,11 @@ export default function Measures() {
     }
   };
 
-  // Helper to draw SVG Charts
+  // Helper to draw Interactive Charts
   const renderSVGChart = () => {
     if (measurements.length < 2) {
       return (
-        <div className="h-44 flex flex-col items-center justify-center bg-slate-card/40 border border-dashed border-border rounded-2xl text-center p-6">
+        <div className="h-44 flex flex-col items-center justify-center bg-slate-card/40 border border-dashed border-border rounded-3xl text-center p-6">
           <Activity className="h-6 w-6 text-slate-500 mb-2" />
           <p className="text-xs text-slate-400">Dados insuficientes para gerar o gráfico.</p>
           <p className="text-[10px] text-slate-500">Registre pelo menos 2 medições temporais.</p>
@@ -306,70 +307,32 @@ export default function Measures() {
       return timeA - timeB;
     });
 
-    // Map measures to values
-    const dataPoints: { val: number; dateStr: string }[] = sortedMeasures.map((m) => {
-      let val = m.pesoKg;
-      if (selectedChartMetric !== 'peso') {
-        val = m.medidas[selectedChartMetric as keyof Medidas] || 0;
-      }
-      const rawDate = m.data?.seconds ? new Date(m.data.seconds * 1000) : new Date(m.data);
-      const dateStr = rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      return { val, dateStr };
-    }).filter((dp) => dp.val > 0); // exclude empty entries for specific metrics
+    const chartData: ChartDataPoint[] = sortedMeasures
+      .map((m) => {
+        let val = m.pesoKg;
+        if (selectedChartMetric !== 'peso') {
+          val = m.medidas[selectedChartMetric as keyof Medidas] || 0;
+        }
+        const rawDate = m.data?.seconds ? new Date(m.data.seconds * 1000) : new Date(m.data);
+        return {
+          date: rawDate,
+          value: val
+        };
+      })
+      .filter((dp) => dp.value > 0);
 
-    if (dataPoints.length < 2) {
-      return (
-        <div className="h-44 flex flex-col items-center justify-center bg-slate-card/40 border border-dashed border-border rounded-2xl text-center p-6">
-          <Activity className="h-6 w-6 text-slate-500 mb-2" />
-          <p className="text-xs text-slate-400">Nenhum dado registrado para esta medida.</p>
-        </div>
-      );
-    }
-
-    const width = 340;
-    const height = 150;
-    const paddingX = 25;
-    const paddingY = 25;
-
-    const values = dataPoints.map((dp) => dp.val);
-    let minVal = Math.min(...values);
-    let maxVal = Math.max(...values);
-
-    // Give Y-axis padding
-    if (minVal === maxVal) {
-      minVal -= 5;
-      maxVal += 5;
-    } else {
-      const range = maxVal - minVal;
-      minVal = Math.max(0, minVal - range * 0.2);
-      maxVal += range * 0.2;
-    }
-
-    // Map points to SVG coordinate space
-    const points = dataPoints.map((dp, i) => {
-      const x = paddingX + (i * (width - 2 * paddingX)) / (dataPoints.length - 1);
-      const y = height - paddingY - ((dp.val - minVal) * (height - 2 * paddingY)) / (maxVal - minVal);
-      return { x, y, val: dp.val, label: dp.dateStr };
-    });
-
-    // Create Path Strings
-    let pathD = `M ${points[0].x} ${points[0].y}`;
-    for (let i = 1; i < points.length; i++) {
-      pathD += ` L ${points[i].x} ${points[i].y}`;
-    }
-
-    // Gradient Area Path
-    const areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingY} L ${points[0].x} ${height - paddingY} Z`;
+    const isWeight = selectedChartMetric === 'peso';
+    const metricTitle = isWeight ? 'Evolução de Peso' : (SITE_LABELS[selectedChartMetric as keyof Medidas]?.replace(' (cm)', '') || 'Evolução');
 
     return (
-      <div className="bg-slate-card border border-border rounded-2xl p-4 shadow-lg">
+      <div className="space-y-2">
         {/* Metric Selector inside Chart Card */}
-        <div className="flex items-center justify-between mb-3 border-b border-border/30 pb-2">
-          <span className="text-xs font-bold text-slate-300">Curva de Evolução</span>
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Métrica Selecionada</span>
           <select
             value={selectedChartMetric}
             onChange={(e) => setSelectedChartMetric(e.target.value)}
-            className="bg-slate-card-light text-[11px] font-semibold border border-border rounded px-2 py-1 focus:outline-none focus:border-lime-neon text-white"
+            className="bg-slate-card text-xs font-bold border border-border rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-gold text-slate-100 shadow-sm"
           >
             <option value="peso">Peso (kg)</option>
             {Object.entries(SITE_LABELS).map(([key, label]) => (
@@ -378,83 +341,13 @@ export default function Measures() {
           </select>
         </div>
 
-        {/* SVG Drawing */}
-        <div className="relative">
-          <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
-            {/* Definitions for Gradients */}
-            <defs>
-              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#D3E156" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#D3E156" stopOpacity="0.0" />
-              </linearGradient>
-            </defs>
-
-            {/* Grid Line representation */}
-            <line 
-              x1={paddingX} 
-              y1={height - paddingY} 
-              x2={width - paddingX} 
-              y2={height - paddingY} 
-              stroke="rgba(255, 255, 255, 0.1)" 
-              strokeWidth="1" 
-              strokeDasharray="2"
-            />
-            <line 
-              x1={paddingX} 
-              y1={paddingY} 
-              x2={width - paddingX} 
-              y2={paddingY} 
-              stroke="rgba(255, 255, 255, 0.1)" 
-              strokeWidth="0.5" 
-              strokeDasharray="2"
-            />
-
-            {/* Gradient under line */}
-            <path d={areaD} fill="url(#chartGradient)" />
-
-            {/* Main evolution line */}
-            <path d={pathD} fill="none" stroke="#D3E156" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-
-            {/* Render Circles for points */}
-            {points.map((p, i) => (
-              <g key={i}>
-                <circle 
-                  cx={p.x} 
-                  cy={p.y} 
-                  r="4" 
-                  fill="#0D1117" 
-                  stroke="#D3E156" 
-                  strokeWidth="2" 
-                />
-                {/* Min / Max Labels or first/last values */}
-                {(i === 0 || i === points.length - 1) && (
-                  <text 
-                    x={p.x} 
-                    y={p.y - 8} 
-                    textAnchor="middle" 
-                    fill="#F8FAFC" 
-                    fontSize="9" 
-                    fontWeight="bold"
-                  >
-                    {p.val}
-                  </text>
-                )}
-                {/* X-axis date labels */}
-                {(i === 0 || i === points.length - 1 || points.length <= 5) && (
-                  <text 
-                    x={p.x} 
-                    y={height - 8} 
-                    textAnchor="middle" 
-                    fill="#64748B" 
-                    fontSize="8"
-                  >
-                    {p.label}
-                  </text>
-                )}
-              </g>
-            ))}
-          </svg>
-        </div>
+        <InteractiveGainChart
+          title={metricTitle}
+          subtitle={`Histórico de medições de ${metricTitle.toLowerCase()}`}
+          data={chartData}
+          colorTheme={isWeight ? 'lime' : 'amber'}
+          unit={isWeight ? 'kg' : 'cm'}
+        />
       </div>
     );
   };

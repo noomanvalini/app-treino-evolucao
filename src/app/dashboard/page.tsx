@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
+import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
 import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Sparkles } from 'lucide-react';
 import BodyMap from '@/components/BodyMap';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
@@ -16,6 +17,8 @@ interface StrengthLog {
   exerciseId: string;
   muscleGroup: string;
   oneRmCalculado: number;
+  cargaKg: number;
+  reps: number;
   data: any; // Timestamp
 }
 
@@ -91,7 +94,9 @@ export default function Dashboard() {
         logsList.push({
           exerciseId: data.exerciseId,
           muscleGroup: data.muscleGroup,
-          oneRmCalculado: data.oneRmCalculado,
+          oneRmCalculado: data.oneRmCalculado || 0,
+          cargaKg: data.cargaKg || 0,
+          reps: data.reps || 0,
           data: data.data
         });
       });
@@ -398,22 +403,22 @@ export default function Dashboard() {
         <div className="grid grid-cols-3 gap-2 text-center mb-4">
           <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
             <span className="block text-[10px] text-slate-400">Peso</span>
-            <span className="text-base font-bold text-slate-100">{peso}kg</span>
+            <span className="text-lg font-bold font-heading text-slate-100">{peso}kg</span>
           </div>
           <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
             <span className="block text-[10px] text-slate-400">Idade</span>
-            <span className="text-base font-bold text-slate-100">{profile.idade} anos</span>
+            <span className="text-lg font-bold font-heading text-slate-100">{profile.idade} anos</span>
           </div>
           <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
             <span className="block text-[10px] text-slate-400">Altura</span>
-            <span className="text-base font-bold text-slate-100">{alturaCm}cm</span>
+            <span className="text-lg font-bold font-heading text-slate-100">{alturaCm}cm</span>
           </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-border/50 pt-4">
           <div>
             <span className="text-[10px] text-slate-400 block">IMC Calculado</span>
-            <span className="text-xl font-black text-slate-100">{imc.toFixed(1)}</span>
+            <span className="text-2xl font-black font-heading text-slate-100">{imc.toFixed(1)}</span>
           </div>
           <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${imcColor}`}>
             {imcClass}
@@ -431,16 +436,19 @@ export default function Dashboard() {
             <Award className="h-4 w-4 text-lime-neon" /> Score Geral de Força
           </h2>
           <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-3xl font-black text-slate-100">
+            <span className="text-4xl font-black font-heading text-slate-100 tracking-tight">
               {generalScore >= 0 ? `+${generalScore}%` : `${generalScore}%`}
             </span>
-            <span className="text-[10px] text-slate-400">de evolução geral de 1RM</span>
+            <span className="text-[10px] text-slate-400 font-semibold">de evolução geral de 1RM</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
             Média de evolução de força baseada na diferença entre as duas últimas medições de cada exercício cadastrado.
           </p>
         </div>
       </div>
+
+      {/* Mini-Gráfico Interativo de Volume Semanal */}
+      <WeeklyVolumeBars logs={userLogs} />
 
       {/* Coach IA • Weekly Insights (Resumo Compacto com Link para /insights) */}
       {user && profile && (

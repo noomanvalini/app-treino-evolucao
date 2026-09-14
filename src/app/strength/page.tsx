@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, T
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
+import InteractiveGainChart from '@/components/InteractiveGainChart';
 import { 
   Dumbbell, Plus, History, Calendar, Calculator, TrendingUp, TrendingDown,
   ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle, Pencil, Trash2
@@ -780,7 +781,7 @@ function StrengthContent() {
                       {latest && (
                         <div>
                           <span className="text-[9px] text-slate-500 block leading-tight">1RM Estimado</span>
-                          <span className="text-xs font-bold text-lime-neon">{latest.oneRmCalculado} kg</span>
+                          <span className="text-sm font-black font-heading text-lime-neon">{latest.oneRmCalculado} kg</span>
                         </div>
                       )}
 
@@ -811,7 +812,7 @@ function StrengthContent() {
                       className="w-full bg-slate-card-light/30 border-t border-border/30 px-4 py-2 flex items-center justify-between text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
                     >
                       <span className="flex items-center gap-1">
-                        <History className="h-3 w-3" /> Histórico ({history.length})
+                        <History className="h-3 w-3" /> Gráfico & Histórico ({history.length})
                       </span>
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
@@ -819,7 +820,23 @@ function StrengthContent() {
 
                   {/* Expanded History List */}
                   {isExpanded && history.length > 0 && (
-                    <div className="bg-slate-card-light/10 border-t border-border/40 p-4 space-y-2 max-h-48 overflow-y-auto">
+                    <div className="bg-slate-card-light/10 border-t border-border/40 p-3 space-y-3">
+                      {/* Interactive Bezier Progression Chart */}
+                      <InteractiveGainChart
+                        title={exercise.nomeExercicio}
+                        subtitle="Curva de 1RM e cargas levantadas"
+                        data={history.map((h) => ({
+                          date: h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data),
+                          value: h.oneRmCalculado,
+                          rawWeight: h.cargaKg,
+                          reps: h.reps,
+                          label: `${h.cargaKg}kg × ${h.reps}`
+                        }))}
+                        colorTheme="lime"
+                        unit="kg"
+                      />
+
+                      <div className="max-h-44 overflow-y-auto space-y-2 pr-1 pt-1">
                       {history.map((logItem, index) => {
                         const isPrev = index < history.length - 1;
                         let itemDelta = null;
@@ -880,6 +897,7 @@ function StrengthContent() {
                           </div>
                         );
                       })}
+                      </div>
                     </div>
                   )}
                 </div>
