@@ -31,7 +31,8 @@ export default function InteractiveGainChart({
   showTimeframeSelector = true
 }: InteractiveGainChartProps) {
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>('TUDO');
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Theme colors
@@ -65,7 +66,8 @@ export default function InteractiveGainChart({
 
   // 2. Filter by timeframe
   const filteredData = useMemo(() => {
-    if (sortedData.length <= 1 || selectedTimeframe === 'TUDO') return sortedData;
+    if (sortedData.length === 0) return [];
+    if (selectedTimeframe === 'TUDO') return sortedData;
 
     const now = new Date().getTime();
     const daysMap: Record<Timeframe, number> = {
@@ -76,18 +78,24 @@ export default function InteractiveGainChart({
       'TUDO': Infinity
     };
     const cutoff = now - daysMap[selectedTimeframe] * 24 * 60 * 60 * 1000;
-    const res = sortedData.filter((pt) => parseDate(pt.date).getTime() >= cutoff);
-    return res.length >= 1 ? res : sortedData;
+    return sortedData.filter((pt) => parseDate(pt.date).getTime() >= cutoff);
   }, [sortedData, selectedTimeframe]);
 
-  // Point to highlight (defaults to latest if none selected)
-  const currentActivePoint = activeIndex !== null && filteredData[activeIndex]
-    ? filteredData[activeIndex]
-    : filteredData[filteredData.length - 1];
+  // Determine current active index: hovered > selected > latest
+  const currentActiveIndex = useMemo(() => {
+    if (filteredData.length === 0) return 0;
+    if (hoveredIndex !== null && hoveredIndex >= 0 && hoveredIndex < filteredData.length) {
+      return hoveredIndex;
+    }
+    if (selectedIndex !== null && selectedIndex >= 0 && selectedIndex < filteredData.length) {
+      return selectedIndex;
+    }
+    return filteredData.length - 1;
+  }, [hoveredIndex, selectedIndex, filteredData]);
 
-  const currentActiveIndex = activeIndex !== null ? activeIndex : filteredData.length - 1;
+  const currentActivePoint = filteredData[currentActiveIndex] || filteredData[filteredData.length - 1];
 
-  // Stats calculation
+  // Stats calculation for the filtered period
   const stats = useMemo(() => {
     if (filteredData.length === 0) return { min: 0, max: 0, pr: 0, delta: 0 };
     const values = filteredData.map((d) => d.value);
@@ -117,7 +125,7 @@ export default function InteractiveGainChart({
 
     return filteredData.map((pt, idx) => {
       const x = paddingX + (idx / (filteredData.length - 1)) * (svgWidth - paddingX * 2);
-      const normalizedY = (pt.value - minVal) / rangeY;
+      const normalizedY = (pt.value - minVal) / (rangeY > 0 ? rangeY : 1);
       const y = svgHeight - paddingY - normalizedY * (svgHeight - paddingY * 2);
       return { x, y, data: pt, index: idx };
     });
@@ -152,13 +160,12 @@ export default function InteractiveGainChart({
     return { pathLine: line, pathArea: area };
   }, [points]);
 
-  // Handle Touch/Pointer interaction
-  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!containerRef.current || points.length === 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const touchX = ((e.clientX - rect.left) / rect.width) * svgWidth;
+  // Find closest point to a given X coordinate
+  const getClosestIndex = (clientX: number, currentTarget: SVGSVGElement) => {
+    if (points.length === 0) return 0;
+    const rect = currentTarget.getBoundingClientRect();
+    const touchX = ((clientX - rect.left) / rect.width) * svgWidth;
 
-    // Find closest point
     let closestIndex = 0;
     let minDistance = Infinity;
     points.forEach((p, idx) => {
@@ -168,12 +175,27 @@ export default function InteractiveGainChart({
         closestIndex = idx;
       }
     });
+    return closestIndex;
+  };
 
-    setActiveIndex(closestIndex);
+  // Handle Touch/Pointer scrubbing
+  const handlePointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (points.length === 0) return;
+    const closest = getClosestIndex(e.clientX, e.currentTarget);
+    setHoveredIndex(closest);
+  };
+
+  // Handle Tap/Click on SVG to lock selection
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (points.length === 0) return;
+    const closest = getClosestIndex(e.clientX, e.currentTarget);
+    setSelectedIndex(closest);
+    setHoveredIndex(null);
   };
 
   const handlePointerLeave = () => {
-    setActiveIndex(null);
+    // Only clear hovering; keep selectedIndex persistent!
+    setHoveredIndex(null);
   };
 
   if (data.length === 0) {
@@ -234,12 +256,13 @@ export default function InteractiveGainChart({
                 key={tf}
                 onClick={() => {
                   setSelectedTimeframe(tf);
-                  setActiveIndex(null);
+                  setSelectedIndex(null);
+                  setHoveredIndex(null);
                 }}
                 className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                   selectedTimeframe === tf
-                    ? 'bg-lime-neon text-slate-900 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-lime-neon text-slate-900 font-extrabold shadow-md'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                 }`}
               >
                 {tf}
@@ -249,180 +272,235 @@ export default function InteractiveGainChart({
         )}
       </div>
 
-      {/* Interactive Value Callout (Updates on click/touch) */}
-      <div className="flex items-baseline justify-between border-b border-border/50 pb-3 pt-1 relative z-10">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-            {activeIndex !== null ? 'Ponto Selecionado' : 'Último Registro'}
-          </span>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl sm:text-4xl font-black font-heading text-slate-100 tracking-tight">
-              {currentActivePoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{unit}
-            </span>
-            {currentActivePoint.rawWeight && currentActivePoint.reps && (
-              <span className="text-xs font-semibold text-slate-400 font-mono">
-                ({currentActivePoint.rawWeight}kg × {currentActivePoint.reps} reps)
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="text-right">
-          <span className="text-xs font-bold text-slate-300 flex items-center justify-end gap-1 font-mono">
-            <Calendar className="h-3.5 w-3.5 text-lime-neon" /> {formatDateShort(activeDate)}
-          </span>
-          {prevDelta !== null && (
-            <span
-              className={`text-[10px] font-bold font-mono mt-0.5 block ${
-                prevDelta >= 0 ? 'text-lime-neon' : 'text-danger'
-              }`}
-            >
-              {prevDelta >= 0 ? `+${prevDelta.toFixed(1)}%` : `${prevDelta.toFixed(1)}%`} vs anterior
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Interactive SVG Chart Area */}
-      <div className="relative w-full h-44 touch-none cursor-crosshair">
-        <svg
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          className="w-full h-full overflow-visible"
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
-        >
-          <defs>
-            {/* Volt Lime Gradient */}
-            <linearGradient id="limeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#D3E156" stopOpacity="0.35" />
-              <stop offset="70%" stopColor="#D3E156" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#D3E156" stopOpacity="0.0" />
-            </linearGradient>
-
-            {/* Amber Gold Gradient */}
-            <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.35" />
-              <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
-            </linearGradient>
-
-            {/* Glow Filter */}
-            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={strokeColor} floodOpacity="0.5" />
-            </filter>
-          </defs>
-
-          {/* Background Grid Lines */}
-          {[0.25, 0.5, 0.75].map((factor) => {
-            const y = paddingY + factor * (svgHeight - paddingY * 2);
-            return (
-              <line
-                key={factor}
-                x1={paddingX}
-                y1={y}
-                x2={svgWidth - paddingX}
-                y2={y}
-                stroke="rgba(255, 255, 255, 0.05)"
-                strokeDasharray="4 4"
-                strokeWidth="1"
-              />
-            );
-          })}
-
-          {/* Area Fill */}
-          <path d={pathArea} fill={`url(#${fillColorId})`} />
-
-          {/* Main Line with Glow */}
-          <path
-            d={pathLine}
-            fill="none"
-            stroke={strokeColor}
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter="url(#neonGlow)"
-          />
-
-          {/* Active Vertical Guideline */}
-          {activeCoord && (
-            <line
-              x1={activeCoord.x}
-              y1={paddingY}
-              x2={activeCoord.x}
-              y2={svgHeight}
-              stroke="rgba(255, 255, 255, 0.2)"
-              strokeDasharray="3 3"
-              strokeWidth="1.5"
-            />
-          )}
-
-          {/* Data Points */}
-          {points.map((p, idx) => {
-            const isSelected = idx === currentActiveIndex;
-            return (
-              <g key={idx} className="transition-transform duration-150">
-                {/* Outer Glow Ring when selected */}
-                {isSelected && (
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r="10"
-                    fill={strokeColor}
-                    fillOpacity="0.25"
-                    className="animate-ping"
-                  />
-                )}
-                {/* Dot */}
-                <circle
-                  cx={p.x}
-                  cy={p.y}
-                  r={isSelected ? 6 : 3.5}
-                  fill="#0D1117"
-                  stroke={strokeColor}
-                  strokeWidth={isSelected ? 3 : 2}
-                />
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Date Range Labels under X-Axis */}
-      <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 px-1 pt-1 border-t border-border/40">
-        <span>{formatDateShort(parseDate(filteredData[0].date))}</span>
-        <span className="text-[10px] text-slate-400 flex items-center gap-1">
-          Toque para inspecionar cargas <ChevronRight className="h-3 w-3" />
-        </span>
-        <span>{formatDateShort(parseDate(filteredData[filteredData.length - 1].date))}</span>
-      </div>
-
-      {/* Quick Stats Grid below chart */}
-      <div className="grid grid-cols-3 gap-2 pt-1 text-center">
-        <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
-          <span className="block text-[9px] uppercase font-bold text-slate-400">Recorde (PR)</span>
-          <span className="text-sm font-black font-heading text-slate-100">
-            {stats.pr.toLocaleString('pt-BR')}{unit}
-          </span>
-        </div>
-
-        <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
-          <span className="block text-[9px] uppercase font-bold text-slate-400">Sessões</span>
-          <span className="text-sm font-black font-heading text-slate-100">
-            {filteredData.length}
-          </span>
-        </div>
-
-        <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
-          <span className="block text-[9px] uppercase font-bold text-slate-400">Progresso</span>
-          <span
-            className={`text-sm font-black font-heading ${
-              stats.delta >= 0 ? 'text-lime-neon' : 'text-danger'
-            }`}
+      {/* Empty State for Selected Timeframe */}
+      {filteredData.length === 0 ? (
+        <div className="py-12 text-center space-y-3 relative z-10">
+          <Calendar className="h-8 w-8 text-slate-500 mx-auto opacity-40" />
+          <p className="text-xs text-slate-300 font-medium">
+            Nenhum registro no período de <strong className="text-lime-neon">{selectedTimeframe}</strong>.
+          </p>
+          <button
+            onClick={() => {
+              setSelectedTimeframe('TUDO');
+              setSelectedIndex(null);
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-lime-neon/15 hover:bg-lime-neon/25 border border-lime-neon/30 text-lime-neon text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow-sm"
           >
-            {stats.delta >= 0 ? `+${stats.delta.toFixed(1)}%` : `${stats.delta.toFixed(1)}%`}
-          </span>
+            Ver período completo (TUDO)
+          </button>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Interactive Value Callout (Updates on click/touch) */}
+          <div className="flex items-baseline justify-between border-b border-border/50 pb-3 pt-1 relative z-10">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                {currentActiveIndex !== filteredData.length - 1 ? (
+                  <span className="flex items-center gap-1.5 text-lime-neon">
+                    <span>Ponto Selecionado ({currentActiveIndex + 1}/{filteredData.length})</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIndex(null);
+                      }}
+                      className="text-[9px] text-slate-400 hover:text-slate-200 underline font-normal lowercase"
+                    >
+                      (redefinir)
+                    </button>
+                  </span>
+                ) : (
+                  'Último Registro'
+                )}
+              </span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl sm:text-4xl font-black font-heading text-slate-100 tracking-tight">
+                  {currentActivePoint.value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}{unit}
+                </span>
+                {currentActivePoint.rawWeight && currentActivePoint.reps && (
+                  <span className="text-xs font-semibold text-slate-400 font-mono">
+                    ({currentActivePoint.rawWeight}kg × {currentActivePoint.reps} reps)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="text-right">
+              <span className="text-xs font-bold text-slate-300 flex items-center justify-end gap-1 font-mono">
+                <Calendar className="h-3.5 w-3.5 text-lime-neon" /> {formatDateShort(activeDate)}
+              </span>
+              {prevDelta !== null && (
+                <span
+                  className={`text-[10px] font-bold font-mono mt-0.5 block ${
+                    prevDelta >= 0 ? 'text-lime-neon' : 'text-danger'
+                  }`}
+                >
+                  {prevDelta >= 0 ? `+${prevDelta.toFixed(1)}%` : `${prevDelta.toFixed(1)}%`} vs anterior
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive SVG Chart Area */}
+          <div className="relative w-full h-44 touch-none cursor-crosshair">
+            <svg
+              viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+              className="w-full h-full overflow-visible"
+              onPointerMove={handlePointerMove}
+              onPointerLeave={handlePointerLeave}
+              onClick={handleSvgClick}
+            >
+              <defs>
+                {/* Volt Lime Gradient */}
+                <linearGradient id="limeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#D3E156" stopOpacity="0.35" />
+                  <stop offset="70%" stopColor="#D3E156" stopOpacity="0.05" />
+                  <stop offset="100%" stopColor="#D3E156" stopOpacity="0.0" />
+                </linearGradient>
+
+                {/* Amber Gold Gradient */}
+                <linearGradient id="amberGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.35" />
+                  <stop offset="70%" stopColor="#F59E0B" stopOpacity="0.05" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.0" />
+                </linearGradient>
+
+                {/* Glow Filter */}
+                <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={strokeColor} floodOpacity="0.5" />
+                </filter>
+              </defs>
+
+              {/* Background Grid Lines */}
+              {[0.25, 0.5, 0.75].map((factor) => {
+                const y = paddingY + factor * (svgHeight - paddingY * 2);
+                return (
+                  <line
+                    key={factor}
+                    x1={paddingX}
+                    y1={y}
+                    x2={svgWidth - paddingX}
+                    y2={y}
+                    stroke="rgba(255, 255, 255, 0.05)"
+                    strokeDasharray="4 4"
+                    strokeWidth="1"
+                  />
+                );
+              })}
+
+              {/* Area Fill */}
+              <path d={pathArea} fill={`url(#${fillColorId})`} />
+
+              {/* Main Line with Glow */}
+              <path
+                d={pathLine}
+                fill="none"
+                stroke={strokeColor}
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#neonGlow)"
+              />
+
+              {/* Active Vertical Guideline */}
+              {activeCoord && (
+                <line
+                  x1={activeCoord.x}
+                  y1={paddingY}
+                  x2={activeCoord.x}
+                  y2={svgHeight}
+                  stroke="rgba(255, 255, 255, 0.2)"
+                  strokeDasharray="3 3"
+                  strokeWidth="1.5"
+                />
+              )}
+
+              {/* Data Points */}
+              {points.map((p, idx) => {
+                const isSelected = idx === currentActiveIndex;
+                return (
+                  <g key={idx} className="transition-transform duration-150">
+                    {/* Outer Glow Ring when selected */}
+                    {isSelected && (
+                      <circle
+                        cx={p.x}
+                        cy={p.y}
+                        r="10"
+                        fill={strokeColor}
+                        fillOpacity="0.25"
+                        className="animate-ping pointer-events-none"
+                      />
+                    )}
+                    {/* Visual Dot */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={isSelected ? 6 : 3.5}
+                      fill="#0D1117"
+                      stroke={strokeColor}
+                      strokeWidth={isSelected ? 3 : 2}
+                      className="pointer-events-none"
+                    />
+                    {/* Large Transparent Hitbox for Touch / Click */}
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r="24"
+                      className="cursor-pointer fill-transparent"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIndex(idx);
+                        setHoveredIndex(null);
+                      }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        setSelectedIndex(idx);
+                        setHoveredIndex(null);
+                      }}
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          {/* Date Range Labels under X-Axis */}
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 px-1 pt-1 border-t border-border/40">
+            <span>{filteredData[0] ? formatDateShort(parseDate(filteredData[0].date)) : ''}</span>
+            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+              Toque para inspecionar cargas <ChevronRight className="h-3 w-3" />
+            </span>
+            <span>{filteredData[filteredData.length - 1] ? formatDateShort(parseDate(filteredData[filteredData.length - 1].date)) : ''}</span>
+          </div>
+
+          {/* Quick Stats Grid below chart */}
+          <div className="grid grid-cols-3 gap-2 pt-1 text-center">
+            <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
+              <span className="block text-[9px] uppercase font-bold text-slate-400">Recorde (PR)</span>
+              <span className="text-sm font-black font-heading text-slate-100">
+                {stats.pr.toLocaleString('pt-BR')}{unit}
+              </span>
+            </div>
+
+            <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
+              <span className="block text-[9px] uppercase font-bold text-slate-400">Sessões</span>
+              <span className="text-sm font-black font-heading text-slate-100">
+                {filteredData.length}
+              </span>
+            </div>
+
+            <div className="bg-slate-card-light/40 border border-border/40 rounded-2xl p-2.5">
+              <span className="block text-[9px] uppercase font-bold text-slate-400">Progresso</span>
+              <span
+                className={`text-sm font-black font-heading ${
+                  stats.delta >= 0 ? 'text-lime-neon' : 'text-danger'
+                }`}
+              >
+                {stats.delta >= 0 ? `+${stats.delta.toFixed(1)}%` : `${stats.delta.toFixed(1)}%`}
+              </span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

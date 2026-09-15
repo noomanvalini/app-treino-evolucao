@@ -200,28 +200,48 @@ function StrengthContent() {
       combinedExList.sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio));
       setExercises(combinedExList);
 
-      // 3. Fetch all logs for this muscle group
+      // 3. Fetch all logs for this user to ensure biomechanical accuracy and self-healing
       const logsQuery = query(
         collection(db, 'strength_logs'),
-        where('userId', '==', user.uid),
-        where('muscleGroup', '==', selectedMuscle)
+        where('userId', '==', user.uid)
       );
       const logsSnap = await getDocs(logsQuery);
       const logsList: StrengthLog[] = [];
-      logsSnap.forEach((doc) => {
-        const d = doc.data();
-        // If viewing Quadríceps, ignore any legacy logs that belonged to flexora exercises
-        if (selectedMuscle === 'Quadríceps' && (d.exerciseId?.toLowerCase().includes('flexora') || d.exerciseId === 'pre_mesa_flexora')) {
+      logsSnap.forEach((docSnap) => {
+        const d = docSnap.data();
+        let muscle = d.muscleGroup;
+
+        // Biomechanical rule & self-healing: Flexora / Stiff belongs strictly to Posterior de Coxa
+        const isFlexoraOrStiff =
+          d.exerciseId === 'pre_mesa_flexora' ||
+          d.exerciseId === 'pre_cadeira_flexora' ||
+          d.exerciseId === 'pre_stiff' ||
+          d.exerciseId?.toLowerCase().includes('flexora') ||
+          d.exerciseId?.toLowerCase().includes('stiff');
+
+        if (isFlexoraOrStiff) {
+          muscle = 'Posterior de Coxa';
+          if (d.muscleGroup !== 'Posterior de Coxa') {
+            updateDoc(docSnap.ref, { muscleGroup: 'Posterior de Coxa' }).catch(console.error);
+          }
+        }
+
+        // If viewing Quadríceps, strictly exclude flexora/stiff
+        if (selectedMuscle === 'Quadríceps' && isFlexoraOrStiff) {
           return;
         }
-        logsList.push({
-          id: doc.id,
-          exerciseId: d.exerciseId,
-          cargaKg: d.cargaKg,
-          reps: d.reps,
-          oneRmCalculado: d.oneRmCalculado,
-          data: d.data
-        });
+
+        // Include if matches selected muscle
+        if (muscle === selectedMuscle) {
+          logsList.push({
+            id: docSnap.id,
+            exerciseId: d.exerciseId,
+            cargaKg: d.cargaKg,
+            reps: d.reps,
+            oneRmCalculado: d.oneRmCalculado,
+            data: d.data
+          });
+        }
       });
       setLogs(logsList);
     } catch (error) {
@@ -238,8 +258,20 @@ function StrengthContent() {
     return cargaKg * (1 + repsCount / 30);
   };
 
-  // Process exercise calculations: latest logs, 1RM, delta
+  // Helper: extract session date key (YYYY-MM-DD)
+  const getSessionDateKey = (rawDate: any): string => {
+    if (!rawDate) return '';
+    const d = rawDate?.seconds ? new Date(rawDate.seconds * 1000) : new Date(rawDate);
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  // Process exercise calculations: latest logs, 1RM, delta, session peaks
   const getExerciseMetrics = (exerciseId: string) => {
+    // 1. All raw logs for this exercise, sorted chronologically
     const exerciseLogs = logs
       .filter((l) => l.exerciseId === exerciseId)
       .sort((a, b) => {
@@ -249,24 +281,80 @@ function StrengthContent() {
       });
 
     if (exerciseLogs.length === 0) {
-      return { latest: null, delta: null, history: [] };
+      return {
+        latest: null,
+        delta: null,
+        history: [],
+        peakHistory: [] as Array<{ date: Date; value: number; rawWeight: number; reps: number; label: string }>,
+        peakLogIds: new Set<string>()
+      };
     }
 
-    const latest = exerciseLogs[exerciseLogs.length - 1];
+    // 2. Group logs by workout session (date: YYYY-MM-DD)
+    const sessionsMap: Record<string, StrengthLog[]> = {};
+    exerciseLogs.forEach((log) => {
+      const dateKey = getSessionDateKey(log.data) || log.id;
+      if (!sessionsMap[dateKey]) sessionsMap[dateKey] = [];
+      sessionsMap[dateKey].push(log);
+    });
+
+    // 3. For each session, find the PEAK set (highest 1RM / RP, tie-break by highest cargaKg)
+    const peakLogIds = new Set<string>();
+    const sessionPeaks: Array<{
+      date: Date;
+      dateKey: string;
+      value: number; // 1RM
+      rawWeight: number; // cargaKg
+      reps: number;
+      label: string;
+      peakLog: StrengthLog;
+    }> = [];
+
+    Object.entries(sessionsMap).forEach(([dateKey, sessionSets]) => {
+      // Sort sets within session to find highest 1RM
+      const sortedSets = [...sessionSets].sort((a, b) => {
+        if (b.oneRmCalculado !== a.oneRmCalculado) {
+          return b.oneRmCalculado - a.oneRmCalculado;
+        }
+        return b.cargaKg - a.cargaKg;
+      });
+
+      const peak = sortedSets[0];
+      peakLogIds.add(peak.id);
+
+      const d = peak.data?.seconds ? new Date(peak.data.seconds * 1000) : new Date(peak.data);
+      sessionPeaks.push({
+        date: d,
+        dateKey,
+        value: peak.oneRmCalculado,
+        rawWeight: peak.cargaKg,
+        reps: peak.reps,
+        label: `RP: ${peak.cargaKg}kg × ${peak.reps}`,
+        peakLog: peak
+      });
+    });
+
+    // Sort session peaks chronologically
+    sessionPeaks.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    // 4. Calculate progression delta between latest session peak and previous session peak
+    const latestPeak = sessionPeaks[sessionPeaks.length - 1];
     let delta = null;
 
-    if (exerciseLogs.length >= 2) {
-      const current1RM = latest.oneRmCalculado;
-      const previous1RM = exerciseLogs[exerciseLogs.length - 2].oneRmCalculado;
+    if (sessionPeaks.length >= 2) {
+      const current1RM = latestPeak.value;
+      const previous1RM = sessionPeaks[sessionPeaks.length - 2].value;
       if (previous1RM > 0) {
         delta = ((current1RM - previous1RM) / previous1RM) * 100;
       }
     }
 
     return {
-      latest,
+      latest: latestPeak.peakLog, // Peak set of latest workout session
       delta,
-      history: [...exerciseLogs].reverse() // Show newest first in history
+      history: [...exerciseLogs].reverse(), // All individual sets, newest first (for management list)
+      peakHistory: sessionPeaks, // ONLY peak sets per session, chronologically sorted (for chart)
+      peakLogIds // Set of IDs that are peak sets of their respective sessions
     };
   };
 
@@ -702,7 +790,7 @@ function StrengthContent() {
         ) : (
           <div className="space-y-3">
             {exercises.map((exercise) => {
-              const { latest, delta, history } = getExerciseMetrics(exercise.id);
+              const { latest, delta, history, peakHistory, peakLogIds } = getExerciseMetrics(exercise.id);
               const isExpanded = expandedExercise === exercise.id;
 
               return (
@@ -821,17 +909,11 @@ function StrengthContent() {
                   {/* Expanded History List */}
                   {isExpanded && history.length > 0 && (
                     <div className="bg-slate-card-light/10 border-t border-border/40 p-3 space-y-3">
-                      {/* Interactive Bezier Progression Chart */}
+                      {/* Interactive Bezier Progression Chart (Shows only Session Peak RPs) */}
                       <InteractiveGainChart
                         title={exercise.nomeExercicio}
-                        subtitle="Curva de 1RM e cargas levantadas"
-                        data={history.map((h) => ({
-                          date: h.data?.seconds ? new Date(h.data.seconds * 1000) : new Date(h.data),
-                          value: h.oneRmCalculado,
-                          rawWeight: h.cargaKg,
-                          reps: h.reps,
-                          label: `${h.cargaKg}kg × ${h.reps}`
-                        }))}
+                        subtitle="Evolução de RP (1RM Máximo) por treino"
+                        data={peakHistory}
                         colorTheme="lime"
                         unit="kg"
                       />
@@ -846,6 +928,7 @@ function StrengthContent() {
                             itemDelta = ((logItem.oneRmCalculado - prev1RM) / prev1RM) * 100;
                           }
                         }
+                        const isPeak = peakLogIds.has(logItem.id);
 
                         return (
                           <div
@@ -862,6 +945,11 @@ function StrengthContent() {
                               <span className="font-bold text-slate-100 ml-1 whitespace-nowrap">
                                 {logItem.cargaKg}kg x {logItem.reps} reps
                               </span>
+                              {isPeak && (
+                                <span className="text-[9px] font-extrabold bg-lime-neon/15 text-lime-neon border border-lime-neon/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
+                                  RP do dia
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 text-right flex-shrink-0">
                               <div>

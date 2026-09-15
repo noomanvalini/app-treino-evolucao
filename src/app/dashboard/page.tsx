@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [loadingData, setLoadingData] = useState(true);
   const [userLogs, setUserLogs] = useState<StrengthLog[]>([]);
   const [muscleEvolutions, setMuscleEvolutions] = useState<Record<string, number>>({});
+  const [musclesWithData, setMusclesWithData] = useState<Record<string, { hasLogs: boolean; hasMultipleSessions: boolean }>>({});
   const [generalScore, setGeneralScore] = useState<number>(0);
   const [timedOut, setTimedOut] = useState(false);
   const [localDbError, setLocalDbError] = useState<string | null>(null);
@@ -84,127 +85,175 @@ export default function Dashboard() {
     }, 6000);
 
     try {
-      // 1. Fetch all user logs
-      const logsQuery = query(collection(db, 'strength_logs'), where('userId', '==', user.uid));
-      const logsSnap = await getDocs(logsQuery);
-      
-      const logsList: StrengthLog[] = [];
-      logsSnap.forEach((doc) => {
-        const data = doc.data();
-        logsList.push({
-          exerciseId: data.exerciseId,
-          muscleGroup: data.muscleGroup,
-          oneRmCalculado: data.oneRmCalculado || 0,
-          cargaKg: data.cargaKg || 0,
-          reps: data.reps || 0,
-          data: data.data
-        });
-      });
-      setUserLogs(logsList);
+      // Helper: extract session date key (YYYY-MM-DD)
+      const getSessionDateKey = (rawDate: any): string => {
+        if (!rawDate) return '';
+        const d = rawDate?.seconds ? new Date(rawDate.seconds * 1000) : new Date(rawDate);
+        if (isNaN(d.getTime())) return '';
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+      };
 
-      // Group logs by exercise ID
-      const logsByExercise: Record<string, StrengthLog[]> = {};
-      logsList.forEach((log) => {
-        if (!logsByExercise[log.exerciseId]) {
-          logsByExercise[log.exerciseId] = [];
-        }
-        logsByExercise[log.exerciseId].push(log);
-      });
-
-      // Calculate evolution per exercise
-      // Delta = ((1RM_atual - 1RM_anterior) / 1RM_anterior) * 100
-      const exerciseDeltas: Record<string, number> = {};
-      Object.entries(logsByExercise).forEach(([exerciseId, logs]) => {
-        // Sort chronologically (oldest to newest)
-        const sorted = [...logs].sort((a, b) => {
-          const timeA = a.data?.seconds ? a.data.seconds * 1000 : new Date(a.data).getTime();
-          const timeB = b.data?.seconds ? b.data.seconds * 1000 : new Date(b.data).getTime();
-          return timeA - timeB;
-        });
-
-        if (sorted.length >= 2) {
-          const latest = sorted[sorted.length - 1].oneRmCalculado;
-          const previous = sorted[sorted.length - 2].oneRmCalculado;
-          
-          if (previous > 0) {
-            exerciseDeltas[exerciseId] = ((latest - previous) / previous) * 100;
-          }
-        }
-      });
-
-      // 2. Fetch all user exercises to map them to muscle groups (predefined + custom)
+      // 1. Fetch user exercises to map them to muscle groups (predefined + custom)
       const exercisesQuery = query(collection(db, 'exercises'), where('userId', '==', user.uid));
       const exercisesSnap = await getDocs(exercisesQuery);
       const exerciseToMuscle: Record<string, string> = {};
-      
+
       // Load all predefined exercises
       PREDEFINED_EXERCISES.forEach((pe) => {
         exerciseToMuscle[pe.id] = pe.muscleGroup;
       });
 
       // Load user custom exercises
-      exercisesSnap.forEach((doc) => {
-        const data = doc.data();
+      exercisesSnap.forEach((docSnap) => {
+        const data = docSnap.data();
         const name = (data.nomeExercicio || '').toLowerCase();
 
-        // Biomechanical rule: Flexora (Mesa/Cadeira) belongs strictly to Posterior de Coxa
-        if (name.includes('flexora')) {
-          exerciseToMuscle[doc.id] = 'Posterior de Coxa';
+        // Biomechanical rule: Flexora (Mesa/Cadeira) & Stiff belong strictly to Posterior de Coxa
+        if (name.includes('flexora') || name.includes('stiff') || data.predefinedId?.includes('flexora') || data.predefinedId?.includes('stiff')) {
+          exerciseToMuscle[docSnap.id] = 'Posterior de Coxa';
           if (data.muscleGroup === 'Quadríceps') {
-            // Remove obsolete flexora document from Quadríceps in Firestore
-            deleteDoc(doc.ref).catch(console.error);
+            deleteDoc(docSnap.ref).catch(console.error);
           }
         } else {
-          exerciseToMuscle[doc.id] = data.muscleGroup;
+          exerciseToMuscle[docSnap.id] = data.muscleGroup;
         }
       });
 
-      // Group exercise deltas by muscle group
+      // 2. Fetch all user logs
+      const logsQuery = query(collection(db, 'strength_logs'), where('userId', '==', user.uid));
+      const logsSnap = await getDocs(logsQuery);
+
+      const logsList: StrengthLog[] = [];
+      const logsByExercise: Record<string, StrengthLog[]> = {};
+      const musclesWithLogsSet = new Set<string>();
+
+      logsSnap.forEach((docSnap) => {
+        const data = docSnap.data();
+        let muscle = data.muscleGroup;
+
+        // Biomechanical rules & self-healing for flexora / stiff
+        const isFlexoraOrStiff =
+          data.exerciseId === 'pre_mesa_flexora' ||
+          data.exerciseId === 'pre_cadeira_flexora' ||
+          data.exerciseId === 'pre_stiff' ||
+          data.exerciseId?.toLowerCase().includes('flexora') ||
+          data.exerciseId?.toLowerCase().includes('stiff') ||
+          exerciseToMuscle[data.exerciseId] === 'Posterior de Coxa';
+
+        if (isFlexoraOrStiff) {
+          muscle = 'Posterior de Coxa';
+          if (data.muscleGroup !== 'Posterior de Coxa') {
+            updateDoc(docSnap.ref, { muscleGroup: 'Posterior de Coxa' }).catch(console.error);
+          }
+        } else if (!muscle && exerciseToMuscle[data.exerciseId]) {
+          muscle = exerciseToMuscle[data.exerciseId];
+        }
+
+        if (muscle) {
+          musclesWithLogsSet.add(muscle);
+        }
+
+        const logObj: StrengthLog = {
+          exerciseId: data.exerciseId,
+          muscleGroup: muscle,
+          oneRmCalculado: data.oneRmCalculado || 0,
+          cargaKg: data.cargaKg || 0,
+          reps: data.reps || 0,
+          data: data.data
+        };
+
+        logsList.push(logObj);
+
+        if (!logsByExercise[data.exerciseId]) {
+          logsByExercise[data.exerciseId] = [];
+        }
+        logsByExercise[data.exerciseId].push(logObj);
+      });
+      setUserLogs(logsList);
+
+      // 3. Group by workout session per exercise and extract peak 1RM (RP)
       const deltasByMuscle: Record<string, number[]> = {};
+      const muscleMultipleSessions: Record<string, boolean> = {};
       MUSCLE_GROUPS.forEach((m) => {
         deltasByMuscle[m] = [];
+        muscleMultipleSessions[m] = false;
       });
 
-      Object.entries(exerciseDeltas).forEach(([exerciseId, delta]) => {
+      Object.entries(logsByExercise).forEach(([exerciseId, logs]) => {
         let muscle = exerciseToMuscle[exerciseId];
-
-        // Safety fallback: if not in mapping, check log's muscleGroup
         if (!muscle) {
-          const sampleLog = logsByExercise[exerciseId]?.[0];
-          if (sampleLog?.muscleGroup) {
-            muscle = sampleLog.muscleGroup;
-          }
+          const sample = logs[0];
+          muscle = sample?.muscleGroup;
         }
-
-        // Biomechanical guarantee: Mesa Flexora is ALWAYS Posterior de Coxa, NEVER Quadríceps
-        if (exerciseId === 'pre_mesa_flexora' || exerciseId.toLowerCase().includes('flexora')) {
+        if (exerciseId === 'pre_mesa_flexora' || exerciseId?.toLowerCase().includes('flexora') || exerciseId?.toLowerCase().includes('stiff')) {
           muscle = 'Posterior de Coxa';
         }
 
-        if (muscle && deltasByMuscle[muscle]) {
-          deltasByMuscle[muscle].push(delta);
+        // Group sets by session date key
+        const sessionsMap: Record<string, StrengthLog[]> = {};
+        logs.forEach((l) => {
+          const dateKey = getSessionDateKey(l.data) || 'single';
+          if (!sessionsMap[dateKey]) sessionsMap[dateKey] = [];
+          sessionsMap[dateKey].push(l);
+        });
+
+        // Find peak 1RM per workout session
+        const sessionPeaks = Object.entries(sessionsMap).map(([dateKey, sets]) => {
+          const max1RM = Math.max(...sets.map((s) => s.oneRmCalculado || 0));
+          const sampleDate = sets[0]?.data;
+          const time = sampleDate?.seconds ? sampleDate.seconds * 1000 : new Date(sampleDate).getTime();
+          return { dateKey, time, peak1RM: max1RM };
+        });
+
+        sessionPeaks.sort((a, b) => a.time - b.time);
+
+        // If at least 2 distinct workout sessions exist, compute progression between latest and previous peak
+        if (muscle && sessionPeaks.length >= 2) {
+          const latestPeak = sessionPeaks[sessionPeaks.length - 1].peak1RM;
+          const previousPeak = sessionPeaks[sessionPeaks.length - 2].peak1RM;
+          if (previousPeak > 0) {
+            const exerciseDelta = ((latestPeak - previousPeak) / previousPeak) * 100;
+            if (deltasByMuscle[muscle]) {
+              deltasByMuscle[muscle].push(exerciseDelta);
+              muscleMultipleSessions[muscle] = true;
+            }
+          }
         }
       });
 
-      // Calculate muscle group evolution (average of exercise deltas)
+      // 4. Calculate muscle group evolution (average of exercise deltas)
       const evolutions: Record<string, number> = {};
+      const withDataState: Record<string, { hasLogs: boolean; hasMultipleSessions: boolean }> = {};
       let totalDeltasSum = 0;
       let muscleGroupsWithDataCount = 0;
 
-      Object.entries(deltasByMuscle).forEach(([muscle, deltas]) => {
-        if (deltas.length > 0) {
+      MUSCLE_GROUPS.forEach((muscle) => {
+        const deltas = deltasByMuscle[muscle] || [];
+        const hasLogs = musclesWithLogsSet.has(muscle);
+        const hasMultiple = muscleMultipleSessions[muscle] && deltas.length > 0;
+
+        withDataState[muscle] = {
+          hasLogs,
+          hasMultipleSessions: hasMultiple
+        };
+
+        if (hasMultiple) {
           const avg = deltas.reduce((sum, d) => sum + d, 0) / deltas.length;
           evolutions[muscle] = Number(avg.toFixed(1));
           totalDeltasSum += avg;
           muscleGroupsWithDataCount++;
         } else {
-          evolutions[muscle] = 0; // Default to 0 if no evolution data
+          evolutions[muscle] = 0;
         }
       });
 
       setMuscleEvolutions(evolutions);
+      setMusclesWithData(withDataState);
 
-      // Score Geral de Força (average of all active muscle groups)
+      // Score Geral de Força (average of all active muscle groups with progress)
       const generalScoreAvg = muscleGroupsWithDataCount > 0 
         ? totalDeltasSum / muscleGroupsWithDataCount 
         : 0;
@@ -476,8 +525,10 @@ export default function Dashboard() {
 
         {/* Selected Muscle detail panel */}
         {selectedMuscle && (() => {
+          const dataInfo = musclesWithData[selectedMuscle] || { hasLogs: false, hasMultipleSessions: false };
           const val = muscleEvolutions[selectedMuscle] || 0;
-          const hasData = val !== 0;
+          const hasData = dataInfo.hasLogs;
+          const hasMultipleSessions = dataInfo.hasMultipleSessions;
           const isPositive = val >= 0;
 
           return (
@@ -490,19 +541,28 @@ export default function Dashboard() {
                 <div>
                   <span className="text-[10px] text-slate-400 block">Evolução Geral</span>
                   {hasData ? (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      {isPositive ? (
-                        <>
-                          <TrendingUp className="h-4 w-4 text-success" />
-                          <span className="text-sm font-bold text-success">+{val}%</span>
-                        </>
-                      ) : (
-                        <>
-                          <TrendingDown className="h-4 w-4 text-danger" />
-                          <span className="text-sm font-bold text-danger">{val}%</span>
-                        </>
-                      )}
-                    </div>
+                    hasMultipleSessions ? (
+                      <div className="flex items-center gap-1 mt-0.5">
+                        {isPositive ? (
+                          <>
+                            <TrendingUp className="h-4 w-4 text-success" />
+                            <span className="text-sm font-bold text-success">+{val}%</span>
+                          </>
+                        ) : (
+                          <>
+                            <TrendingDown className="h-4 w-4 text-danger" />
+                            <span className="text-sm font-bold text-danger">{val}%</span>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-sm font-bold text-slate-200">0.0%</span>
+                        <span className="text-[9px] font-bold bg-lime-neon/15 text-lime-neon border border-lime-neon/25 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          Base
+                        </span>
+                      </div>
+                    )
                   ) : (
                     <span className="text-xs text-slate-500 font-medium block mt-0.5">Sem dados cadastrados</span>
                   )}
@@ -530,8 +590,10 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-2 gap-3">
           {MUSCLE_GROUPS.map((muscle) => {
+            const dataInfo = musclesWithData[muscle] || { hasLogs: false, hasMultipleSessions: false };
             const val = muscleEvolutions[muscle] || 0;
-            const hasData = val !== 0;
+            const hasData = dataInfo.hasLogs;
+            const hasMultipleSessions = dataInfo.hasMultipleSessions;
             const isPositive = val >= 0;
 
             return (
@@ -549,19 +611,28 @@ export default function Dashboard() {
 
                 <div className="mt-4">
                   {hasData ? (
-                    <div className="flex items-center gap-1">
-                      {isPositive ? (
-                        <>
-                          <TrendingUp className="h-4 w-4 text-success" />
-                          <span className="text-sm font-bold text-success">+{val}%</span>
-                        </>
-                      ) : (
-                        <>
-                          <TrendingDown className="h-4 w-4 text-danger" />
-                          <span className="text-sm font-bold text-danger">{val}%</span>
-                        </>
-                      )}
-                    </div>
+                    hasMultipleSessions ? (
+                      <div className="flex items-center gap-1">
+                        {isPositive ? (
+                          <>
+                            <TrendingUp className="h-4 w-4 text-success" />
+                            <span className="text-sm font-bold text-success">+{val}%</span>
+                          </>
+                        ) : (
+                          <>
+                            <TrendingDown className="h-4 w-4 text-danger" />
+                            <span className="text-sm font-bold text-danger">{val}%</span>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-slate-200">0.0%</span>
+                        <span className="text-[9px] font-bold bg-lime-neon/15 text-lime-neon border border-lime-neon/25 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          Base
+                        </span>
+                      </div>
+                    )
                   ) : (
                     <span className="text-[10px] text-slate-500 font-medium">Sem histórico</span>
                   )}
