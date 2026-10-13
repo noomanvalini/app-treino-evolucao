@@ -14,18 +14,45 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_supino_reto_barra',
     nome: 'Supino Reto com Barra',
     muscleGroup: 'Peito',
-    thumbnailUrl: '/images/exercises/supino-reto-barra.png',
-    gifUrl: '/gifs/supino-reto-barra.gif',
-    description: 'Deite-se no banco mantendo os olhos alinhados com a barra. Apoie os pés firmemente no chão e mantenha as escápulas aduzidas e travadas no banco. Desça a barra de forma controlada até a linha média do peito, mantendo os cotovelos a aproximadamente 45° a 70° em relação ao tronco. Empurre a barra para cima com força sem perder o arco natural da coluna.',
+    thumbnailUrl: '/gifs/Supino-Reto.gif',
+    gifUrl: '/gifs/Supino-Reto.gif',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_supino_inclinado_halteres',
     nome: 'Supino Inclinado com Halteres',
     muscleGroup: 'Peito',
-    thumbnailUrl: '/images/exercises/supino-inclinado-halteres.png',
-    gifUrl: '/gifs/supino-inclinado-halteres.gif',
-    description: 'Ajuste o banco em uma inclinação entre 30° e 45°. Deite mantendo as escápulas aduzidas. Posicione os halteres na altura do peitoral superior e empurre-os para cima em trajetória convergente, sem bater os halteres no topo. Desça com controle sentindo o alongamento da musculatura peitoral.',
+    thumbnailUrl: '/gifs/Supino-Inclinado-com-Halteres.gif',
+    gifUrl: '/gifs/Supino-Inclinado-com-Halteres.gif',
+    description: '',
+    isPredefined: true
+  },
+  {
+    id: 'pre_crucifixo_halteres_inclinado',
+    nome: 'Crucifixo com Halteres Inclinado',
+    muscleGroup: 'Peito',
+    thumbnailUrl: '/gifs/Crucifixo-com-Halteres-Inclinado.gif',
+    gifUrl: '/gifs/Crucifixo-com-Halteres-Inclinado.gif',
+    description: '',
+    isPredefined: true
+  },
+  {
+    id: 'pre_supino_com_alavanca',
+    nome: 'Supino com Alavanca',
+    muscleGroup: 'Peito',
+    thumbnailUrl: '/gifs/Supino-com-Alavanca.gif',
+    gifUrl: '/gifs/Supino-com-Alavanca.gif',
+    description: '',
+    isPredefined: true
+  },
+  {
+    id: 'pre_supino_inclinado_na_alavanca',
+    nome: 'Supino Inclinado na Alavanca',
+    muscleGroup: 'Peito',
+    thumbnailUrl: '/gifs/Supino-Inclinado-na-Alavanca.gif',
+    gifUrl: '/gifs/Supino-Inclinado-na-Alavanca.gif',
+    description: '',
     isPredefined: true
   },
   {
@@ -33,8 +60,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Supino Inclinado com Barra',
     muscleGroup: 'Peito',
     thumbnailUrl: '/images/exercises/supino-inclinado-barra.png',
-    gifUrl: '/gifs/supino-inclinado-barra.gif',
-    description: 'Deite no banco inclinado (30° a 45°). Segure a barra com pegada ligeiramente mais larga que os ombros. Desça a barra controladamente em direção à clavícula/peitoral superior. Empurre para cima até a extensão quase completa dos braços, mantendo os ombros estabilizados no banco.',
+    description: '',
     isPredefined: true
   },
   {
@@ -42,8 +68,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Peck Deck',
     muscleGroup: 'Peito',
     thumbnailUrl: '/images/exercises/peck-deck.png',
-    gifUrl: '/gifs/peck-deck.gif',
-    description: 'Ajuste a altura do banco de modo que as pegadas fiquem na linha média do peito. Mantenha as escápulas retraídas contra o encosto. Una os braços à frente contraindo com força o peitoral no pico de contração. Retorne de forma lenta e controlada, sentindo o peitoral alongar sem hiperestender os ombros.',
+    description: '',
     isPredefined: true
   },
 
@@ -53,26 +78,25 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Agachamento Livre',
     muscleGroup: 'Quadríceps',
     thumbnailUrl: '/images/exercises/agachamento-livre.png',
-    gifUrl: '/gifs/agachamento-livre.gif',
-    description: 'Apoie a barra sobre a musculatura do trapézio. Pés afastados na largura dos ombros, apontando levemente para fora. Mantenha o core rígido e inicie o movimento projetando o quadril para trás e flexionando os joelhos até que a dobra do quadril passe da linha dos joelhos. Empurre o chão com os calcanhares para retornar.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_leg_press_45',
     nome: 'Leg Press 45º',
     muscleGroup: 'Quadríceps',
-    thumbnailUrl: '/images/exercises/leg-press-45.png',
-    gifUrl: '/gifs/leg-press-45.gif',
-    description: 'Apoie a lombar e o glúteo totalmente no encosto durante todo o movimento. Pés na plataforma na largura dos ombros. Destrave a máquina e desça o peso flexionando os joelhos até aproximadamente 90° de flexão (sem arredondar a lombar do banco). Empurre com firmeza sem travar/hiperextender os joelhos no topo.',
+    thumbnailUrl: '/gifs/Leg-Press.gif',
+    gifUrl: '/gifs/Leg-Press.gif',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_cadeira_extensora',
     nome: 'Cadeira Extensora',
     muscleGroup: 'Quadríceps',
-    thumbnailUrl: '/images/exercises/cadeira-extensora.png',
-    gifUrl: '/gifs/cadeira-extensora.gif',
-    description: 'Ajuste o encosto de modo que o eixo de rotação do aparelho coincida com a articulação dos seus joelhos. O rolo deve ficar sobre os tornozelos. Estenda as pernas até a contração total do quadríceps, segure 1 segundo no topo e retorne com descida controlada.',
+    thumbnailUrl: '/gifs/Cadeira-extensora.gif',
+    gifUrl: '/gifs/Cadeira-extensora.gif',
+    description: '',
     isPredefined: true
   },
   {
@@ -80,8 +104,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Afundo no Smith',
     muscleGroup: 'Quadríceps',
     thumbnailUrl: '/images/exercises/Afundo-no-Smith.png',
-    gifUrl: '/gifs/afundo-no-smith.gif',
-    description: 'Posicione a barra do Smith sobre os ombros. Dê um passo à frente com uma das pernas e apoie a ponta do pé de trás. Desça verticalmente até que o joelho da perna de trás quase toque o chão e o joelho da frente forme aproximadamente 90°. Suba impulsionando a força pelo calcanhar da perna da frente.',
+    description: '',
     isPredefined: true
   },
 
@@ -91,8 +114,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Remada Fechada na Máquina',
     muscleGroup: 'Costas',
     thumbnailUrl: '/images/exercises/Remada-Fechada-Maquina.png',
-    gifUrl: '/gifs/remada-fechada-maquina.gif',
-    description: 'Apoie o peito no acolchoado e segure as pegadas neutras. Mantenha a coluna ereta. Puxe as pegadas levando os cotovelos para trás junto ao corpo, aproximando as escápulas com firmeza no final do movimento. Retorne controlando o peso até estender os braços.',
+    description: '',
     isPredefined: true
   },
   {
@@ -100,8 +122,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Remada no Banco Inclinado',
     muscleGroup: 'Costas',
     thumbnailUrl: '/images/exercises/Remada Banco Inclinado.png',
-    gifUrl: '/gifs/remada-banco-inclinado.gif',
-    description: 'Deite de bruços em um banco inclinado a 30° a 45°. Segure os halteres com os braços estendidos. Puxe os halteres em direção ao quadril, mantendo os cotovelos próximos às costelas e espremendo as escápulas. Desça devagar alongando as dorsais.',
+    description: '',
     isPredefined: true
   },
   {
@@ -109,8 +130,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Remada Sentada Fechada',
     muscleGroup: 'Costas',
     thumbnailUrl: '/images/exercises/Remada Sentada Fechada.png',
-    gifUrl: '/gifs/remada-sentada-fechada.gif',
-    description: 'Sente-se no aparelho com os joelhos levemente destravados. Segure o triângulo e posicione o tronco na vertical. Puxe o cabo em direção ao umbigo, projetando o peito para fora e retraindo as escápulas. Evite usar o impulso do tronco para puxar o peso.',
+    description: '',
     isPredefined: true
   },
   {
@@ -118,32 +138,28 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Puxada Pulley Pronada',
     muscleGroup: 'Costas',
     thumbnailUrl: '/images/exercises/Puxada Pulley Pronada.png',
-    gifUrl: '/gifs/puxada-pulley-pronada.gif',
-    description: 'Segure a barra com pegada pronada aberta. Trave as coxas no suporte. Puxe a barra em direção ao peitoral superior, focando em descer os cotovelos para os lados e para baixo. Mantenha o peito aberto e não balance o tronco excessivamente. Retorne controladamente alongando as dorsais.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_puxada_alta',
     nome: 'Puxada Alta na Polia',
     muscleGroup: 'Costas',
-    gifUrl: '/gifs/puxada-alta.gif',
-    description: 'Posicione-se no aparelho e segure a barra. Puxe a barra verticalmente até a altura do queixo/peito superior, concentrando a contração nos grandes dorsais. Mantenha a postura ereta e retorne controlando a subida da carga.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_remada_curvada',
     nome: 'Remada Curvada com Barra',
     muscleGroup: 'Costas',
-    gifUrl: '/gifs/remada-curvada.gif',
-    description: 'Incline o tronco à frente a aproximadamente 45° mantendo a coluna lombar neutra e joelhos levemente flexionados. Segure a barra com pegada pronada ou supinada. Puxe a barra em direção ao umbigo mantendo os cotovelos próximos ao corpo. Desça com controle.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_deadlift',
     nome: 'Levantamento Terra',
     muscleGroup: 'Costas',
-    gifUrl: '/gifs/levantamento-terra.gif',
-    description: 'Pés na largura do quadril, barra rente às canelas. Segure a barra mantendo as escápulas alinhadas sobre ela e a coluna lombar rigorosamente neutra. Pressione o chão com os pés, estendendo joelhos e quadris simultaneamente até ficar ereto. Desça empurrando o quadril para trás.',
+    description: '',
     isPredefined: true
   },
 
@@ -152,16 +168,14 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_overhead_press',
     nome: 'Desenvolvimento Militar',
     muscleGroup: 'Ombro',
-    gifUrl: '/gifs/desenvolvimento-militar.gif',
-    description: 'Em pé ou sentado, segure a barra ou halteres na altura da clavícula. Mantenha o abdômen e glúteos travados para estabilizar a coluna. Empurre a carga para cima em linha reta até os braços estenderem acima da cabeça. Desça de forma controlada até a altura dos ombros.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_lateral_raise',
     nome: 'Elevação Lateral com Halteres',
     muscleGroup: 'Ombro',
-    gifUrl: '/gifs/elevacao-lateral.gif',
-    description: 'Em pé com tronco ligeiramente inclinado para a frente. Segure os halteres ao lado do corpo com cotovelos levemente flexionados. Eleve os braços lateralmente até a altura dos ombros, guiando o movimento pelos cotovelos. Pause brevemente no topo e desça controlando.',
+    description: '',
     isPredefined: true
   },
 
@@ -171,8 +185,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Rosca Concentrada',
     muscleGroup: 'Bíceps',
     thumbnailUrl: '/images/exercises/Rosca-Concentrada.png',
-    gifUrl: '/gifs/rosca-concentrada.gif',
-    description: 'Sentado no banco, apoie o cotovelo na parte interna da coxa correspondente. Segure o halter com a palma voltada para cima. Flexione o cotovelo elevando o peso em direção ao ombro, mantendo o braço estático. Concentre a tensão exclusivamente no bíceps e desça devagar.',
+    description: '',
     isPredefined: true
   },
   {
@@ -180,8 +193,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Rosca Direta Barra W',
     muscleGroup: 'Bíceps',
     thumbnailUrl: '/images/exercises/Rosca-Direta-Barra-W.png',
-    gifUrl: '/gifs/rosca-direta-barra-w.gif',
-    description: 'Em pé com postura ereta, segure a barra W na curvatura ergonômica. Mantenha os cotovelos fixos ao lado do tronco. Eleve a barra flexionando os cotovelos até a contração máxima do bíceps. Evite balançar o tronco ou projetar os cotovelos para frente durante a subida.',
+    description: '',
     isPredefined: true
   },
   {
@@ -189,8 +201,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Rosca Scott Barra W',
     muscleGroup: 'Bíceps',
     thumbnailUrl: '/images/exercises/Rosca-Scott-Barra-W.png',
-    gifUrl: '/gifs/rosca-scott-barra-w.gif',
-    description: 'Posicione os braços apoiados no banco Scott com o peito bem encostado no topo. Segure a barra W. Flexione os cotovelos trazendo a barra para cima. Desça com controle até quase a extensão completa, sem descolar os braços do acolchoado.',
+    description: '',
     isPredefined: true
   },
   {
@@ -198,24 +209,21 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Rosca Alternada',
     muscleGroup: 'Bíceps',
     thumbnailUrl: '/images/exercises/Rosca-Alternada.png',
-    gifUrl: '/gifs/rosca-alternada.gif',
-    description: 'Em pé ou sentado, segure os halteres ao lado do corpo com pegada neutra. Ao subir um dos halteres, rotacione o punho para fora (supinação) para atingir o pico de contração do bíceps. Desça controlando e repita com o outro braço.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_rosca_direta',
     nome: 'Rosca Direta com Barra',
     muscleGroup: 'Bíceps',
-    gifUrl: '/gifs/rosca-direta.gif',
-    description: 'Segure a barra reta com as palmas voltadas para frente na largura dos ombros. Mantenha os cotovelos travados na lateral do corpo. Flexione os braços levantando a barra sem usar impulso da lombar. Retorne estendendo os braços de maneira controlada.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_rosca_martelo',
     nome: 'Rosca Martelo',
     muscleGroup: 'Bíceps',
-    gifUrl: '/gifs/rosca-martelo.gif',
-    description: 'Segure os halteres com as palmas das mãos voltadas uma para a outra (pegada neutra). Mantenha essa posição durante todo o movimento ao flexionar os cotovelos. Esse exercício foca no braquial e braquiorradial.',
+    description: '',
     isPredefined: true
   },
 
@@ -225,8 +233,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Coice',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-Coice.png',
-    gifUrl: '/gifs/triceps-coice.gif',
-    description: 'Apoie um joelho e mão no banco com o tronco paralelo ao chão. Segure o halter com o cotovelo alinhado ao tronco a 90°. Estenda o antebraço para trás até o alinhamento total do braço, contraindo o tríceps. Mantenha o cotovelo imóvel e desça controladamente.',
+    description: '',
     isPredefined: true
   },
   {
@@ -234,8 +241,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Francês com Halter',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-Frances-Halter.png',
-    gifUrl: '/gifs/triceps-frances.gif',
-    description: 'Sentado com a coluna ereta, segure um halter com ambas as mãos atrás da cabeça, cotovelos apontando para cima. Estenda os braços empurrando o peso para cima. Flexione os cotovelos descendo o peso atrás da cabeça sentindo o alongamento da cabeça longa do tríceps.',
+    description: '',
     isPredefined: true
   },
   {
@@ -243,8 +249,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Pulley Corda',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-pulley-corda.png',
-    gifUrl: '/gifs/triceps-pulley-corda.gif',
-    description: 'Posicione-se em frente à polia alta segurando a corda. Mantenha os cotovelos colados ao tronco. Puxe a corda para baixo estendendo os braços e, no final do movimento, abra as pontas da corda para fora para máxima contração. Retorne até formar 90° nos cotovelos.',
+    description: '',
     isPredefined: true
   },
   {
@@ -252,8 +257,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Barra no Cross',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-Barra-Cross.png',
-    gifUrl: '/gifs/triceps-barra-cross.gif',
-    description: 'Segure a barra reta ou em V conectada à polia alta. Mantenha os cotovelos fixos ao lado do corpo e o tronco levemente inclinado à frente. Empurre a barra para baixo até estender totalmente os braços. Retorne lentamente até a altura do peito.',
+    description: '',
     isPredefined: true
   },
   {
@@ -261,8 +265,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Pulley',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-pulley.png',
-    gifUrl: '/gifs/triceps-pulley.gif',
-    description: 'Segure a barra reta na polia alta com pegada pronada na largura dos ombros. Mantenha os cotovelos colados ao corpo. Pressione para baixo até estender os cotovelos e sinta a contração do tríceps. Suba controladamente.',
+    description: '',
     isPredefined: true
   },
   {
@@ -270,8 +273,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Tríceps Testa',
     muscleGroup: 'Tríceps',
     thumbnailUrl: '/images/exercises/Triceps-testa.png',
-    gifUrl: '/gifs/triceps-testa.gif',
-    description: 'Deite no banco segurando a barra W com os braços estendidos sobre o peito. Flexione apenas os cotovelos trazendo a barra em direção à testa/topo da cabeça. Estenda os cotovelos de volta à posição inicial mantendo os braços firmes.',
+    description: '',
     isPredefined: true
   },
 
@@ -280,16 +282,14 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_rosca_inversa',
     nome: 'Rosca Inversa',
     muscleGroup: 'Antebraço',
-    gifUrl: '/gifs/rosca-inversa.gif',
-    description: 'Em pé com a coluna ereta, segure a barra com pegada pronada (palmas para baixo). Flexione os cotovelos elevando a barra, trabalhando o antebraço e braquiorradial. Mantenha os punhos firmes e alinhados.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_flexao_punho',
     nome: 'Flexão de Punho',
     muscleGroup: 'Antebraço',
-    gifUrl: '/gifs/flexao-punho.gif',
-    description: 'Apoie os antebraços sobre um banco ou sobre as coxas com as palmas voltadas para cima e punhos projetados para fora. Flexione os punhos levantando o peso e desça devagar permitindo que o peso role ligeiramente nos dedos.',
+    description: '',
     isPredefined: true
   },
 
@@ -298,16 +298,14 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_hip_thrust',
     nome: 'Elevação Pélvica',
     muscleGroup: 'Glúteos',
-    gifUrl: '/gifs/elevacao-pelvica.gif',
-    description: 'Apoie a parte média/superior das escápulas na borda de um banco acolchoado. Posicione a barra acolchoada sobre o quadril. Pés firmes no chão na largura dos ombros. Empurre pelos calcanhares elevando o quadril até formar uma linha reta entre ombros e joelhos, contraindo os glúteos no topo.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_cable_kickback',
     nome: 'Coice na Polia',
     muscleGroup: 'Glúteos',
-    gifUrl: '/gifs/coice-polia.gif',
-    description: 'Prenda a tornozeleira na polia baixa. Mantenha o tronco inclinado à frente e apoie-se no aparelho. Estenda a perna para trás e ligeiramente para fora, contraindo o glúteo no topo da extensão. Retorne controlando o movimento.',
+    description: '',
     isPredefined: true
   },
 
@@ -316,18 +314,18 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_mesa_flexora',
     nome: 'Mesa Flexora',
     muscleGroup: 'Posterior de Coxa',
-    thumbnailUrl: '/images/exercises/Mesa-Flexora.png',
-    gifUrl: '/gifs/mesa-flexora.gif',
-    description: 'Deite de bruços no aparelho com o rolo posicionado logo abaixo das panturrilhas, próximo ao tendão de Aquiles. Segure firme nos apoios laterais para manter a pelve colada no banco. Puxe os calcanhares em direção aos glúteos, contraindo fortemente os posteriores. Desça devagar resistindo ao peso.',
+    thumbnailUrl: '/gifs/Mesa-flexora.gif',
+    gifUrl: '/gifs/Mesa-flexora.gif',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_cadeira_flexora',
     nome: 'Cadeira Flexora',
     muscleGroup: 'Posterior de Coxa',
-    thumbnailUrl: '/images/exercises/Cadeira-Flexora.png',
-    gifUrl: '/gifs/cadeira-flexora.gif',
-    description: 'Sente-se com as costas bem apoiadas no encosto. Ajuste a almofada superior para travar as coxas com firmeza e posicione o rolo atrás dos tornozelos. Flexione os joelhos puxando os calcanhares para baixo e para trás até a contração máxima. Retorne controlando o movimento.',
+    thumbnailUrl: '/gifs/Cadeira-flexora.gif',
+    gifUrl: '/gifs/Cadeira-flexora.gif',
+    description: '',
     isPredefined: true
   },
   {
@@ -335,8 +333,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Stiff',
     muscleGroup: 'Posterior de Coxa',
     thumbnailUrl: '/images/exercises/Stiff.png',
-    gifUrl: '/gifs/stiff.gif',
-    description: 'Em pé, pés na largura do quadril, segure a barra à frente das coxas. Mantenha os joelhos semi-flexionados (em ângulo fixo) e a coluna lombar neutra. Empurre o quadril para trás enquanto desce a barra rente às pernas até sentir um forte alongamento nos posteriores de coxa. Suba contraindo os glúteos e posteriores.',
+    description: '',
     isPredefined: true
   },
 
@@ -346,8 +343,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Cadeira Adutora',
     muscleGroup: 'Quadril',
     thumbnailUrl: '/images/exercises/Cadeira-Adutora.png',
-    gifUrl: '/gifs/cadeira-adutora.gif',
-    description: 'Sente-se no aparelho com a coluna bem apoiada. Posicione as pernas nos apoios com abertura adequada. Feche as pernas aproximando os apoios com força controlada, focando na musculatura adutora da coxa. Retorne lentamente sentindo o alongamento.',
+    description: '',
     isPredefined: true
   },
   {
@@ -355,8 +351,7 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     nome: 'Cadeira Abdutora',
     muscleGroup: 'Quadril',
     thumbnailUrl: '/images/exercises/Cadeira-Abdutora.png',
-    gifUrl: '/gifs/cadeira-abdutora.gif',
-    description: 'Sente-se no aparelho com as costas apoiadas (ou ligeiramente inclinado à frente para focar no glúteo médio). Afaste as pernas empurrando os apoios para fora até a contração máxima lateral dos glúteos. Retorne devagar sem bater os pesos.',
+    description: '',
     isPredefined: true
   },
 
@@ -365,16 +360,14 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_standing_calf',
     nome: 'Gêmeos em Pé',
     muscleGroup: 'Panturrilha/Canela',
-    gifUrl: '/gifs/gemeos-em-pe.gif',
-    description: 'Apoie a ponta dos pés na borda da plataforma com os joelhos estendidos (mas sem hiperextensão). Desça os calcanhares ao máximo sentindo o alongamento da panturrilha. Eleve-se o mais alto possível sobre os dedos, segurando 1 segundo no topo antes de descer.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_seated_calf',
     nome: 'Gêmeos Sentado',
     muscleGroup: 'Panturrilha/Canela',
-    gifUrl: '/gifs/gemeos-sentado.gif',
-    description: 'Sente-se no aparelho com o acolchoado ajustado sobre as coxas, próximo aos joelhos. Pontas dos pés na plataforma. Desça os calcanhares para máximo alongamento do sóleo e suba empurrando a plataforma com a ponta dos pés até a contração total.',
+    description: '',
     isPredefined: true
   },
 
@@ -383,16 +376,14 @@ export const PREDEFINED_EXERCISES: PredefinedExercise[] = [
     id: 'pre_abdominal_infra',
     nome: 'Abdominal Infra',
     muscleGroup: 'Abdômen',
-    gifUrl: '/gifs/abdominal-infra.gif',
-    description: 'Deite de costas no colchonete ou apoie-se nas barras paralelas. Flexione os joelhos ou mantenha as pernas semi-estendidas. Eleve a pelve em direção ao tórax, contraindo a porção inferior do abdômen. Evite usar o balanço das pernas para executar o movimento.',
+    description: '',
     isPredefined: true
   },
   {
     id: 'pre_prancha_isometrica',
     nome: 'Prancha Isométrica',
     muscleGroup: 'Abdômen',
-    gifUrl: '/gifs/prancha-isometrica.gif',
-    description: 'Apoie os antebraços e as pontas dos pés no chão. Mantenha o corpo alinhado da cabeça aos calcanhares em linha reta. Contraia firmemente o abdômen e os glúteos, impedindo que o quadril caia ou se eleve demais. Respire de forma constante durante a sustentação.',
+    description: '',
     isPredefined: true
   }
 ];
@@ -423,15 +414,24 @@ export function getExerciseGuide(identifier: { id?: string; name?: string }): {
   muscleGroup?: string;
 } {
   const cleanName = identifier.name?.trim().toLowerCase();
-  const ex = PREDEFINED_EXERCISES.find(
-    (e) =>
-      (identifier.id && e.id === identifier.id) ||
-      (cleanName && e.nome.toLowerCase() === cleanName)
-  );
+  const ex = PREDEFINED_EXERCISES.find((e) => {
+    if (identifier.id && e.id === identifier.id) return true;
+    if (!cleanName) return false;
+    const eName = e.nome.toLowerCase();
+    if (eName === cleanName) return true;
+
+    // Aliases amigáveis para nomes alternativos
+    if (cleanName === 'supino reto' && e.id === 'pre_supino_reto_barra') return true;
+    if (cleanName === 'leg press' && e.id === 'pre_leg_press_45') return true;
+    if (cleanName.includes('crucifixo') && cleanName.includes('inclinado') && e.id === 'pre_crucifixo_halteres_inclinado') return true;
+    if (cleanName.includes('supino') && cleanName.includes('alavanca') && !cleanName.includes('inclinado') && e.id === 'pre_supino_com_alavanca') return true;
+    if (cleanName.includes('supino') && cleanName.includes('alavanca') && cleanName.includes('inclinado') && e.id === 'pre_supino_inclinado_na_alavanca') return true;
+    return false;
+  });
 
   return {
     gifUrl: ex?.gifUrl,
-    description: ex?.description,
+    description: ex?.description || '',
     thumbnailUrl: ex?.thumbnailUrl,
     nome: ex?.nome,
     muscleGroup: ex?.muscleGroup

@@ -671,8 +671,12 @@ function ActiveWorkoutComponent() {
               {/* Exercise Header */}
               <div className="flex items-center justify-between border-b border-border/50 pb-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-slate-card-light flex items-center justify-center text-lime-neon font-bold text-sm border border-border shrink-0">
-                    {exIndex + 1}
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-lime-neon font-bold text-xs border border-border shrink-0 overflow-hidden relative">
+                    {ex.thumbnailUrl ? (
+                      <img src={ex.thumbnailUrl} alt={ex.nomeExercicio} className="w-full h-full object-cover" />
+                    ) : (
+                      exIndex + 1
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-sm font-bold text-slate-100 leading-snug truncate">{ex.nomeExercicio}</h3>
@@ -1168,22 +1172,20 @@ function ActiveWorkoutComponent() {
               )}
             </div>
 
-            {/* Description / Instructions */}
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
-              <div className="flex items-center gap-1.5 text-slate-300">
-                <Info className="h-3.5 w-3.5 text-lime-neon shrink-0" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
-                  Como Executar:
-                </span>
-              </div>
-              <div className="bg-slate-card-light/40 border border-border/40 p-3 rounded-2xl text-xs text-slate-300 leading-relaxed">
-                {exerciseGuideModal.description || (
-                  <span className="text-slate-500 italic">
-                    As instruções detalhadas de postura e execução para este exercício serão adicionadas em breve.
+            {/* Description / Instructions (only shown if provided) */}
+            {exerciseGuideModal.description ? (
+              <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                <div className="flex items-center gap-1.5 text-slate-300">
+                  <Info className="h-3.5 w-3.5 text-lime-neon shrink-0" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+                    Como Executar:
                   </span>
-                )}
+                </div>
+                <div className="bg-slate-card-light/40 border border-border/40 p-3 rounded-2xl text-xs text-slate-300 leading-relaxed">
+                  {exerciseGuideModal.description}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Close Button */}
             <div className="border-t border-border/50 pt-3">
