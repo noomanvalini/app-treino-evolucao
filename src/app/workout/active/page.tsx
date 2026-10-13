@@ -6,10 +6,10 @@ import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/f
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import RestTimerModal from '@/components/RestTimerModal';
-import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
+import { PREDEFINED_EXERCISES, MUSCLE_GROUPS, getExerciseGuide } from '@/data/exercises';
 import { 
   Play, Pause, Plus, Trash2, Check, ArrowLeft, Dumbbell, 
-  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2
+  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2, Info
 } from 'lucide-react';
 
 interface WorkoutSet {
@@ -27,6 +27,8 @@ interface ActiveExercise {
   nomeExercicio: string;
   muscleGroup: string;
   thumbnailUrl?: string;
+  gifUrl?: string;
+  description?: string;
   sets: WorkoutSet[];
 }
 
@@ -35,6 +37,8 @@ interface AvailableExercise {
   nomeExercicio: string;
   muscleGroup: string;
   thumbnailUrl?: string;
+  gifUrl?: string;
+  description?: string;
 }
 
 function ActiveWorkoutComponent() {
@@ -74,6 +78,37 @@ function ActiveWorkoutComponent() {
     exerciseCount: number;
   } | null>(null);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+
+  // Modal State: Exercise Demonstration Guide (GIF + Descrição)
+  const [exerciseGuideModal, setExerciseGuideModal] = useState<{
+    nomeExercicio: string;
+    muscleGroup: string;
+    gifUrl?: string;
+    thumbnailUrl?: string;
+    description?: string;
+  } | null>(null);
+
+  const handleOpenExerciseGuide = (exercise: {
+    id?: string;
+    exerciseId?: string;
+    nomeExercicio: string;
+    muscleGroup?: string;
+    gifUrl?: string;
+    thumbnailUrl?: string;
+    description?: string;
+  }) => {
+    const guide = getExerciseGuide({ 
+      id: exercise.exerciseId || exercise.id, 
+      name: exercise.nomeExercicio 
+    });
+    setExerciseGuideModal({
+      nomeExercicio: exercise.nomeExercicio,
+      muscleGroup: exercise.muscleGroup || guide.muscleGroup || '',
+      gifUrl: exercise.gifUrl || guide.gifUrl,
+      thumbnailUrl: exercise.thumbnailUrl || guide.thumbnailUrl,
+      description: exercise.description || guide.description
+    });
+  };
 
   // Timer Interval Reference
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -152,11 +187,14 @@ function ActiveWorkoutComponent() {
         const customList: AvailableExercise[] = [];
         exSnap.forEach((doc) => {
           const d = doc.data();
+          const guide = getExerciseGuide({ id: doc.id, name: d.nomeExercicio });
           customList.push({
             id: doc.id,
             nomeExercicio: d.nomeExercicio,
             muscleGroup: d.muscleGroup,
-            thumbnailUrl: d.thumbnailUrl
+            thumbnailUrl: d.thumbnailUrl || guide.thumbnailUrl,
+            gifUrl: d.gifUrl || guide.gifUrl,
+            description: d.description || guide.description
           });
         });
 
@@ -165,7 +203,9 @@ function ActiveWorkoutComponent() {
           id: pe.id,
           nomeExercicio: pe.nome,
           muscleGroup: pe.muscleGroup,
-          thumbnailUrl: pe.thumbnailUrl
+          thumbnailUrl: pe.thumbnailUrl,
+          gifUrl: pe.gifUrl,
+          description: pe.description
         }));
 
         // Combine and deduplicate
@@ -264,13 +304,16 @@ function ActiveWorkoutComponent() {
   const handleAddExerciseToWorkout = (exercise: AvailableExercise) => {
     const past = latestLogsCache[exercise.id];
     const prevRef = past ? `${past.cargaKg}kg × ${past.reps}` : undefined;
+    const guide = getExerciseGuide({ id: exercise.id, name: exercise.nomeExercicio });
 
     const newExercise: ActiveExercise = {
       id: `ex_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       exerciseId: exercise.id,
       nomeExercicio: exercise.nomeExercicio,
       muscleGroup: exercise.muscleGroup,
-      thumbnailUrl: exercise.thumbnailUrl,
+      thumbnailUrl: exercise.thumbnailUrl || guide.thumbnailUrl,
+      gifUrl: exercise.gifUrl || guide.gifUrl,
+      description: exercise.description || guide.description,
       sets: [
         {
           id: `set_1_${Date.now()}`,
@@ -627,25 +670,38 @@ function ActiveWorkoutComponent() {
             >
               {/* Exercise Header */}
               <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-slate-card-light flex items-center justify-center text-lime-neon font-bold text-sm border border-border">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-xl bg-slate-card-light flex items-center justify-center text-lime-neon font-bold text-sm border border-border shrink-0">
                     {exIndex + 1}
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-100 leading-snug">{ex.nomeExercicio}</h3>
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-slate-100 leading-snug truncate">{ex.nomeExercicio}</h3>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
                       {ex.muscleGroup} • {completedInExercise}/{ex.sets.length} séries
                     </span>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleRemoveExercise(ex.id)}
-                  className="p-2 text-slate-500 hover:text-danger rounded-xl transition-colors"
-                  title="Remover exercício"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenExerciseGuide(ex)}
+                    className="p-2 rounded-xl bg-lime-neon/10 hover:bg-lime-neon text-lime-neon hover:text-slate-900 transition-colors border border-lime-neon/20 hover:border-lime-neon shadow-sm"
+                    title="Ver execução (GIF e instruções)"
+                    aria-label="Ver demonstração do exercício"
+                  >
+                    <Play className="h-4 w-4 fill-current" />
+                  </button>
+
+                  <button
+                    onClick={() => handleRemoveExercise(ex.id)}
+                    className="p-2 text-slate-500 hover:text-danger rounded-xl transition-colors"
+                    title="Remover exercício"
+                    aria-label="Remover exercício"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Sets Table */}
@@ -892,21 +948,57 @@ function ActiveWorkoutComponent() {
                   .map((ex) => {
                     const past = latestLogsCache[ex.id];
                     return (
-                      <button
+                      <div
                         key={ex.id}
-                        onClick={() => handleAddExerciseToWorkout(ex)}
-                        className="w-full p-3 rounded-2xl bg-slate-card-light/50 hover:bg-slate-card-light border border-border/50 hover:border-lime-neon/40 text-left flex items-center justify-between transition-all group"
+                        className="w-full p-2.5 rounded-2xl bg-slate-card-light/50 hover:bg-slate-card-light border border-border/50 hover:border-lime-neon/40 flex items-center justify-between transition-all group"
                       >
-                        <div>
-                          <p className="text-xs font-bold text-slate-100 group-hover:text-lime-neon transition-colors">
-                            {ex.nomeExercicio}
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {ex.muscleGroup} {past ? `• Último: ${past.cargaKg}kg × ${past.reps}` : ''}
-                          </p>
+                        <button
+                          type="button"
+                          onClick={() => handleAddExerciseToWorkout(ex)}
+                          className="flex-1 flex items-center gap-3 text-left min-w-0 pr-2"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-slate-900 border border-border/60 flex items-center justify-center shrink-0 overflow-hidden relative">
+                            {ex.thumbnailUrl ? (
+                              <img src={ex.thumbnailUrl} alt={ex.nomeExercicio} className="w-full h-full object-cover" />
+                            ) : (
+                              <Dumbbell className="h-5 w-5 text-slate-500" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-100 group-hover:text-lime-neon transition-colors truncate">
+                              {ex.nomeExercicio}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                              {ex.muscleGroup} {past ? `• Último: ${past.cargaKg}kg × ${past.reps}` : ''}
+                            </p>
+                          </div>
+                        </button>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenExerciseGuide(ex);
+                            }}
+                            className="p-2 rounded-xl bg-lime-neon/10 hover:bg-lime-neon text-lime-neon hover:text-slate-900 transition-colors border border-lime-neon/20 hover:border-lime-neon shadow-sm"
+                            title="Ver execução (GIF e instruções)"
+                            aria-label="Ver demonstração do exercício"
+                          >
+                            <Play className="h-4 w-4 fill-current" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleAddExerciseToWorkout(ex)}
+                            className="p-2 rounded-xl bg-slate-card hover:bg-lime-neon text-slate-400 hover:text-slate-900 border border-border hover:border-lime-neon transition-colors"
+                            title="Adicionar ao treino"
+                            aria-label="Adicionar exercício ao treino"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
                         </div>
-                        <Plus className="h-4 w-4 text-slate-400 group-hover:text-lime-neon transition-colors" />
-                      </button>
+                      </div>
                     );
                   })
               )}
@@ -1003,6 +1095,104 @@ function ActiveWorkoutComponent() {
                 className="w-full py-2.5 rounded-2xl bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-bold text-xs border border-border transition-colors"
               >
                 Ver Histórico de Cargas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Exercise Demonstration (GIF + Descrição) */}
+      {exerciseGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-3xl p-5 shadow-2xl w-full max-w-sm flex flex-col max-h-[90vh] space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-border/50 pb-3">
+              <div className="space-y-0.5 pr-2 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="p-1 rounded-lg bg-lime-neon/10 text-lime-neon">
+                    <Play className="h-4 w-4 fill-current" />
+                  </div>
+                  <h3 className="font-bold text-slate-100 text-sm truncate">
+                    {exerciseGuideModal.nomeExercicio}
+                  </h3>
+                </div>
+                <span className="text-[10px] font-semibold text-lime-neon uppercase tracking-wider block">
+                  {exerciseGuideModal.muscleGroup}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExerciseGuideModal(null)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-card-light transition-colors"
+                aria-label="Fechar modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Media / GIF Container */}
+            <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 border border-border/80 flex items-center justify-center min-h-[200px] max-h-72">
+              {exerciseGuideModal.gifUrl ? (
+                <img
+                  src={exerciseGuideModal.gifUrl}
+                  alt={`Execução de ${exerciseGuideModal.nomeExercicio}`}
+                  className="w-full h-full object-contain max-h-72"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (exerciseGuideModal.thumbnailUrl && target.src !== exerciseGuideModal.thumbnailUrl) {
+                      target.src = exerciseGuideModal.thumbnailUrl;
+                    }
+                  }}
+                />
+              ) : exerciseGuideModal.thumbnailUrl ? (
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+                  <img
+                    src={exerciseGuideModal.thumbnailUrl}
+                    alt={exerciseGuideModal.nomeExercicio}
+                    className="w-full h-44 object-contain"
+                  />
+                  <span className="mt-2 text-[10px] font-bold text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-full border border-border/60">
+                    Prévia Estática (GIF em breve)
+                  </span>
+                </div>
+              ) : (
+                <div className="p-8 text-center space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-lime-neon/10 text-lime-neon flex items-center justify-center mx-auto border border-lime-neon/20">
+                    <Dumbbell className="h-6 w-6" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-300">Animação em breve</p>
+                  <p className="text-[10px] text-slate-500">
+                    O GIF demonstrativo deste exercício será disponibilizado em breve.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Description / Instructions */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+              <div className="flex items-center gap-1.5 text-slate-300">
+                <Info className="h-3.5 w-3.5 text-lime-neon shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-200">
+                  Como Executar:
+                </span>
+              </div>
+              <div className="bg-slate-card-light/40 border border-border/40 p-3 rounded-2xl text-xs text-slate-300 leading-relaxed">
+                {exerciseGuideModal.description || (
+                  <span className="text-slate-500 italic">
+                    As instruções detalhadas de postura e execução para este exercício serão adicionadas em breve.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <div className="border-t border-border/50 pt-3">
+              <button
+                type="button"
+                onClick={() => setExerciseGuideModal(null)}
+                className="w-full py-3 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold text-xs shadow-lg shadow-lime-neon/20 transition-all active:scale-95"
+              >
+                Entendido
               </button>
             </div>
           </div>
