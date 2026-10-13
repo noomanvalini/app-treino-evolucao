@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -9,7 +9,8 @@ import BottomNavigation from '@/components/BottomNavigation';
 import InteractiveGainChart from '@/components/InteractiveGainChart';
 import { 
   Dumbbell, Plus, History, Calendar, Calculator, TrendingUp, TrendingDown,
-  ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle, Pencil, Trash2
+  ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle, Pencil, Trash2,
+  ChevronRight, Award, Sparkles
 } from 'lucide-react';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
@@ -22,6 +23,14 @@ interface Exercise {
   isPredefined?: boolean;
 }
 
+interface LogSetDetail {
+  setNumber?: number;
+  cargaKg: number;
+  reps: number;
+  oneRmCalculado: number;
+  isPeak?: boolean;
+}
+
 interface StrengthLog {
   id: string;
   exerciseId: string;
@@ -29,6 +38,27 @@ interface StrengthLog {
   reps: number;
   oneRmCalculado: number;
   data: any; // Timestamp or date string
+  sessionId?: string;
+  setNumber?: number;
+  allSets?: LogSetDetail[];
+}
+
+interface SessionRowData {
+  id: string;
+  dateShort: string;
+  dateFull: string;
+  peakLog: StrengthLog;
+  sets: LogSetDetail[];
+  delta: number | null;
+  exerciseName: string;
+}
+
+interface SessionModalData {
+  exerciseName: string;
+  dateFormatted: string;
+  peakLog: StrengthLog;
+  sets: LogSetDetail[];
+  delta?: number | null;
 }
 
 function StrengthContent() {
@@ -85,6 +115,11 @@ function StrengthContent() {
   // Delete Log Confirmation
   const [deleteLogConfirmId, setDeleteLogConfirmId] = useState<string | null>(null);
   const [deletingLog, setDeletingLog] = useState(false);
+
+  // Session details pop-up modal state
+  const [sessionDetailsModal, setSessionDetailsModal] = useState<SessionModalData | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressTriggeredRef = useRef<boolean>(false);
 
   // Helper for hidden/deleted predefined exercises per user
   const getHiddenExerciseIds = (): string[] => {
@@ -239,7 +274,10 @@ function StrengthContent() {
             cargaKg: d.cargaKg,
             reps: d.reps,
             oneRmCalculado: d.oneRmCalculado,
-            data: d.data
+            data: d.data,
+            sessionId: d.sessionId,
+            setNumber: d.setNumber,
+            allSets: d.allSets
           });
         }
       });
@@ -269,6 +307,68 @@ function StrengthContent() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  // Helper: format date dd/mm
+  const formatDateShort = (rawDate: any): string => {
+    if (!rawDate) return '';
+    const d = rawDate?.seconds ? new Date(rawDate.seconds * 1000) : new Date(rawDate);
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}`;
+  };
+
+  // Helper: format date dd/mm/aaaa
+  const formatDateFull = (rawDate: any): string => {
+    if (!rawDate) return '';
+    const d = rawDate?.seconds ? new Date(rawDate.seconds * 1000) : new Date(rawDate);
+    if (isNaN(d.getTime())) return '';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  // Touch and click handlers for session details modal (supports 450ms long press and tap/click)
+  const handleSessionTouchStart = (session: SessionRowData, exerciseName: string) => {
+    isLongPressTriggeredRef.current = false;
+    longPressTimeoutRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(40);
+        } catch (_) {}
+      }
+      setSessionDetailsModal({
+        exerciseName,
+        dateFormatted: session.dateFull,
+        peakLog: session.peakLog,
+        sets: session.sets,
+        delta: session.delta
+      });
+    }, 450);
+  };
+
+  const handleSessionTouchEnd = () => {
+    if (longPressTimeoutRef.current) {
+      clearTimeout(longPressTimeoutRef.current);
+      longPressTimeoutRef.current = null;
+    }
+  };
+
+  const handleSessionClick = (session: SessionRowData, exerciseName: string) => {
+    if (isLongPressTriggeredRef.current) {
+      isLongPressTriggeredRef.current = false;
+      return;
+    }
+    setSessionDetailsModal({
+      exerciseName,
+      dateFormatted: session.dateFull,
+      peakLog: session.peakLog,
+      sets: session.sets,
+      delta: session.delta
+    });
+  };
+
   // Process exercise calculations: latest logs, 1RM, delta, session peaks
   const getExerciseMetrics = (exerciseId: string) => {
     // 1. All raw logs for this exercise, sorted chronologically
@@ -286,14 +386,15 @@ function StrengthContent() {
         delta: null,
         history: [],
         peakHistory: [] as Array<{ date: Date; value: number; rawWeight: number; reps: number; label: string }>,
-        peakLogIds: new Set<string>()
+        peakLogIds: new Set<string>(),
+        sessionRows: [] as SessionRowData[]
       };
     }
 
-    // 2. Group logs by workout session (date: YYYY-MM-DD)
+    // 2. Group logs by workout session (date: YYYY-MM-DD or sessionId)
     const sessionsMap: Record<string, StrengthLog[]> = {};
     exerciseLogs.forEach((log) => {
-      const dateKey = getSessionDateKey(log.data) || log.id;
+      const dateKey = log.sessionId || getSessionDateKey(log.data) || log.id;
       if (!sessionsMap[dateKey]) sessionsMap[dateKey] = [];
       sessionsMap[dateKey].push(log);
     });
@@ -308,6 +409,7 @@ function StrengthContent() {
       reps: number;
       label: string;
       peakLog: StrengthLog;
+      allSets: LogSetDetail[];
     }> = [];
 
     Object.entries(sessionsMap).forEach(([dateKey, sessionSets]) => {
@@ -323,6 +425,22 @@ function StrengthContent() {
       peakLogIds.add(peak.id);
 
       const d = peak.data?.seconds ? new Date(peak.data.seconds * 1000) : new Date(peak.data);
+
+      // Determine all sets for this session (from peak.allSets or from grouped individual logs)
+      let allSetsList: LogSetDetail[] = [];
+      if (peak.allSets && Array.isArray(peak.allSets) && peak.allSets.length > 0) {
+        allSetsList = peak.allSets;
+      } else {
+        allSetsList = sessionSets.map((s, idx) => ({
+          setNumber: s.setNumber ?? (idx + 1),
+          cargaKg: s.cargaKg,
+          reps: s.reps,
+          oneRmCalculado: s.oneRmCalculado,
+          isPeak: s.id === peak.id
+        }));
+        allSetsList.sort((a, b) => (a.setNumber ?? 0) - (b.setNumber ?? 0));
+      }
+
       sessionPeaks.push({
         date: d,
         dateKey,
@@ -330,7 +448,8 @@ function StrengthContent() {
         rawWeight: peak.cargaKg,
         reps: peak.reps,
         label: `RP: ${peak.cargaKg}kg × ${peak.reps}`,
-        peakLog: peak
+        peakLog: peak,
+        allSets: allSetsList
       });
     });
 
@@ -349,12 +468,35 @@ function StrengthContent() {
       }
     }
 
+    // 5. Build sessionRows (newest first) for history list
+    const sessionRows: SessionRowData[] = [];
+    for (let i = sessionPeaks.length - 1; i >= 0; i--) {
+      const cur = sessionPeaks[i];
+      let rowDelta: number | null = null;
+      if (i > 0) {
+        const prev = sessionPeaks[i - 1];
+        if (prev.value > 0) {
+          rowDelta = ((cur.value - prev.value) / prev.value) * 100;
+        }
+      }
+      sessionRows.push({
+        id: cur.peakLog.id || cur.dateKey,
+        dateShort: formatDateShort(cur.date),
+        dateFull: formatDateFull(cur.date),
+        peakLog: cur.peakLog,
+        sets: cur.allSets,
+        delta: rowDelta,
+        exerciseName: ''
+      });
+    }
+
     return {
       latest: latestPeak.peakLog, // Peak set of latest workout session
       delta,
       history: [...exerciseLogs].reverse(), // All individual sets, newest first (for management list)
       peakHistory: sessionPeaks, // ONLY peak sets per session, chronologically sorted (for chart)
-      peakLogIds // Set of IDs that are peak sets of their respective sessions
+      peakLogIds, // Set of IDs that are peak sets of their respective sessions
+      sessionRows // Clean session rows (newest first)
     };
   };
 
@@ -790,7 +932,7 @@ function StrengthContent() {
         ) : (
           <div className="space-y-3">
             {exercises.map((exercise) => {
-              const { latest, delta, history, peakHistory, peakLogIds } = getExerciseMetrics(exercise.id);
+              const { latest, delta, history, peakHistory, peakLogIds, sessionRows } = getExerciseMetrics(exercise.id);
               const isExpanded = expandedExercise === exercise.id;
 
               return (
@@ -894,20 +1036,20 @@ function StrengthContent() {
                   </div>
 
                   {/* Accordion Trigger */}
-                  {history.length > 0 && (
+                  {sessionRows.length > 0 && (
                     <button
                       onClick={() => setExpandedExercise(isExpanded ? null : exercise.id)}
                       className="w-full bg-slate-card-light/30 border-t border-border/30 px-4 py-2 flex items-center justify-between text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
                     >
                       <span className="flex items-center gap-1">
-                        <History className="h-3 w-3" /> Gráfico & Histórico ({history.length})
+                        <History className="h-3 w-3" /> Gráfico & Histórico ({sessionRows.length})
                       </span>
                       {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
                   )}
 
                   {/* Expanded History List */}
-                  {isExpanded && history.length > 0 && (
+                  {isExpanded && sessionRows.length > 0 && (
                     <div className="bg-slate-card-light/10 border-t border-border/40 p-3 space-y-3">
                       {/* Interactive Bezier Progression Chart (Shows only Session Peak RPs) */}
                       <InteractiveGainChart
@@ -918,73 +1060,58 @@ function StrengthContent() {
                         unit="kg"
                       />
 
-                      <div className="max-h-44 overflow-y-auto space-y-2 pr-1 pt-1">
-                      {history.map((logItem, index) => {
-                        const isPrev = index < history.length - 1;
-                        let itemDelta = null;
-                        if (isPrev) {
-                          const prev1RM = history[index + 1].oneRmCalculado;
-                          if (prev1RM > 0) {
-                            itemDelta = ((logItem.oneRmCalculado - prev1RM) / prev1RM) * 100;
-                          }
-                        }
-                        const isPeak = peakLogIds.has(logItem.id);
+                      <div className="flex items-center justify-between px-1 pt-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          Treinos Registrados ({sessionRows.length})
+                        </span>
+                        <span className="text-[9px] text-slate-500">
+                          Toque para ver todas as séries
+                        </span>
+                      </div>
 
-                        return (
+                      <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1 pt-0.5">
+                        {sessionRows.map((session) => (
                           <div
-                            key={logItem.id}
-                            className="flex items-center justify-between text-xs py-2 border-b border-border/30 last:border-b-0 gap-2"
+                            key={session.id}
+                            onTouchStart={() => handleSessionTouchStart(session, exercise.nomeExercicio)}
+                            onTouchEnd={handleSessionTouchEnd}
+                            onTouchMove={handleSessionTouchEnd}
+                            onClick={() => handleSessionClick(session, exercise.nomeExercicio)}
+                            className="group flex items-center justify-between p-2.5 rounded-xl bg-slate-card/60 hover:bg-slate-card-light/60 active:bg-slate-card-light border border-border/40 hover:border-lime-neon/40 transition-all cursor-pointer select-none"
+                            title="Toque ou mantenha pressionado para ver detalhes de todas as repetições"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Calendar className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
-                              <span className="text-slate-300 whitespace-nowrap">
-                                {logItem.data?.seconds
-                                  ? new Date(logItem.data.seconds * 1000).toLocaleDateString('pt-BR')
-                                  : new Date(logItem.data).toLocaleDateString('pt-BR')}
+                            {/* Left: Date (dd/mm) and PR metrics */}
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span className="text-xs font-mono font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-md border border-border/50 shrink-0">
+                                {session.dateShort}
                               </span>
-                              <span className="font-bold text-slate-100 ml-1 whitespace-nowrap">
-                                {logItem.cargaKg}kg x {logItem.reps} reps
-                              </span>
-                              {isPeak && (
-                                <span className="text-[9px] font-extrabold bg-lime-neon/15 text-lime-neon border border-lime-neon/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex-shrink-0">
-                                  RP do dia
+                              <div className="flex items-baseline gap-1.5 truncate">
+                                <span className="text-xs font-bold text-slate-100 truncate">
+                                  {session.peakLog.cargaKg}kg × {session.peakLog.reps}
                                 </span>
-                              )}
+                                <span className="text-[11px] font-black text-lime-neon shrink-0">
+                                  PR {session.peakLog.oneRmCalculado}kg
+                                </span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 text-right flex-shrink-0">
-                              <div>
-                                <span className="text-[9px] text-slate-500 mr-1">1RM:</span>
-                                <span className="font-bold text-slate-300">{logItem.oneRmCalculado}kg</span>
-                              </div>
-                              {itemDelta !== null && (
-                                <span className={`font-semibold text-[10px] ${itemDelta >= 0 ? 'text-success' : 'text-danger'}`}>
-                                  {itemDelta >= 0 ? `+${itemDelta.toFixed(1)}%` : `${itemDelta.toFixed(1)}%`}
+
+                            {/* Right: Delta badge + Chevron */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {session.delta !== null && (
+                                <span
+                                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                    session.delta >= 0
+                                      ? 'bg-success/15 text-success border border-success/20'
+                                      : 'bg-danger/15 text-danger border border-danger/20'
+                                  }`}
+                                >
+                                  {session.delta >= 0 ? `▲ +${session.delta.toFixed(1)}%` : `▼ ${session.delta.toFixed(1)}%`}
                                 </span>
                               )}
-                              <div className="flex items-center gap-0.5 ml-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenEditLogModal(logItem)}
-                                  className="p-1 rounded text-slate-400 hover:text-lime-neon hover:bg-slate-card transition-colors"
-                                  title="Editar carga"
-                                  aria-label="Editar carga"
-                                >
-                                  <Pencil className="h-3 w-3" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteLogConfirmId(logItem.id)}
-                                  className="p-1 rounded text-slate-400 hover:text-danger hover:bg-slate-card transition-colors"
-                                  title="Excluir carga"
-                                  aria-label="Excluir carga"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </button>
-                              </div>
+                              <ChevronRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-lime-neon group-hover:translate-x-0.5 transition-all" />
                             </div>
                           </div>
-                        );
-                      })}
+                        ))}
                       </div>
                     </div>
                   )}
@@ -1480,6 +1607,155 @@ function StrengthContent() {
                 className="flex-1 bg-danger hover:bg-danger/80 text-white font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
               >
                 {deletingLog ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Session Details (Pop-up with all sets and peak PR highlighted) */}
+      {sessionDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
+          <div className="bg-slate-card border border-border rounded-2xl w-full max-w-sm p-5 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-border/50 pb-3">
+              <div className="space-y-0.5 pr-2 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <Award className="h-4 w-4 text-lime-neon shrink-0" />
+                  <h3 className="font-bold text-slate-100 text-sm truncate">
+                    {sessionDetailsModal.exerciseName}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 flex items-center gap-1 font-mono">
+                  <Calendar className="h-3 w-3 text-slate-500 shrink-0" />
+                  {sessionDetailsModal.dateFormatted}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSessionDetailsModal(null)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-lg hover:bg-slate-card-light transition-colors"
+                aria-label="Fechar detalhes"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Peak PR Highlight Banner */}
+            <div className="bg-gradient-to-r from-lime-neon/15 via-lime-neon/10 to-transparent border border-lime-neon/30 rounded-xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-lime-neon block">
+                  Maior PR da Sessão
+                </span>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <span className="text-xl font-black font-heading text-slate-100">
+                    {sessionDetailsModal.peakLog.oneRmCalculado} <span className="text-xs font-normal text-slate-400">kg (1RM)</span>
+                  </span>
+                </div>
+                <span className="text-xs text-slate-300 font-semibold">
+                  {sessionDetailsModal.peakLog.cargaKg}kg × {sessionDetailsModal.peakLog.reps} reps
+                </span>
+              </div>
+              {sessionDetailsModal.delta !== null && sessionDetailsModal.delta !== undefined && (
+                <div className="text-right">
+                  <span className="text-[9px] uppercase font-bold text-slate-500 block">Evolução</span>
+                  <span className={`text-xs font-bold ${sessionDetailsModal.delta >= 0 ? 'text-success' : 'text-danger'}`}>
+                    {sessionDetailsModal.delta >= 0 ? `▲ +${sessionDetailsModal.delta.toFixed(1)}%` : `▼ ${sessionDetailsModal.delta.toFixed(1)}%`}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* All Sets Breakdown */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                  Todas as Séries do Treino ({sessionDetailsModal.sets.length})
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {sessionDetailsModal.sets.map((set, idx) => {
+                  const isPeak =
+                    set.isPeak ||
+                    (set.cargaKg === sessionDetailsModal.peakLog.cargaKg &&
+                      set.reps === sessionDetailsModal.peakLog.reps &&
+                      set.oneRmCalculado === sessionDetailsModal.peakLog.oneRmCalculado);
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition-colors ${
+                        isPeak
+                          ? 'bg-lime-neon/10 border-lime-neon/40 shadow-sm shadow-lime-neon/10'
+                          : 'bg-slate-card-light/40 border-border/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                            isPeak
+                              ? 'bg-lime-neon text-slate-900 font-black'
+                              : 'bg-slate-800 text-slate-400 border border-border'
+                          }`}
+                        >
+                          {set.setNumber || idx + 1}
+                        </span>
+                        <div>
+                          <span className="font-bold text-slate-100">
+                            {set.cargaKg}kg × {set.reps} reps
+                          </span>
+                        </div>
+                        {isPeak && (
+                          <span className="text-[9px] font-black uppercase tracking-wider bg-lime-neon/20 text-lime-neon border border-lime-neon/40 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                            <Sparkles className="h-2.5 w-2.5" /> Maior PR
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[9px] text-slate-500 block">1RM</span>
+                        <span className={`font-black ${isPeak ? 'text-lime-neon text-xs' : 'text-slate-300'}`}>
+                          {set.oneRmCalculado}kg
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Actions: Edit / Delete Peak Log / Close */}
+            <div className="border-t border-border/50 pt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const logToEdit = sessionDetailsModal.peakLog;
+                  setSessionDetailsModal(null);
+                  handleOpenEditLogModal(logToEdit);
+                }}
+                className="flex-1 bg-slate-card-light hover:bg-slate-card-light/80 text-slate-200 font-semibold py-2.5 rounded-xl text-xs transition-colors border border-border flex items-center justify-center gap-1.5"
+              >
+                <Pencil className="h-3.5 w-3.5 text-lime-neon" /> Editar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const logIdToDelete = sessionDetailsModal.peakLog.id;
+                  setSessionDetailsModal(null);
+                  setDeleteLogConfirmId(logIdToDelete);
+                }}
+                className="bg-danger/15 hover:bg-danger/25 text-danger font-semibold px-3 py-2.5 rounded-xl text-xs transition-colors border border-danger/20 flex items-center justify-center gap-1.5"
+                title="Excluir carga"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSessionDetailsModal(null)}
+                className="bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold px-4 py-2.5 rounded-xl text-xs transition-colors"
+              >
+                Fechar
               </button>
             </div>
           </div>

@@ -9,7 +9,7 @@ import RestTimerModal from '@/components/RestTimerModal';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 import { 
   Play, Pause, Plus, Trash2, Check, ArrowLeft, Dumbbell, 
-  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles
+  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2
 } from 'lucide-react';
 
 interface WorkoutSet {
@@ -46,6 +46,7 @@ function ActiveWorkoutComponent() {
   const [workoutTitle, setWorkoutTitle] = useState('Treino de Hoje');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [isWorkoutStarted, setIsWorkoutStarted] = useState(false);
   const [exercises, setExercises] = useState<ActiveExercise[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -98,18 +99,25 @@ function ActiveWorkoutComponent() {
               setWorkoutTitle(parsed.title || 'Treino de Hoje');
               setExercises(parsed.exercises);
               
-              // Calculate elapsed time considering start timestamp
-              const now = Date.now();
-              const savedStart = parsed.startTime || now;
-              const savedElapsed = parsed.elapsedSeconds || 0;
-              const diffFromSave = parsed.lastSavedAt ? Math.floor((now - parsed.lastSavedAt) / 1000) : 0;
-              
-              if (!parsed.isTimerPaused && diffFromSave > 0 && diffFromSave < 86400) {
-                setElapsedSeconds(savedElapsed + diffFromSave);
+              const isStarted = !!parsed.isWorkoutStarted;
+              setIsWorkoutStarted(isStarted);
+
+              if (isStarted) {
+                // Calculate elapsed time considering start timestamp
+                const now = Date.now();
+                const savedElapsed = parsed.elapsedSeconds || 0;
+                const diffFromSave = parsed.lastSavedAt ? Math.floor((now - parsed.lastSavedAt) / 1000) : 0;
+                
+                if (!parsed.isTimerPaused && diffFromSave > 0 && diffFromSave < 86400) {
+                  setElapsedSeconds(savedElapsed + diffFromSave);
+                } else {
+                  setElapsedSeconds(savedElapsed);
+                }
+                setIsTimerPaused(!!parsed.isTimerPaused);
               } else {
-                setElapsedSeconds(savedElapsed);
+                setElapsedSeconds(0);
+                setIsTimerPaused(false);
               }
-              setIsTimerPaused(!!parsed.isTimerPaused);
               setIsInitialized(true);
               return;
             }
@@ -125,6 +133,7 @@ function ActiveWorkoutComponent() {
       setWorkoutTitle(initialTitle);
       setElapsedSeconds(0);
       setIsTimerPaused(false);
+      setIsWorkoutStarted(false);
       setExercises([]);
       setIsInitialized(true);
     }
@@ -198,9 +207,9 @@ function ActiveWorkoutComponent() {
     fetchExercisesAndLogs();
   }, [user]);
 
-  // 3. Workout Duration Timer
+  // 3. Workout Duration Timer (only ticks after user explicitly starts the workout)
   useEffect(() => {
-    if (!isInitialized || isTimerPaused) {
+    if (!isInitialized || !isWorkoutStarted || isTimerPaused) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       return;
     }
@@ -212,7 +221,7 @@ function ActiveWorkoutComponent() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [isInitialized, isTimerPaused]);
+  }, [isInitialized, isWorkoutStarted, isTimerPaused]);
 
   // 4. Save to localStorage continuously
   useEffect(() => {
@@ -223,6 +232,7 @@ function ActiveWorkoutComponent() {
         title: workoutTitle,
         elapsedSeconds,
         isTimerPaused,
+        isWorkoutStarted,
         lastSavedAt: Date.now(),
         exercises
       };
@@ -230,7 +240,7 @@ function ActiveWorkoutComponent() {
     } catch (e) {
       console.error('Error saving workout to localStorage:', e);
     }
-  }, [isInitialized, storageKey, workoutTitle, elapsedSeconds, isTimerPaused, exercises]);
+  }, [isInitialized, storageKey, workoutTitle, elapsedSeconds, isTimerPaused, isWorkoutStarted, exercises]);
 
   // Helper: calculate 1RM using Brzycki formula
   const calculate1RM = (cargaKg: number, repsCount: number) => {
@@ -406,31 +416,47 @@ function ActiveWorkoutComponent() {
       const now = new Date();
       const sessionId = `workout_${now.getTime()}_${Math.random().toString(36).substring(2, 6)}`;
 
-      // 1. Save all completed sets to `strength_logs`
+      // 1. Save ONLY the peak PR set for each exercise to `strength_logs`
       const logPromises: Promise<any>[] = [];
       exercises.forEach((ex) => {
-        ex.sets.forEach((s) => {
-          if (s.completed) {
-            const carga = typeof s.cargaKg === 'number' ? s.cargaKg : 0;
-            const reps = typeof s.reps === 'number' ? s.reps : 0;
-            if (carga > 0 && reps > 0) {
-              const oneRm = calculate1RM(carga, reps);
-              logPromises.push(
-                addDoc(collection(db, 'strength_logs'), {
-                  userId: user.uid,
-                  exerciseId: ex.exerciseId,
-                  muscleGroup: ex.muscleGroup,
-                  cargaKg: carga,
-                  reps: reps,
-                  oneRmCalculado: Number(oneRm.toFixed(2)),
-                  data: now,
-                  sessionId: sessionId,
-                  setNumber: s.setNumber
-                })
-              );
-            }
-          }
+        const validSets = ex.sets.filter((s) => s.completed && typeof s.cargaKg === 'number' && s.cargaKg > 0 && typeof s.reps === 'number' && s.reps > 0);
+        if (validSets.length === 0) return;
+
+        // Find the set with the highest 1RM / PR (tie-breaker: highest cargaKg)
+        const sortedSets = [...validSets].sort((a, b) => {
+          const oneRmA = calculate1RM(a.cargaKg as number, a.reps as number);
+          const oneRmB = calculate1RM(b.cargaKg as number, b.reps as number);
+          if (oneRmB !== oneRmA) return oneRmB - oneRmA;
+          return (b.cargaKg as number) - (a.cargaKg as number);
         });
+
+        const peakSet = sortedSets[0];
+        const peakOneRm = calculate1RM(peakSet.cargaKg as number, peakSet.reps as number);
+
+        // Formulate details of all sets completed in this session
+        const allSetsData = validSets.map((s) => ({
+          setNumber: s.setNumber,
+          cargaKg: s.cargaKg as number,
+          reps: s.reps as number,
+          oneRmCalculado: Number(calculate1RM(s.cargaKg as number, s.reps as number).toFixed(2)),
+          isPeak: s.id === peakSet.id
+        }));
+
+        logPromises.push(
+          addDoc(collection(db, 'strength_logs'), {
+            userId: user.uid,
+            exerciseId: ex.exerciseId,
+            muscleGroup: ex.muscleGroup,
+            cargaKg: peakSet.cargaKg,
+            reps: peakSet.reps,
+            oneRmCalculado: Number(peakOneRm.toFixed(2)),
+            data: now,
+            sessionId: sessionId,
+            setNumber: peakSet.setNumber,
+            allSets: allSetsData,
+            totalSetsCompleted: validSets.length
+          })
+        );
       });
 
       await Promise.all(logPromises);
@@ -497,18 +523,26 @@ function ActiveWorkoutComponent() {
               className="bg-transparent text-center font-bold text-sm text-slate-100 focus:outline-none focus:border-b border-lime-neon/50 px-1 w-full truncate"
               placeholder="Nome do Treino"
             />
-            <div className="flex items-center justify-center gap-2 mt-0.5">
-              <span className="flex items-center gap-1 font-mono text-xs font-semibold text-lime-neon">
-                <Clock className="h-3 w-3" /> {formatDuration(elapsedSeconds)}
-              </span>
-              <button
-                onClick={() => setIsTimerPaused(!isTimerPaused)}
-                className="text-slate-400 hover:text-slate-200 transition-colors"
-                title={isTimerPaused ? 'Retomar cronômetro' : 'Pausar cronômetro'}
-              >
-                {isTimerPaused ? <Play className="h-3 w-3 text-lime-neon fill-current" /> : <Pause className="h-3 w-3" />}
-              </button>
-            </div>
+            {isWorkoutStarted ? (
+              <div className="flex items-center justify-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1 font-mono text-xs font-semibold text-lime-neon">
+                  <Clock className="h-3 w-3" /> {formatDuration(elapsedSeconds)}
+                </span>
+                <button
+                  onClick={() => setIsTimerPaused(!isTimerPaused)}
+                  className="text-slate-400 hover:text-slate-200 transition-colors"
+                  title={isTimerPaused ? 'Retomar cronômetro' : 'Pausar cronômetro'}
+                >
+                  {isTimerPaused ? <Play className="h-3 w-3 text-lime-neon fill-current" /> : <Pause className="h-3 w-3" />}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Clock className="h-2.5 w-2.5" /> Preparando Treino
+                </span>
+              </div>
+            )}
           </div>
 
           <button
@@ -743,28 +777,48 @@ function ActiveWorkoutComponent() {
       {/* Floating Bottom Action Bar */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-slate-bg/95 backdrop-blur-lg border-t border-border p-4">
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <button
-            onClick={() => setIsRestTimerOpen(true)}
-            className="p-3.5 rounded-2xl bg-slate-card border border-border text-slate-300 hover:text-lime-neon transition-colors flex items-center gap-2 text-xs font-bold"
-            title="Abrir Cronômetro de Descanso"
-          >
-            <Clock className="h-5 w-5 text-lime-neon" />
-            <span className="hidden xs:inline">Descanso</span>
-          </button>
+          {!isWorkoutStarted ? (
+            <button
+              onClick={() => {
+                if (exercises.length === 0) {
+                  alert('Adicione ao menos um exercício antes de iniciar o cronômetro.');
+                  return;
+                }
+                setIsWorkoutStarted(true);
+              }}
+              className="w-full py-4 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-black text-sm shadow-xl shadow-lime-neon/25 flex items-center justify-center gap-2.5 transition-all active:scale-95 tracking-wide"
+            >
+              <Play className="h-5 w-5 fill-current" />
+              <span>Começar Treino (Iniciar Cronômetro)</span>
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsRestTimerOpen(true)}
+                className="p-3.5 rounded-2xl bg-slate-card border border-border text-slate-300 hover:text-lime-neon transition-colors flex items-center gap-2 text-xs font-bold"
+                title="Abrir Cronômetro de Descanso"
+              >
+                <Clock className="h-5 w-5 text-lime-neon" />
+                <span className="hidden xs:inline">Descanso</span>
+              </button>
 
-          <button
-            onClick={handleFinishWorkout}
-            disabled={isFinishing || completedSetsCount === 0}
-            className="flex-1 py-3.5 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-sm shadow-xl shadow-lime-neon/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
-          >
-            {isFinishing ? (
-              <span>Salvando Treino...</span>
-            ) : (
-              <>
-                <Award className="h-5 w-5" /> Finalizar Treino ({completedSetsCount} séries)
-              </>
-            )}
-          </button>
+              <button
+                onClick={handleFinishWorkout}
+                disabled={isFinishing || completedSetsCount === 0}
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-sm shadow-xl shadow-lime-neon/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
+              >
+                {isFinishing ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Salvando Treino...
+                  </span>
+                ) : (
+                  <>
+                    <Award className="h-5 w-5" /> Finalizar Treino ({completedSetsCount} séries)
+                  </>
+                )}
+              </button>
+            </>
+          )}
         </div>
       </footer>
 
