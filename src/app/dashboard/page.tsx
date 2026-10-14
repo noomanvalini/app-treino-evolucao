@@ -9,7 +9,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
-import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Sparkles } from 'lucide-react';
+import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Sparkles, Trash2 } from 'lucide-react';
 import BodyMap from '@/components/BodyMap';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
@@ -41,26 +41,103 @@ export default function Dashboard() {
   const [activeWorkout, setActiveWorkout] = useState<{ title: string; elapsedSeconds: number } | null>(null);
 
   useEffect(() => {
-    if (user && typeof window !== 'undefined') {
+    if (!user || typeof window === 'undefined') return;
+
+    const storageKey = `clipzbody_active_workout_${user.uid}`;
+
+    const checkActiveWorkout = () => {
       try {
-        const saved = localStorage.getItem(`clipzbody_active_workout_${user.uid}`);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed && Array.isArray(parsed.exercises) && parsed.exercises.length > 0) {
-            const now = Date.now();
-            const diff = parsed.lastSavedAt ? Math.floor((now - parsed.lastSavedAt) / 1000) : 0;
-            const currentElapsed = (parsed.elapsedSeconds || 0) + (parsed.isTimerPaused ? 0 : diff);
-            setActiveWorkout({
-              title: parsed.title || 'Treino do Dia',
-              elapsedSeconds: currentElapsed
-            });
-          }
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) {
+          setActiveWorkout(null);
+          return;
         }
+
+        const parsed = JSON.parse(saved);
+        if (
+          !parsed ||
+          parsed.isCompleted ||
+          parsed.isFinished ||
+          !Array.isArray(parsed.exercises) ||
+          parsed.exercises.length === 0
+        ) {
+          localStorage.removeItem(storageKey);
+          setActiveWorkout(null);
+          return;
+        }
+
+        const now = Date.now();
+        const lastSaved = parsed.lastSavedAt || parsed.lastResumeTime || now;
+        const diffFromSave = Math.floor((now - lastSaved) / 1000);
+
+        // Auto-clean stale abandoned workouts older than 18 hours
+        if (diffFromSave >= 64800) {
+          localStorage.removeItem(storageKey);
+          setActiveWorkout(null);
+          return;
+        }
+
+        const isStarted = !!parsed.isWorkoutStarted;
+        if (!isStarted) {
+          setActiveWorkout({
+            title: parsed.title || 'Treino do Dia',
+            elapsedSeconds: 0
+          });
+          return;
+        }
+
+        const acc = typeof parsed.accumulatedSeconds === 'number'
+          ? parsed.accumulatedSeconds
+          : (parsed.elapsedSeconds || 0);
+
+        let liveSeconds = acc;
+        if (!parsed.isTimerPaused && parsed.lastResumeTime) {
+          liveSeconds = acc + Math.max(0, Math.floor((now - parsed.lastResumeTime) / 1000));
+        }
+
+        setActiveWorkout({
+          title: parsed.title || 'Treino do Dia',
+          elapsedSeconds: liveSeconds
+        });
       } catch (e) {
-        console.error('Error checking active workout:', e);
+        console.error('Error checking active workout in dashboard:', e);
+        setActiveWorkout(null);
+      }
+    };
+
+    checkActiveWorkout();
+
+    // Live tick while dashboard is open so elapsed time stays live and up to date
+    const interval = setInterval(checkActiveWorkout, 1000);
+
+    // Sync immediately on visibility change or window focus
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' || document.hasFocus()) {
+        checkActiveWorkout();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [user]);
+
+  const handleDiscardActiveWorkout = () => {
+    if (!user || typeof window === 'undefined') return;
+    if (confirm('Deseja realmente descartar este treino em andamento?')) {
+      try {
+        localStorage.removeItem(`clipzbody_active_workout_${user.uid}`);
+        setActiveWorkout(null);
+      } catch (e) {
+        console.error('Error discarding workout from dashboard:', e);
       }
     }
-  }, [user]);
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -369,16 +446,16 @@ export default function Dashboard() {
 
       {/* Active Workout In-Progress Banner */}
       {activeWorkout && (
-        <div className="bg-gradient-to-r from-lime-neon/20 via-slate-card to-slate-card border border-lime-neon/50 rounded-2xl p-4 shadow-xl flex items-center justify-between animate-pulse">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-lime-neon text-slate-900 flex items-center justify-center font-bold">
+        <div className="bg-gradient-to-r from-lime-neon/20 via-slate-card to-slate-card border border-lime-neon/50 rounded-2xl p-4 shadow-xl flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-lime-neon text-slate-900 flex items-center justify-center font-bold shrink-0 shadow-md shadow-lime-neon/20">
               <Play className="h-5 w-5 fill-current ml-0.5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-lime-neon block">
                 Treino em Andamento
               </span>
-              <h3 className="text-sm font-bold text-slate-100 truncate max-w-[180px] sm:max-w-xs">
+              <h3 className="text-sm font-bold text-slate-100 truncate max-w-[150px] sm:max-w-xs">
                 {activeWorkout.title}
               </h3>
               <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
@@ -388,12 +465,22 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <button
-            onClick={() => router.push('/workout/active')}
-            className="px-4 py-2.5 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs rounded-xl shadow-md shadow-lime-neon/20 transition-all flex items-center gap-1 active:scale-95 whitespace-nowrap"
-          >
-            Continuar <ChevronRight className="h-4 w-4 stroke-[3]" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+            <button
+              onClick={handleDiscardActiveWorkout}
+              className="p-2 text-slate-400 hover:text-danger rounded-xl hover:bg-slate-card-light transition-colors"
+              title="Descartar treino em andamento"
+              aria-label="Descartar treino em andamento"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => router.push('/workout/active')}
+              className="px-3.5 py-2.5 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs rounded-xl shadow-md shadow-lime-neon/20 transition-all flex items-center gap-1 active:scale-95 whitespace-nowrap"
+            >
+              Continuar <ChevronRight className="h-4 w-4 stroke-[3]" />
+            </button>
+          </div>
         </div>
       )}
 

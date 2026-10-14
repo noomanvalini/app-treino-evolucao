@@ -54,6 +54,16 @@ function ActiveWorkoutComponent() {
   const [exercises, setExercises] = useState<ActiveExercise[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // Accurate wall-clock timing states & refs
+  const [accumulatedSeconds, setAccumulatedSeconds] = useState(0);
+  const [lastResumeTime, setLastResumeTime] = useState<number | null>(null);
+  const accumulatedSecondsRef = useRef(0);
+  const lastResumeTimeRef = useRef<number | null>(null);
+  const isWorkoutStartedRef = useRef(false);
+  const isTimerPausedRef = useRef(false);
+  const isFinishedRef = useRef(false);
+  const [isWorkoutCompleted, setIsWorkoutCompleted] = useState(false);
+
   // Rest Timer State
   const [isRestTimerOpen, setIsRestTimerOpen] = useState(false);
   const [restDuration, setRestDuration] = useState(90);
@@ -130,31 +140,46 @@ function ActiveWorkoutComponent() {
           const saved = localStorage.getItem(storageKey);
           if (saved) {
             const parsed = JSON.parse(saved);
-            if (parsed && Array.isArray(parsed.exercises)) {
-              setWorkoutTitle(parsed.title || 'Treino de Hoje');
-              setExercises(parsed.exercises);
-              
-              const isStarted = !!parsed.isWorkoutStarted;
-              setIsWorkoutStarted(isStarted);
+            // If already marked as completed or finished, clean up immediately
+            if (parsed && (parsed.isCompleted || parsed.isFinished)) {
+              localStorage.removeItem(storageKey);
+            } else if (parsed && Array.isArray(parsed.exercises) && parsed.exercises.length > 0) {
+              const now = Date.now();
+              const lastSaved = parsed.lastSavedAt || parsed.lastResumeTime || now;
+              const diffFromSave = Math.floor((now - lastSaved) / 1000);
 
-              if (isStarted) {
-                // Calculate elapsed time considering start timestamp
-                const now = Date.now();
-                const savedElapsed = parsed.elapsedSeconds || 0;
-                const diffFromSave = parsed.lastSavedAt ? Math.floor((now - parsed.lastSavedAt) / 1000) : 0;
-                
-                if (!parsed.isTimerPaused && diffFromSave > 0 && diffFromSave < 86400) {
-                  setElapsedSeconds(savedElapsed + diffFromSave);
-                } else {
-                  setElapsedSeconds(savedElapsed);
-                }
-                setIsTimerPaused(!!parsed.isTimerPaused);
+              // Auto-discard abandoned workouts older than 18 hours
+              if (diffFromSave >= 64800) {
+                localStorage.removeItem(storageKey);
               } else {
-                setElapsedSeconds(0);
-                setIsTimerPaused(false);
+                setWorkoutTitle(parsed.title || 'Treino de Hoje');
+                setExercises(parsed.exercises);
+
+                const isStarted = !!parsed.isWorkoutStarted;
+                setIsWorkoutStarted(isStarted);
+                isWorkoutStartedRef.current = isStarted;
+
+                const isPaused = !!parsed.isTimerPaused;
+                setIsTimerPaused(isPaused);
+                isTimerPausedRef.current = isPaused;
+
+                const acc = typeof parsed.accumulatedSeconds === 'number'
+                  ? parsed.accumulatedSeconds
+                  : (parsed.elapsedSeconds || 0);
+                accumulatedSecondsRef.current = acc;
+
+                if (isStarted && !isPaused && parsed.lastResumeTime) {
+                  lastResumeTimeRef.current = parsed.lastResumeTime;
+                  const currentSecs = acc + Math.max(0, Math.floor((now - parsed.lastResumeTime) / 1000));
+                  setElapsedSeconds(currentSecs);
+                } else {
+                  lastResumeTimeRef.current = null;
+                  setElapsedSeconds(acc);
+                }
+
+                setIsInitialized(true);
+                return;
               }
-              setIsInitialized(true);
-              return;
             }
           }
         } catch (e) {
@@ -167,8 +192,12 @@ function ActiveWorkoutComponent() {
       const initialTitle = presetGroup ? `Treino: ${presetGroup}` : 'Treino do Dia';
       setWorkoutTitle(initialTitle);
       setElapsedSeconds(0);
+      accumulatedSecondsRef.current = 0;
+      lastResumeTimeRef.current = null;
       setIsTimerPaused(false);
+      isTimerPausedRef.current = false;
       setIsWorkoutStarted(false);
+      isWorkoutStartedRef.current = false;
       setExercises([]);
       setIsInitialized(true);
     }
@@ -247,32 +276,70 @@ function ActiveWorkoutComponent() {
     fetchExercisesAndLogs();
   }, [user]);
 
-  // 3. Workout Duration Timer (only ticks after user explicitly starts the workout)
+  // 3. Workout Duration Timer (Wall-clock accurate with background resilience)
   useEffect(() => {
-    if (!isInitialized || !isWorkoutStarted || isTimerPaused) {
+    if (!isInitialized || !isWorkoutStarted || isTimerPaused || isWorkoutCompleted || isFinishedRef.current) {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       return;
     }
 
-    timerIntervalRef.current = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1);
-    }, 1000);
+    // Ensure lastResumeTimeRef is set if timer is ticking
+    if (!lastResumeTimeRef.current) {
+      lastResumeTimeRef.current = Date.now();
+    }
+
+    const updateTimer = () => {
+      if (isFinishedRef.current || !isWorkoutStartedRef.current || isTimerPausedRef.current) return;
+      const now = Date.now();
+      const resume = lastResumeTimeRef.current || now;
+      const currentSecs = accumulatedSecondsRef.current + Math.max(0, Math.floor((now - resume) / 1000));
+      setElapsedSeconds(currentSecs);
+    };
+
+    updateTimer();
+    timerIntervalRef.current = setInterval(updateTimer, 1000);
+
+    // Sync immediately when tab/app becomes visible or gains focus (mobile screen unlock / tab switch)
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible' || document.hasFocus()) {
+        updateTimer();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
 
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
     };
-  }, [isInitialized, isWorkoutStarted, isTimerPaused]);
+  }, [isInitialized, isWorkoutStarted, isTimerPaused, isWorkoutCompleted]);
 
-  // 4. Save to localStorage continuously
+  // 4. Save to localStorage continuously (only if NOT finished, NOT completed, and exercises exist)
   useEffect(() => {
     if (!isInitialized || !storageKey) return;
+    if (isFinishedRef.current || isWorkoutCompleted) return;
+
+    // If there are no exercises and workout has not started, remove from storage
+    if (exercises.length === 0 && !isWorkoutStarted) {
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {
+        console.error('Error clearing empty workout from localStorage:', e);
+      }
+      return;
+    }
 
     try {
       const payload = {
         title: workoutTitle,
         elapsedSeconds,
+        accumulatedSeconds: accumulatedSecondsRef.current,
+        lastResumeTime: lastResumeTimeRef.current,
         isTimerPaused,
         isWorkoutStarted,
+        isCompleted: false,
         lastSavedAt: Date.now(),
         exercises
       };
@@ -280,7 +347,7 @@ function ActiveWorkoutComponent() {
     } catch (e) {
       console.error('Error saving workout to localStorage:', e);
     }
-  }, [isInitialized, storageKey, workoutTitle, elapsedSeconds, isTimerPaused, isWorkoutStarted, exercises]);
+  }, [isInitialized, storageKey, workoutTitle, elapsedSeconds, isTimerPaused, isWorkoutStarted, exercises, isWorkoutCompleted]);
 
   // Helper: calculate 1RM using Brzycki formula
   const calculate1RM = (cargaKg: number, repsCount: number) => {
@@ -445,6 +512,42 @@ function ActiveWorkoutComponent() {
 
   const progressPercent = totalSetsCount > 0 ? Math.round((completedSetsCount / totalSetsCount) * 100) : 0;
 
+  // --- TIMER ACTIONS (Wall-Clock Precision) ---
+  const handleStartWorkout = () => {
+    if (exercises.length === 0) {
+      alert('Adicione ao menos um exercício antes de iniciar o cronômetro.');
+      return;
+    }
+    const now = Date.now();
+    accumulatedSecondsRef.current = 0;
+    lastResumeTimeRef.current = now;
+    isWorkoutStartedRef.current = true;
+    isTimerPausedRef.current = false;
+    setIsWorkoutStarted(true);
+    setIsTimerPaused(false);
+    setElapsedSeconds(0);
+  };
+
+  const handleTogglePause = () => {
+    const nextPaused = !isTimerPaused;
+    const now = Date.now();
+
+    if (nextPaused) {
+      // Pausing: accumulate elapsed seconds up to this moment
+      if (lastResumeTimeRef.current) {
+        accumulatedSecondsRef.current += Math.max(0, Math.floor((now - lastResumeTimeRef.current) / 1000));
+      }
+      lastResumeTimeRef.current = null;
+      setElapsedSeconds(accumulatedSecondsRef.current);
+    } else {
+      // Resuming: set resume timestamp to now
+      lastResumeTimeRef.current = now;
+    }
+
+    isTimerPausedRef.current = nextPaused;
+    setIsTimerPaused(nextPaused);
+  };
+
   // --- FINISH WORKOUT ACTION ---
   const handleFinishWorkout = async () => {
     if (!user) return;
@@ -456,10 +559,16 @@ function ActiveWorkoutComponent() {
 
     setIsFinishing(true);
     try {
+      // 1. Immediately stop timer and lock finished refs to prevent any auto-save race condition
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      isFinishedRef.current = true;
+      setIsWorkoutCompleted(true);
+
       const now = new Date();
       const sessionId = `workout_${now.getTime()}_${Math.random().toString(36).substring(2, 6)}`;
+      const finalDuration = elapsedSeconds;
 
-      // 1. Save ONLY the peak PR set for each exercise to `strength_logs`
+      // 2. Save ONLY the peak PR set for each exercise to `strength_logs`
       const logPromises: Promise<any>[] = [];
       exercises.forEach((ex) => {
         const validSets = ex.sets.filter((s) => s.completed && typeof s.cargaKg === 'number' && s.cargaKg > 0 && typeof s.reps === 'number' && s.reps > 0);
@@ -504,12 +613,12 @@ function ActiveWorkoutComponent() {
 
       await Promise.all(logPromises);
 
-      // 2. Save workout session summary
+      // 3. Save workout session summary
       await addDoc(collection(db, 'workout_sessions'), {
         userId: user.uid,
         sessionId: sessionId,
         title: workoutTitle,
-        durationSeconds: elapsedSeconds,
+        durationSeconds: finalDuration,
         totalVolumeKg: totalVolumeKg,
         completedSetsCount: completedSetsCount,
         exercisesCount: exercises.length,
@@ -517,14 +626,17 @@ function ActiveWorkoutComponent() {
         data: now
       });
 
-      // 3. Clear localStorage
+      // 4. Definitively clear localStorage
       if (storageKey) {
         localStorage.removeItem(storageKey);
       }
 
-      // 4. Set stats and open Celebration Modal
+      // 5. Clear exercise list so no lingering state can trigger auto-save
+      setExercises([]);
+
+      // 6. Set stats and open Celebration Modal
       setCompletedWorkoutStats({
-        durationSecs: elapsedSeconds,
+        durationSecs: finalDuration,
         volumeKg: totalVolumeKg,
         totalSets: completedSetsCount,
         exerciseCount: exercises.length
@@ -532,6 +644,8 @@ function ActiveWorkoutComponent() {
       setIsCelebrationOpen(true);
     } catch (err) {
       console.error('Error saving finished workout:', err);
+      isFinishedRef.current = false;
+      setIsWorkoutCompleted(false);
       alert('Houve um erro ao salvar o treino. Tente novamente.');
     } finally {
       setIsFinishing(false);
@@ -539,9 +653,13 @@ function ActiveWorkoutComponent() {
   };
 
   const handleDiscardWorkout = () => {
+    isFinishedRef.current = true;
+    setIsWorkoutCompleted(true);
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     if (storageKey) {
       localStorage.removeItem(storageKey);
     }
+    setExercises([]);
     router.replace('/dashboard');
   };
 
@@ -572,7 +690,7 @@ function ActiveWorkoutComponent() {
                   <Clock className="h-3 w-3" /> {formatDuration(elapsedSeconds)}
                 </span>
                 <button
-                  onClick={() => setIsTimerPaused(!isTimerPaused)}
+                  onClick={handleTogglePause}
                   className="text-slate-400 hover:text-slate-200 transition-colors"
                   title={isTimerPaused ? 'Retomar cronômetro' : 'Pausar cronômetro'}
                 >
@@ -839,13 +957,7 @@ function ActiveWorkoutComponent() {
         <div className="max-w-md mx-auto flex items-center gap-3">
           {!isWorkoutStarted ? (
             <button
-              onClick={() => {
-                if (exercises.length === 0) {
-                  alert('Adicione ao menos um exercício antes de iniciar o cronômetro.');
-                  return;
-                }
-                setIsWorkoutStarted(true);
-              }}
+              onClick={handleStartWorkout}
               className="w-full py-4 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-black text-sm shadow-xl shadow-lime-neon/25 flex items-center justify-center gap-2.5 transition-all active:scale-95 tracking-wide"
             >
               <Play className="h-5 w-5 fill-current" />
@@ -1089,13 +1201,19 @@ function ActiveWorkoutComponent() {
             {/* Actions */}
             <div className="relative z-10 space-y-2 pt-2">
               <button
-                onClick={() => router.replace('/dashboard')}
+                onClick={() => {
+                  if (storageKey) localStorage.removeItem(storageKey);
+                  router.replace('/dashboard');
+                }}
                 className="w-full py-3.5 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs shadow-lg shadow-lime-neon/20 transition-all active:scale-95"
               >
                 Ver no Dashboard
               </button>
               <button
-                onClick={() => router.replace('/strength')}
+                onClick={() => {
+                  if (storageKey) localStorage.removeItem(storageKey);
+                  router.replace('/strength');
+                }}
                 className="w-full py-2.5 rounded-2xl bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-bold text-xs border border-border transition-colors"
               >
                 Ver Histórico de Cargas
