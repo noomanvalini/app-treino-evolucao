@@ -9,7 +9,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import InstallPWA from '@/components/InstallPWA';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
-import { Dumbbell, User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Sparkles, Trash2 } from 'lucide-react';
+import { User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Trash2 } from 'lucide-react';
 import BodyMap from '@/components/BodyMap';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
 
@@ -487,18 +487,7 @@ export default function Dashboard() {
       {/* Start Workout Hero Card (If no active workout) */}
       {!activeWorkout && (
         <div className="bg-gradient-to-br from-slate-card via-slate-card to-slate-card-light/40 border border-lime-neon/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-2 opacity-10 pointer-events-none">
-            <Dumbbell className="h-28 w-28 text-lime-neon" />
-          </div>
-
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] uppercase font-bold tracking-wider text-lime-neon flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> Sessão em Tempo Real
-              </span>
-              <span className="text-[10px] font-semibold text-slate-400">Modo Ativo</span>
-            </div>
-
             <h2 className="text-lg font-black text-slate-100 mb-1">Pronto para treinar hoje?</h2>
             <p className="text-xs text-slate-400 mb-4 leading-relaxed">
               Marque séries, controle o tempo de descanso automático e registre suas cargas diretamente na academia.
@@ -564,9 +553,6 @@ export default function Dashboard() {
 
       {/* General Strength Score Card */}
       <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-2 -translate-y-2 opacity-5">
-          <Award className="h-32 w-32" />
-        </div>
         <div className="relative z-10">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
             <Award className="h-4 w-4 text-lime-neon" /> Score Geral de Força

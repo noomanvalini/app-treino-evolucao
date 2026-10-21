@@ -59,28 +59,12 @@ export default function Measures() {
 
   // Selected metric for chart mapping
   const [selectedChartMetric, setSelectedChartMetric] = useState<string>('peso');
-
-  // Convert chart metric key (e.g. 'torax') to body map muscle name (e.g. 'Peito')
-  const getMuscleFromMetric = (metric: string): string => {
-    if (metric === 'peso') return '';
-    const reverseMap: Record<string, string> = {
-      torax: 'Peito',
-      bracoD: 'Bíceps',
-      bracoE: 'Bíceps',
-      antebracoD: 'Antebraço',
-      antebracoE: 'Antebraço',
-      cintura: 'Abdômen',
-      quadril: 'Glúteos',
-      coxaD: 'Quadríceps',
-      coxaE: 'Quadríceps',
-      panturrilhaD: 'Panturrilha/Canela',
-      panturrilhaE: 'Panturrilha/Canela',
-    };
-    return reverseMap[metric] || '';
-  };
+  // Selected muscle on the BodyMap (preserves front/back side selection without unwanted flipping)
+  const [selectedMuscle, setSelectedMuscle] = useState<string>('');
 
   // Convert body map muscle name to chart metric key
   const handleMuscleSelectFromMap = (muscle: string) => {
+    setSelectedMuscle(muscle);
     if (!muscle) {
       setSelectedChartMetric('peso');
       return;
@@ -90,13 +74,14 @@ export default function Measures() {
       'Costas': 'torax',
       'Ombro': 'torax',
       'Bíceps': 'bracoD',
+      'Tríceps': 'bracoD',
       'Antebraço': 'antebracoD',
       'Abdômen': 'cintura',
       'Quadríceps': 'coxaD',
       'Posterior de Coxa': 'coxaD',
       'Glúteos': 'quadril',
+      'Quadril': 'quadril',
       'Panturrilha/Canela': 'panturrilhaD',
-      'Tríceps': 'bracoD',
     };
     const metric = mapToMetric[muscle];
     if (metric) {
@@ -331,7 +316,44 @@ export default function Measures() {
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Métrica Selecionada</span>
           <select
             value={selectedChartMetric}
-            onChange={(e) => setSelectedChartMetric(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSelectedChartMetric(val);
+
+              const mapToMetric: Record<string, string> = {
+                'Peito': 'torax',
+                'Costas': 'torax',
+                'Ombro': 'torax',
+                'Bíceps': 'bracoD',
+                'Tríceps': 'bracoD',
+                'Antebraço': 'antebracoD',
+                'Abdômen': 'cintura',
+                'Quadríceps': 'coxaD',
+                'Posterior de Coxa': 'coxaD',
+                'Glúteos': 'quadril',
+                'Quadril': 'quadril',
+                'Panturrilha/Canela': 'panturrilhaD',
+              };
+
+              // If the currently selected muscle does not match the newly selected metric, map to default
+              if (mapToMetric[selectedMuscle] !== val) {
+                const metricToDefaultMuscle: Record<string, string> = {
+                  peso: '',
+                  torax: 'Peito',
+                  bracoD: 'Bíceps',
+                  bracoE: 'Bíceps',
+                  antebracoD: 'Antebraço',
+                  antebracoE: 'Antebraço',
+                  cintura: 'Abdômen',
+                  quadril: 'Glúteos',
+                  coxaD: 'Quadríceps',
+                  coxaE: 'Quadríceps',
+                  panturrilhaD: 'Panturrilha/Canela',
+                  panturrilhaE: 'Panturrilha/Canela',
+                };
+                setSelectedMuscle(metricToDefaultMuscle[val] || '');
+              }
+            }}
             className="bg-slate-card text-xs font-bold border border-border rounded-xl px-3 py-1.5 focus:outline-none focus:border-amber-gold text-slate-100 shadow-sm"
           >
             <option value="peso">Peso (kg)</option>
@@ -392,7 +414,7 @@ export default function Measures() {
 
       {/* Body Map for Measurement Selection */}
       <BodyMap 
-        selectedMuscle={getMuscleFromMetric(selectedChartMetric)} 
+        selectedMuscle={selectedMuscle} 
         onMuscleSelect={handleMuscleSelectFromMap} 
         title="Toque no grupo muscular para visualizar"
       />
