@@ -606,7 +606,7 @@ export default function Dashboard() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visualizar Força Muscular</h2>
-          <span className="text-[10px] text-slate-500">Toque nos músculos do boneco</span>
+          <span className="text-[10px] text-slate-500">Toque no grupo muscular</span>
         </div>
         <BodyMap selectedMuscle={selectedMuscle} onMuscleSelect={setSelectedMuscle} />
 
@@ -619,7 +619,7 @@ export default function Dashboard() {
           const isPositive = val >= 0;
 
           return (
-            <div className="bg-slate-card border border-lime-neon/20 bg-lime-neon/5 rounded-2xl p-4 shadow-md space-y-3 animate-fade-in max-w-sm mx-auto">
+            <div className="bg-slate-card border border-lime-neon/20 bg-lime-neon/5 rounded-2xl p-4 sm:p-5 shadow-md space-y-3 animate-fade-in w-full">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Grupo Selecionado</span>
                 <span className="text-sm font-bold text-lime-neon">{selectedMuscle}</span>

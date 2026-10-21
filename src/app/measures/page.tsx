@@ -9,7 +9,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import BodyMap from '@/components/BodyMap';
 import InteractiveGainChart, { ChartDataPoint } from '@/components/InteractiveGainChart';
 import { 
-  Ruler, Plus, Calendar, TrendingUp, TrendingDown, ChevronDown, 
+  Ruler, Plus, TrendingUp, TrendingDown, ChevronDown, 
   ChevronUp, X, Loader2, Save, Sparkles, Activity, Pencil, Trash2, AlertTriangle
 } from 'lucide-react';
 
@@ -380,8 +380,7 @@ export default function Measures() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Histórico Físico</span>
-          <h1 className="text-2xl font-bold text-slate-100 mt-0.5">Medidas Corporais</h1>
+          <h1 className="text-2xl font-bold text-slate-100">Medidas Corporais</h1>
         </div>
         <button
           onClick={handleOpenModal}
@@ -392,18 +391,11 @@ export default function Measures() {
       </div>
 
       {/* Body Map for Measurement Selection */}
-      <div className="bg-slate-card border border-border rounded-2xl p-4 shadow-lg flex flex-col items-center space-y-3">
-        <div className="w-full flex justify-between items-center">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Ruler className="h-4 w-4 text-lime-neon" /> Selecionar Parte do Corpo
-          </h2>
-          <span className="text-[10px] text-slate-500">Toque no boneco para filtrar os gráficos</span>
-        </div>
-        <BodyMap 
-          selectedMuscle={getMuscleFromMetric(selectedChartMetric)} 
-          onMuscleSelect={handleMuscleSelectFromMap} 
-        />
-      </div>
+      <BodyMap 
+        selectedMuscle={getMuscleFromMetric(selectedChartMetric)} 
+        onMuscleSelect={handleMuscleSelectFromMap} 
+        title="Toque no grupo muscular para visualizar"
+      />
 
       {/* SVG Chart */}
       {authLoading || loadingData ? (
@@ -447,35 +439,26 @@ export default function Measures() {
                   key={item.id}
                   className="bg-slate-card border border-border rounded-2xl overflow-hidden shadow"
                 >
-                  {/* Card Overview */}
-                  <div className="p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="h-4 w-4 text-slate-400" />
-                      <div>
-                        <span className="text-xs font-bold text-slate-100">{dateStr}</span>
-                        <span className="text-[10px] text-slate-500 block">Data do registro</span>
-                      </div>
+                  {/* Card Overview - Single Clean Line */}
+                  <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-slate-100 whitespace-nowrap">
+                      {dateStr}
+                    </span>
+
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                      <span className="text-xs font-black text-slate-100">{item.pesoKg} kg</span>
+                      {weightDiff !== null && (
+                        <span className={`text-[10px] font-bold ${weightDiff > 0 ? 'text-success' : weightDiff < 0 ? 'text-danger' : 'text-slate-400'}`}>
+                          {weightDiff > 0 ? `▲ +${weightDiff}kg` : weightDiff < 0 ? `▼ ${weightDiff}kg` : '0kg'}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <span className="text-xs font-black text-slate-100">{item.pesoKg} kg</span>
-                        <div className="flex items-center gap-1 justify-end">
-                          {weightDiff !== null && (
-                            <span className={`text-[10px] font-bold ${weightDiff > 0 ? 'text-success' : weightDiff < 0 ? 'text-danger' : 'text-slate-400'}`}>
-                              {weightDiff > 0 ? `▲ +${weightDiff}kg` : weightDiff < 0 ? `▼ ${weightDiff}kg` : '0kg'}
-                            </span>
-                          )}
-                          <span className="text-[9px] text-slate-500">Peso</span>
-                        </div>
-                      </div>
+                    <span className="text-xs font-bold text-slate-300 whitespace-nowrap">
+                      IMC {item.imcCalculado}
+                    </span>
 
-                      <div className="text-right">
-                        <span className="text-xs font-bold text-slate-300">IMC {item.imcCalculado}</span>
-                        <span className="text-[9px] text-slate-500 block">IMC</span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -510,7 +493,6 @@ export default function Measures() {
                         </button>
                       </div>
                     </div>
-                  </div>
 
                   {/* Expanded measurements details */}
                   {isExpanded && (

@@ -6,6 +6,8 @@ import { RotateCw } from 'lucide-react';
 interface BodyMapProps {
   selectedMuscle: string;
   onMuscleSelect: (muscle: string) => void;
+  title?: React.ReactNode;
+  className?: string;
 }
 
 interface Dot {
@@ -76,7 +78,7 @@ const BACK_DOTS: Dot[] = [
   { muscle: 'Panturrilha/Canela', left: '62%', top: '77%' },
 ];
 
-export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps) {
+export default function BodyMap({ selectedMuscle, onMuscleSelect, title, className }: BodyMapProps) {
   const [side, setSide] = useState<'frente' | 'verso'>('frente');
 
   // Auto flip body side if selected muscle is on the other side
@@ -100,18 +102,26 @@ export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps
   const dotsList = side === 'frente' ? FRONT_DOTS : BACK_DOTS;
 
   return (
-    <div className="flex flex-col items-center space-y-4 bg-slate-card border border-border rounded-2xl p-4 shadow-lg w-full max-w-sm mx-auto">
-      {/* Interactive Body Image Container with Exact Aspect Ratio (250x422 = 0.592) */}
-      <div className="relative w-[250px] h-[422px] overflow-hidden flex items-center justify-center select-none">
-        
-        {/* Floating Side Info */}
-        <div className="absolute top-2 left-2 pointer-events-none z-10">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-900/80 border border-border/50 px-2 py-0.5 rounded backdrop-blur-sm shadow">
+    <div className={`relative flex flex-col items-center bg-slate-card border border-border rounded-2xl p-4 sm:p-5 shadow-lg w-full ${className || ''}`}>
+      {/* Optional Top Title Header */}
+      {title && (
+        <div className="w-full mb-3">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+            {title}
+          </span>
+        </div>
+      )}
+
+      {/* Body Interactive Area */}
+      <div className="relative w-full flex items-center justify-center">
+        {/* Floating Side Info - Justified Top-Left */}
+        <div className="absolute top-1 left-1 sm:top-2 sm:left-2 pointer-events-none z-10">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-900/80 border border-border/50 px-2.5 py-1 rounded backdrop-blur-sm shadow">
             {side}
           </span>
         </div>
 
-        {/* Floating Rotation Button */}
+        {/* Floating Rotation Button - Justified Top-Right */}
         <button
           type="button"
           onClick={() => {
@@ -122,58 +132,61 @@ export default function BodyMap({ selectedMuscle, onMuscleSelect }: BodyMapProps
               onMuscleSelect('');
             }
           }}
-          className="absolute top-2 right-2 bg-slate-800/80 hover:bg-slate-700/80 text-lime-neon p-2.5 rounded-full border border-border/50 backdrop-blur-sm shadow-md transition-all active:scale-95 z-20 cursor-pointer"
+          className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-slate-800/80 hover:bg-slate-700/80 text-lime-neon p-2.5 rounded-full border border-border/50 backdrop-blur-sm shadow-md transition-all active:scale-95 z-20 cursor-pointer"
           title="Girar Boneco (Frente/Verso)"
           aria-label="Girar boneco"
         >
           <RotateCw className="h-4 w-4" />
         </button>
 
-        {/* SVG Base Image */}
-        <img
-          src={getSvgPath()}
-          alt={`Mapa do corpo - ${side}`}
-          className="w-full h-full object-contain pointer-events-none select-none"
-        />
+        {/* Interactive Body Image Container with Exact Aspect Ratio (250x422 = 0.592) */}
+        <div className="relative w-[250px] h-[422px] overflow-hidden flex items-center justify-center select-none my-1">
+          {/* SVG Base Image */}
+          <img
+            src={getSvgPath()}
+            alt={`Mapa do corpo - ${side}`}
+            className="w-full h-full object-contain pointer-events-none select-none"
+          />
 
-        {/* Floating Pulsing Indicator Dots Overlay */}
-        <div className="absolute inset-0 pointer-events-none">
-          {dotsList.map((dot, idx) => {
-            const isSelected = selectedMuscle === dot.muscle;
-            return (
-              <div
-                key={`${side}-dot-${idx}`}
-                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-30"
-                style={{ left: dot.left, top: dot.top }}
-              >
-                <button
-                  type="button"
-                  onClick={() => onMuscleSelect(dot.muscle)}
-                  className="group relative flex items-center justify-center w-10 h-10 cursor-pointer"
-                  title={dot.muscle}
-                  aria-label={`Selecionar ${dot.muscle}`}
+          {/* Floating Pulsing Indicator Dots Overlay */}
+          <div className="absolute inset-0 pointer-events-none">
+            {dotsList.map((dot, idx) => {
+              const isSelected = selectedMuscle === dot.muscle;
+              return (
+                <div
+                  key={`${side}-dot-${idx}`}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto z-30"
+                  style={{ left: dot.left, top: dot.top }}
                 >
-                  {/* Outer pulsing neon glow halo */}
-                  <span className={`absolute w-6 h-6 rounded-full border border-lime-neon/75 bg-lime-neon/15 transition-all ${
-                    isSelected 
-                      ? 'scale-125 border-lime-neon bg-lime-neon/30 animate-pulse' 
-                      : 'scale-100 group-hover:scale-125 group-hover:border-lime-neon animate-ping opacity-60'
-                  }`} />
-                  
-                  {/* Central core dot */}
-                  <span className={`w-2.5 h-2.5 rounded-full border border-slate-900 transition-all ${
-                    isSelected ? 'bg-lime-neon scale-125' : 'bg-slate-300 group-hover:bg-lime-neon'
-                  }`} />
-                </button>
-              </div>
-            );
-          })}
+                  <button
+                    type="button"
+                    onClick={() => onMuscleSelect(dot.muscle)}
+                    className="group relative flex items-center justify-center w-10 h-10 cursor-pointer"
+                    title={dot.muscle}
+                    aria-label={`Selecionar ${dot.muscle}`}
+                  >
+                    {/* Outer pulsing neon glow halo */}
+                    <span className={`absolute w-6 h-6 rounded-full border border-lime-neon/75 bg-lime-neon/15 transition-all ${
+                      isSelected 
+                        ? 'scale-125 border-lime-neon bg-lime-neon/30 animate-pulse' 
+                        : 'scale-100 group-hover:scale-125 group-hover:border-lime-neon animate-ping opacity-60'
+                    }`} />
+                    
+                    {/* Central core dot */}
+                    <span className={`w-2.5 h-2.5 rounded-full border border-slate-900 transition-all ${
+                      isSelected ? 'bg-lime-neon scale-125' : 'bg-slate-300 group-hover:bg-lime-neon'
+                    }`} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       {/* Selected Muscle Display & Clear Button */}
       {selectedMuscle && (
-        <div className="flex items-center justify-between w-full border-t border-border/40 pt-3">
+        <div className="flex items-center justify-between w-full border-t border-border/40 pt-3 mt-2">
           <span className="text-xs text-slate-400">Selecionado: <strong className="text-lime-neon">{selectedMuscle}</strong></span>
           <button
             type="button"
