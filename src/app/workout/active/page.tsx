@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, query, where, getDocs, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import RestTimerModal from '@/components/RestTimerModal';
 import { PREDEFINED_EXERCISES, MUSCLE_GROUPS, getExerciseGuide } from '@/data/exercises';
 import { 
   Play, Pause, Plus, Trash2, Check, ArrowLeft, Dumbbell, 
-  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2, Info
+  Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2, Info,
+  Bookmark, FolderDown, Save, FolderPlus
 } from 'lucide-react';
 
 interface WorkoutSet {
@@ -30,6 +31,27 @@ interface ActiveExercise {
   gifUrl?: string;
   description?: string;
   sets: WorkoutSet[];
+}
+
+interface SavedWorkoutTemplate {
+  id: string;
+  userId: string;
+  title: string;
+  muscleGroups: string[];
+  exercises: {
+    exerciseId: string;
+    nomeExercicio: string;
+    muscleGroup: string;
+    thumbnailUrl?: string;
+    gifUrl?: string;
+    description?: string;
+    sets: {
+      setNumber: number;
+      cargaKg: number | '';
+      reps: number | '';
+    }[];
+  }[];
+  createdAt?: any;
 }
 
 interface AvailableExercise {
@@ -88,6 +110,19 @@ function ActiveWorkoutComponent() {
     exerciseCount: number;
   } | null>(null);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+
+  // Save Workout Template Modal State
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState(false);
+  const [templateNameInput, setTemplateNameInput] = useState('');
+  const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+
+  // Load Workout Template Modal State
+  const [isLoadTemplateModalOpen, setIsLoadTemplateModalOpen] = useState(false);
+  const [savedTemplates, setSavedTemplates] = useState<SavedWorkoutTemplate[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
 
   // Modal State: Exercise Demonstration Guide (GIF + Descrição)
   const [exerciseGuideModal, setExerciseGuideModal] = useState<{
@@ -663,6 +698,185 @@ function ActiveWorkoutComponent() {
     router.replace('/dashboard');
   };
 
+  // --- TEMPLATE ACTIONS (Salvar e Carregar Fichas de Treino) ---
+  const handleOpenSaveTemplateModal = () => {
+    if (exercises.length === 0) {
+      alert('Adicione ao menos um exercício antes de salvar o treino.');
+      return;
+    }
+    setTemplateNameInput(workoutTitle || 'Treino do Dia');
+    // Pre-detect muscle groups from current exercises
+    const detected = Array.from(new Set(exercises.map((e) => e.muscleGroup).filter(Boolean)));
+    setSelectedMuscleGroups(detected.length > 0 ? detected : ['Peito']);
+    setSaveSuccessMessage(null);
+    setIsSaveTemplateModalOpen(true);
+  };
+
+  const handleToggleMuscleGroup = (mg: string) => {
+    setSelectedMuscleGroups((prev) =>
+      prev.includes(mg) ? prev.filter((m) => m !== mg) : [...prev, mg]
+    );
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!user) return;
+    if (!templateNameInput.trim()) {
+      alert('Por favor, informe o nome do treino.');
+      return;
+    }
+    if (selectedMuscleGroups.length === 0) {
+      alert('Selecione ao menos um grupo muscular.');
+      return;
+    }
+    if (exercises.length === 0) {
+      alert('Adicione ao menos um exercício antes de salvar o treino.');
+      return;
+    }
+
+    setIsSavingTemplate(true);
+    try {
+      const templateData = {
+        userId: user.uid,
+        title: templateNameInput.trim(),
+        muscleGroups: selectedMuscleGroups,
+        exercises: exercises.map((ex) => ({
+          exerciseId: ex.exerciseId,
+          nomeExercicio: ex.nomeExercicio,
+          muscleGroup: ex.muscleGroup,
+          thumbnailUrl: ex.thumbnailUrl || '',
+          gifUrl: ex.gifUrl || '',
+          description: ex.description || '',
+          sets: ex.sets.map((s) => ({
+            setNumber: s.setNumber,
+            cargaKg: typeof s.cargaKg === 'number' ? s.cargaKg : '',
+            reps: typeof s.reps === 'number' ? s.reps : ''
+          }))
+        })),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await addDoc(collection(db, 'saved_workouts'), templateData);
+      setWorkoutTitle(templateNameInput.trim());
+      setSaveSuccessMessage('Treino salvo com sucesso!');
+      setTimeout(() => {
+        setIsSaveTemplateModalOpen(false);
+        setSaveSuccessMessage(null);
+      }, 1000);
+    } catch (err) {
+      console.error('Error saving workout template:', err);
+      alert('Houve um erro ao salvar o treino. Tente novamente.');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handleOpenLoadWorkoutModal = async () => {
+    if (!user) return;
+    setIsLoadTemplateModalOpen(true);
+    setIsLoadingTemplates(true);
+    try {
+      const q = query(collection(db, 'saved_workouts'), where('userId', '==', user.uid));
+      const snap = await getDocs(q);
+      const list: SavedWorkoutTemplate[] = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        list.push({
+          id: doc.id,
+          userId: d.userId,
+          title: d.title || 'Treino Salvo',
+          muscleGroups: Array.isArray(d.muscleGroups) ? d.muscleGroups : [],
+          exercises: Array.isArray(d.exercises) ? d.exercises : [],
+          createdAt: d.createdAt
+        });
+      });
+
+      // Sort newest first
+      list.sort((a, b) => {
+        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt || 0).getTime();
+        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
+      setSavedTemplates(list);
+    } catch (err) {
+      console.error('Error fetching saved workouts:', err);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
+  const handleSelectTemplateToLoad = (template: SavedWorkoutTemplate) => {
+    if (exercises.length > 0) {
+      const confirmReplace = confirm(
+        `Carregar "${template.title}" substituirá os exercícios atuais da tela. Deseja continuar?`
+      );
+      if (!confirmReplace) return;
+    }
+
+    setWorkoutTitle(template.title);
+
+    const reconstructedExercises: ActiveExercise[] = template.exercises.map((savedEx, idx) => {
+      const past = latestLogsCache[savedEx.exerciseId];
+      const prevRef = past ? `${past.cargaKg}kg × ${past.reps}` : undefined;
+      const guide = getExerciseGuide({ id: savedEx.exerciseId, name: savedEx.nomeExercicio });
+
+      const setsData = Array.isArray(savedEx.sets) && savedEx.sets.length > 0
+        ? savedEx.sets
+        : [
+            { setNumber: 1, cargaKg: '', reps: '' },
+            { setNumber: 2, cargaKg: '', reps: '' },
+            { setNumber: 3, cargaKg: '', reps: '' }
+          ];
+
+      return {
+        id: `ex_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        exerciseId: savedEx.exerciseId,
+        nomeExercicio: savedEx.nomeExercicio,
+        muscleGroup: savedEx.muscleGroup || guide.muscleGroup || '',
+        thumbnailUrl: savedEx.thumbnailUrl || guide.thumbnailUrl,
+        gifUrl: savedEx.gifUrl || guide.gifUrl,
+        description: savedEx.description || guide.description,
+        sets: setsData.map((s, sIdx) => {
+          const finalCarga: number | '' = typeof s.cargaKg === 'number' ? s.cargaKg : '';
+          const finalReps: number | '' = typeof s.reps === 'number' ? s.reps : '';
+          return {
+            id: `set_${idx}_${sIdx}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+            setNumber: s.setNumber || sIdx + 1,
+            cargaKg: finalCarga,
+            reps: finalReps,
+            completed: false,
+            previousRef: prevRef
+          };
+        })
+      };
+    });
+
+    setExercises(reconstructedExercises);
+    setIsWorkoutStarted(false);
+    setIsTimerPaused(false);
+    setElapsedSeconds(0);
+    accumulatedSecondsRef.current = 0;
+    lastResumeTimeRef.current = null;
+    setIsLoadTemplateModalOpen(false);
+  };
+
+  const handleDeleteSavedTemplate = async (templateId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm('Deseja realmente excluir este treino salvo?')) return;
+
+    setDeletingTemplateId(templateId);
+    try {
+      await deleteDoc(doc(db, 'saved_workouts', templateId));
+      setSavedTemplates((prev) => prev.filter((t) => t.id !== templateId));
+    } catch (err) {
+      console.error('Error deleting saved workout:', err);
+      alert('Erro ao excluir treino salvo.');
+    } finally {
+      setDeletingTemplateId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-bg text-slate-100 pb-28">
       {/* Sticky Top Bar with Session Timer & Actions */}
@@ -766,14 +980,23 @@ function ActiveWorkoutComponent() {
             </div>
             <h3 className="text-base font-bold text-slate-100">Nenhum exercício adicionado</h3>
             <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-              Adicione os exercícios que você vai executar hoje para começar a registrar as cargas e repetições em tempo real.
+              Adicione os exercícios que você vai executar hoje ou carregue uma ficha salva para começar o seu treino.
             </p>
-            <button
-              onClick={() => setIsAddExerciseModalOpen(true)}
-              className="mt-2 inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold text-xs shadow-lg shadow-lime-neon/20 transition-all active:scale-95"
-            >
-              <Plus className="h-4 w-4 stroke-[3]" /> Adicionar Primeiro Exercício
-            </button>
+            <div className="flex flex-col gap-2.5 pt-2 max-w-xs mx-auto w-full">
+              <button
+                onClick={() => setIsAddExerciseModalOpen(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold text-xs shadow-lg shadow-lime-neon/20 transition-all active:scale-95"
+              >
+                <Plus className="h-4 w-4 stroke-[3]" /> Adicionar Primeiro Exercício
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenLoadWorkoutModal}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-slate-card-light hover:bg-slate-card-light/80 text-lime-neon border border-lime-neon/30 font-bold text-xs transition-all active:scale-95 shadow-sm"
+              >
+                <FolderDown className="h-4 w-4" /> Carregar Treino
+              </button>
+            </div>
           </div>
         )}
 
@@ -943,28 +1166,52 @@ function ActiveWorkoutComponent() {
 
         {/* Add Another Exercise Button */}
         {exercises.length > 0 && (
-          <button
-            onClick={() => setIsAddExerciseModalOpen(true)}
-            className="w-full py-4 rounded-3xl bg-slate-card hover:bg-slate-card-light/70 border border-border border-dashed text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
-          >
-            <Plus className="h-4 w-4 text-lime-neon stroke-[3]" /> Adicionar Exercício
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsAddExerciseModalOpen(true)}
+              className="flex-1 py-4 rounded-3xl bg-slate-card hover:bg-slate-card-light/70 border border-border border-dashed text-slate-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+            >
+              <Plus className="h-4 w-4 text-lime-neon stroke-[3]" /> Adicionar Exercício
+            </button>
+            {!isWorkoutStarted && (
+              <button
+                type="button"
+                onClick={handleOpenLoadWorkoutModal}
+                className="py-4 px-4 rounded-3xl bg-slate-card hover:bg-slate-card-light/70 border border-border text-slate-300 hover:text-lime-neon font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99]"
+                title="Carregar outro treino salvo"
+              >
+                <FolderDown className="h-4 w-4 text-lime-neon" />
+                <span className="hidden xs:inline">Carregar</span>
+              </button>
+            )}
+          </div>
         )}
       </main>
 
       {/* Floating Bottom Action Bar */}
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-slate-bg/95 backdrop-blur-lg border-t border-border p-4">
-        <div className="max-w-md mx-auto flex items-center gap-3">
+        <div className="max-w-md mx-auto">
           {!isWorkoutStarted ? (
-            <button
-              onClick={handleStartWorkout}
-              className="w-full py-4 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-black text-sm shadow-xl shadow-lime-neon/25 flex items-center justify-center gap-2.5 transition-all active:scale-95 tracking-wide"
-            >
-              <Play className="h-5 w-5 fill-current" />
-              <span>Começar Treino (Iniciar Cronômetro)</span>
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleOpenSaveTemplateModal}
+                className="w-full py-2.5 px-4 rounded-2xl bg-slate-card hover:bg-slate-card-light text-lime-neon border border-lime-neon/40 font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]"
+              >
+                <Bookmark className="h-4 w-4" />
+                <span>Salvar Treino</span>
+              </button>
+
+              <button
+                onClick={handleStartWorkout}
+                className="w-full py-4 px-6 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-black text-sm shadow-xl shadow-lime-neon/25 flex items-center justify-center gap-2.5 transition-all active:scale-95 tracking-wide"
+              >
+                <Play className="h-5 w-5 fill-current" />
+                <span>Começar Treino (Iniciar Cronômetro)</span>
+              </button>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsRestTimerOpen(true)}
                 className="p-3.5 rounded-2xl bg-slate-card border border-border text-slate-300 hover:text-lime-neon transition-colors flex items-center gap-2 text-xs font-bold"
@@ -989,7 +1236,7 @@ function ActiveWorkoutComponent() {
                   </>
                 )}
               </button>
-            </>
+            </div>
           )}
         </div>
       </footer>
@@ -1313,6 +1560,258 @@ function ActiveWorkoutComponent() {
                 className="w-full py-3 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold text-xs shadow-lg shadow-lime-neon/20 transition-all active:scale-95"
               >
                 Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Salvar Treino (Template) */}
+      {isSaveTemplateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col space-y-4 overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-lime-neon/15 text-lime-neon border border-lime-neon/30">
+                  <Bookmark className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-100 text-base">Salvar Treino</h3>
+                  <p className="text-[11px] text-slate-400">Guarde esta ficha com exercícios, séries e cargas</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSaveTemplateModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-card-light transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Success Message Banner */}
+            {saveSuccessMessage && (
+              <div className="p-3 bg-lime-neon/15 border border-lime-neon text-lime-neon rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <Check className="h-4 w-4 stroke-[3]" /> {saveSuccessMessage}
+              </div>
+            )}
+
+            {/* Input: Workout Title */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+                Nome do Treino
+              </label>
+              <input
+                type="text"
+                value={templateNameInput}
+                onChange={(e) => setTemplateNameInput(e.target.value)}
+                placeholder="Ex: Treino A - Peito e Tríceps"
+                className="w-full bg-slate-card-light/60 border border-border focus:border-lime-neon rounded-2xl px-4 py-3 text-sm text-slate-100 focus:outline-none transition-colors font-medium placeholder:text-slate-500"
+              />
+            </div>
+
+            {/* Checkboxes: Muscle Groups */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-300 block">
+                  Grupos Musculares
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">Selecione os grupos envolvidos</span>
+              </div>
+              <div className="grid grid-cols-2 xs:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                {MUSCLE_GROUPS.map((mg) => {
+                  const isChecked = selectedMuscleGroups.includes(mg);
+                  return (
+                    <button
+                      type="button"
+                      key={mg}
+                      onClick={() => handleToggleMuscleGroup(mg)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold text-left transition-all ${
+                        isChecked
+                          ? 'bg-lime-neon/15 border-lime-neon text-lime-neon shadow-sm'
+                          : 'bg-slate-card-light/40 border-border/60 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+                      }`}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded flex items-center justify-center border text-[10px] shrink-0 transition-colors ${
+                          isChecked
+                            ? 'bg-lime-neon border-lime-neon text-slate-900 font-black'
+                            : 'border-slate-500 bg-transparent'
+                        }`}
+                      >
+                        {isChecked ? '✓' : ''}
+                      </span>
+                      <span className="truncate">{mg}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Summary Box */}
+            <div className="bg-slate-card-light/40 border border-border/50 rounded-2xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between text-xs text-slate-300 font-bold">
+                <span>Exercícios incluídos:</span>
+                <span className="text-lime-neon font-mono">{exercises.length}</span>
+              </div>
+              <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                {exercises.map((e) => `${e.nomeExercicio} (${e.sets.length} séries)`).join(', ')}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+              <button
+                type="button"
+                onClick={() => setIsSaveTemplateModalOpen(false)}
+                className="flex-1 py-3 rounded-2xl bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-bold text-xs border border-border transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveTemplate}
+                disabled={isSavingTemplate || !templateNameInput.trim() || selectedMuscleGroups.length === 0}
+                className="flex-1 py-3 rounded-2xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs shadow-lg shadow-lime-neon/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-95"
+              >
+                {isSavingTemplate ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" /> Salvar Treino
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Carregar Treino Salvo */}
+      {isLoadTemplateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-lime-neon/15 text-lime-neon border border-lime-neon/30">
+                  <FolderDown className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-100 text-base">Meus Treinos Salvos</h3>
+                  <p className="text-[11px] text-slate-400">Escolha uma ficha para carregar os exercícios</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsLoadTemplateModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-card-light transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Templates List */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 no-scrollbar min-h-[160px]">
+              {isLoadingTemplates ? (
+                <div className="py-12 flex flex-col items-center justify-center space-y-2">
+                  <Loader2 className="h-7 w-7 animate-spin text-lime-neon" />
+                  <span className="text-xs text-slate-400">Buscando treinos salvos...</span>
+                </div>
+              ) : savedTemplates.length === 0 ? (
+                <div className="bg-slate-card-light/30 border border-border border-dashed rounded-3xl p-8 text-center space-y-2.5">
+                  <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                    <Bookmark className="h-6 w-6" />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-200">Nenhum treino salvo</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                    Você ainda não possui treinos salvos. Adicione exercícios e clique em &quot;Salvar Treino&quot; para criar fichas reutilizáveis.
+                  </p>
+                </div>
+              ) : (
+                savedTemplates.map((template) => {
+                  const totalSetsInTemplate = template.exercises.reduce(
+                    (acc, ex) => acc + (ex.sets?.length || 0),
+                    0
+                  );
+
+                  return (
+                    <div
+                      key={template.id}
+                      className="bg-slate-card-light/40 hover:bg-slate-card-light/70 border border-border hover:border-lime-neon/40 rounded-2xl p-4 transition-all space-y-3 group"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-extrabold text-slate-100 truncate group-hover:text-lime-neon transition-colors">
+                            {template.title}
+                          </h4>
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {template.exercises.length} exercícios • {totalSetsInTemplate} séries
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteSavedTemplate(template.id, e)}
+                          disabled={deletingTemplateId === template.id}
+                          className="p-1.5 text-slate-500 hover:text-danger rounded-lg hover:bg-slate-800 transition-colors"
+                          title="Excluir treino salvo"
+                        >
+                          {deletingTemplateId === template.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-danger" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Muscle Groups Pills */}
+                      {template.muscleGroups && template.muscleGroups.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {template.muscleGroups.map((mg) => (
+                            <span
+                              key={mg}
+                              className="text-[10px] font-bold uppercase tracking-wider bg-lime-neon/10 text-lime-neon border border-lime-neon/20 px-2 py-0.5 rounded-md"
+                            >
+                              {mg}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Exercise Names preview */}
+                      <p className="text-[11px] text-slate-400 line-clamp-1">
+                        {template.exercises.map((e) => e.nomeExercicio).join(' • ')}
+                      </p>
+
+                      {/* Load Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleSelectTemplateToLoad(template)}
+                        className="w-full py-2.5 px-4 rounded-xl bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs shadow-md shadow-lime-neon/20 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                      >
+                        <span>Carregar este Treino</span>
+                        <ChevronRight className="h-4 w-4 stroke-[3]" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Close footer */}
+            <div className="border-t border-border/50 pt-2">
+              <button
+                type="button"
+                onClick={() => setIsLoadTemplateModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-bold text-xs border border-border transition-colors"
+              >
+                Fechar
               </button>
             </div>
           </div>
