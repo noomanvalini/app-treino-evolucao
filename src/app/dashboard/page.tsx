@@ -161,6 +161,187 @@ export default function DashboardPage() {
       setLoadingData(true);
 
       try {
+        // Preview Mode (for branch UI inspection without Firebase Auth domain restrictions)
+        if (user.uid === 'preview_user_uid') {
+          const now = Date.now();
+          const dayMs = 24 * 3600 * 1000;
+          setProfile({
+            nome: 'Lucas Valini',
+            email: 'preview@clipzbody.app',
+            idade: 28,
+            altura: 178,
+            pesoInicial: 79.2
+          });
+          setLatestMeasure({
+            id: 'prev_m1',
+            pesoKg: 78.4,
+            imcCalculado: 24.7,
+            data: new Date(now - 3 * dayMs)
+          });
+          setPreviousMonthMeasure({
+            id: 'prev_m0',
+            pesoKg: 79.2,
+            imcCalculado: 25.0,
+            data: new Date(now - 30 * dayMs)
+          });
+          setStrengthLogs([
+            {
+              id: 'p1',
+              exerciseId: 'pre_supino_reto_barra',
+              muscleGroup: 'Peito',
+              cargaKg: 80,
+              reps: 8,
+              oneRmCalculado: 98.4,
+              totalSetsCompleted: 4,
+              data: new Date(now - 14 * dayMs)
+            },
+            {
+              id: 'p2',
+              exerciseId: 'pre_supino_reto_barra',
+              muscleGroup: 'Peito',
+              cargaKg: 84,
+              reps: 8,
+              oneRmCalculado: 102.5,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p3',
+              exerciseId: 'pre_supino_inclinado_halteres',
+              muscleGroup: 'Peito',
+              cargaKg: 32,
+              reps: 10,
+              oneRmCalculado: 42.6,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p4',
+              exerciseId: 'pre_peck_deck',
+              muscleGroup: 'Peito',
+              cargaKg: 65,
+              reps: 12,
+              oneRmCalculado: 91.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p5',
+              exerciseId: 'pre_overhead_press',
+              muscleGroup: 'Ombro',
+              cargaKg: 50,
+              reps: 8,
+              oneRmCalculado: 63.3,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p6',
+              exerciseId: 'pre_lateral_raise',
+              muscleGroup: 'Ombro',
+              cargaKg: 14,
+              reps: 12,
+              oneRmCalculado: 19.6,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p7',
+              exerciseId: 'pre_triceps_pulley_corda',
+              muscleGroup: 'Tríceps',
+              cargaKg: 35,
+              reps: 10,
+              oneRmCalculado: 46.6,
+              totalSetsCompleted: 4,
+              data: new Date(now - 3 * dayMs)
+            },
+            {
+              id: 'p8',
+              exerciseId: 'pre_agachamento_livre',
+              muscleGroup: 'Quadríceps',
+              cargaKg: 105,
+              reps: 8,
+              oneRmCalculado: 133.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 15 * dayMs)
+            },
+            {
+              id: 'p9',
+              exerciseId: 'pre_agachamento_livre',
+              muscleGroup: 'Quadríceps',
+              cargaKg: 112,
+              reps: 8,
+              oneRmCalculado: 140.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 4 * dayMs)
+            },
+            {
+              id: 'p10',
+              exerciseId: 'pre_leg_press_45',
+              muscleGroup: 'Quadríceps',
+              cargaKg: 240,
+              reps: 10,
+              oneRmCalculado: 320.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 4 * dayMs)
+            },
+            {
+              id: 'p11',
+              exerciseId: 'pre_puxada_pulley_pronada',
+              muscleGroup: 'Costas',
+              cargaKg: 70,
+              reps: 10,
+              oneRmCalculado: 91.5,
+              totalSetsCompleted: 4,
+              data: new Date(now - 16 * dayMs)
+            },
+            {
+              id: 'p12',
+              exerciseId: 'pre_puxada_pulley_pronada',
+              muscleGroup: 'Costas',
+              cargaKg: 72,
+              reps: 10,
+              oneRmCalculado: 94.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
+            },
+            {
+              id: 'p13',
+              exerciseId: 'pre_remada_curvada',
+              muscleGroup: 'Costas',
+              cargaKg: 75,
+              reps: 8,
+              oneRmCalculado: 95.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 0.8 * dayMs)
+            },
+            {
+              id: 'p14',
+              exerciseId: 'pre_rosca_direta_barra_w',
+              muscleGroup: 'Bíceps',
+              cargaKg: 38,
+              reps: 10,
+              oneRmCalculado: 50.6,
+              totalSetsCompleted: 4,
+              data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
+            },
+            {
+              id: 'p15',
+              exerciseId: 'pre_stiff',
+              muscleGroup: 'Posterior de Coxa',
+              cargaKg: 90,
+              reps: 10,
+              oneRmCalculado: 120.0,
+              totalSetsCompleted: 4,
+              data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
+            }
+          ]);
+          const workoutsList = await fetchAndEnsureSavedWorkouts(user.uid);
+          setSavedWorkouts(workoutsList);
+          setLoadingData(false);
+          return;
+        }
+
         // 2a. User Profile
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);

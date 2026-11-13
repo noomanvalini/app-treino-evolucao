@@ -117,6 +117,16 @@ export default function WeeklyInsightsCard({
   useEffect(() => {
     async function loadCachedInsight() {
       if (!userId) return;
+      if (userId === 'preview_user_uid') {
+        setInsight({
+          destaqueSemanal: 'Peito e Quadríceps apresentaram ótimo ganho de força (+4.2% no Supino Reto).',
+          pontosAtencao: 'Seu volume de Costas e Bíceps está alto nas últimas 24h. Priorize recuperação antes do próximo estímulo de puxada.',
+          dicaTecnica: 'Seu volume de Pernas está 25% abaixo da meta ideal nas últimas 2 semanas. Considere adicionar +2 séries de Agachamento ou Leg Press no próximo Treino C.',
+          mensagemMotivacional: 'Consistência impecável na semana!'
+        });
+        setLoadingCache(false);
+        return;
+      }
       setLoadingCache(true);
       try {
         const docRef = doc(db, 'weekly_insights', `${userId}_${currentWeekKey}`);

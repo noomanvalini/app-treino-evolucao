@@ -9,7 +9,7 @@ import { Dumbbell, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
 import ClipzBodyIcon from '@/components/ClipzBodyIcon';
 
 export default function Login() {
-  const { user, profile, isOnboarding, updateProfile, loading: authLoading } = useAuth();
+  const { user, profile, isOnboarding, updateProfile, enterPreviewMode, loading: authLoading } = useAuth();
   const router = useRouter();
 
   // Auth States
@@ -531,6 +531,19 @@ export default function Login() {
             </svg>
           )}
           Entrar com o Google
+        </button>
+
+        {/* Botão de Acesso Rápido para Preview da Branch UI */}
+        <button
+          type="button"
+          onClick={() => {
+            enterPreviewMode();
+            router.push('/dashboard');
+          }}
+          className="w-full mt-3 bg-[#d3e156]/15 hover:bg-[#d3e156]/25 border border-[#d3e156]/40 text-[#d3e156] font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Entrar em Modo Preview (Testar Nova UI sem Login)</span>
         </button>
 
         <div className="mt-6 text-center">

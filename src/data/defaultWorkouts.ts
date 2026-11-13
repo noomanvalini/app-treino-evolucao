@@ -104,6 +104,18 @@ export const DEFAULT_WORKOUT_TEMPLATES: DefaultWorkoutTemplate[] = [
  * retornando a lista completa de fichas salvas (do usuário + básicas).
  */
 export async function fetchAndEnsureSavedWorkouts(userId: string) {
+  if (userId === 'preview_user_uid') {
+    return DEFAULT_WORKOUT_TEMPLATES.map((def) => ({
+      id: def.id,
+      userId,
+      defaultKey: def.defaultKey,
+      title: def.title,
+      muscleGroups: def.muscleGroups,
+      exercises: def.exercises,
+      createdAt: new Date()
+    }));
+  }
+
   const q = query(collection(db, 'saved_workouts'), where('userId', '==', userId));
   const snap = await getDocs(q);
 
