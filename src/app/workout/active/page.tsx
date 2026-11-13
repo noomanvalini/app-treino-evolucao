@@ -1310,10 +1310,10 @@ function ActiveWorkoutComponent() {
 
       {/* Modal: Add Exercise Selector */}
       {isAddExerciseModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-card border border-border rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-3xl p-5 shadow-2xl w-full max-w-md max-h-[82vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
               <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
                 <Dumbbell className="h-5 w-5 text-lime-neon" /> Escolher Exercício
               </h2>
@@ -1326,7 +1326,7 @@ function ActiveWorkoutComponent() {
             </div>
 
             {/* Search Input */}
-            <div className="relative my-3">
+            <div className="relative my-3 shrink-0">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
@@ -1338,12 +1338,12 @@ function ActiveWorkoutComponent() {
             </div>
 
             {/* Muscle Filter Horizontal Scroll */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1.5 mb-1 no-scrollbar shrink-0">
               {['Todos', ...MUSCLE_GROUPS].map((mg) => (
                 <button
                   key={mg}
                   onClick={() => setFilterMuscle(mg)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-colors ${
                     filterMuscle === mg
                       ? 'bg-lime-neon text-slate-900 font-bold'
                       : 'bg-slate-card-light text-slate-400 hover:text-slate-200'
@@ -1355,7 +1355,7 @@ function ActiveWorkoutComponent() {
             </div>
 
             {/* Exercise List */}
-            <div className="flex-1 overflow-y-auto space-y-2 py-2 pr-1 mt-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 py-2 pr-1 mt-1">
               {loadingAvailableExercises ? (
                 <div className="py-8 text-center text-xs text-slate-400">Carregando exercícios...</div>
               ) : (
@@ -1625,8 +1625,8 @@ function ActiveWorkoutComponent() {
 
       {/* Modal: Salvar Treino (Template) */}
       {isSaveTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-card border border-border rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col space-y-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-3xl p-6 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col space-y-4 overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-border/50 pb-3">
               <div className="flex items-center gap-2.5">
@@ -1750,10 +1750,10 @@ function ActiveWorkoutComponent() {
 
       {/* Modal: Carregar Treino Salvo */}
       {isLoadTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-card border border-border rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-card border border-border rounded-3xl p-5 sm:p-6 shadow-2xl w-full max-w-md max-h-[82vh] flex flex-col space-y-4 overflow-hidden">
             {/* Header */}
-            <div className="flex items-start justify-between border-b border-border/50 pb-3">
+            <div className="flex items-start justify-between border-b border-border/50 pb-3 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-lime-neon/15 text-lime-neon border border-lime-neon/30">
                   <FolderDown className="h-5 w-5" />
