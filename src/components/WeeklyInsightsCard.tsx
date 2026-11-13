@@ -535,89 +535,57 @@ export default function WeeklyInsightsCard({
 
   const asymmetryBadge = getAsymmetrySummaryBadge();
 
-  // --- COMPACT VIEW (DASHBOARD) ---
+  // --- COMPACT VIEW (DASHBOARD - FIGMA REDESIGN) ---
   if (compact) {
+    const summaryText = insight
+      ? insight.dicaTecnica ||
+        insight.pontosAtencao ||
+        insight.destaqueSemanal ||
+        insight.resumoGeral
+      : logs.length > 0
+      ? 'Seus registros da semana estão prontos! Gere ou consulte seu diagnóstico cruzando cargas de força, evolução de peso e simetria corporal.'
+      : 'Registre seus treinos e medidas para receber sugestões personalizadas de volume, recuperação e progressão de carga.';
+
     return (
-      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden space-y-4">
-        <div className="absolute top-0 right-0 w-36 h-36 bg-lime-neon/5 rounded-full blur-2xl pointer-events-none -mr-10 -mt-10" />
+      <div className="bg-[#202017] border border-[rgba(255,185,95,0.2)] rounded-3xl p-5 shadow-xl relative overflow-hidden space-y-3">
+        <div className="absolute -top-6 -right-6 w-24 h-24 bg-[rgba(255,185,95,0.06)] rounded-full blur-xl pointer-events-none" />
 
         {/* Header */}
         <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-lime-neon/10 text-lime-neon border border-lime-neon/20">
-              <Sparkles className="h-4 w-4" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[rgba(255,185,95,0.1)] border border-[rgba(255,185,95,0.2)] flex items-center justify-center text-[#ffb95f]">
+              <Lightbulb className="h-4 w-4" />
             </div>
-            <div>
-              <span className="text-[9px] font-extrabold uppercase tracking-widest text-lime-neon block">
-                Coach IA ClipzBody
-              </span>
-              <h2 className="text-sm font-bold text-slate-100">Análise da Semana</h2>
-            </div>
+            <h2 className="text-[13px] font-bold font-heading uppercase tracking-[0.33px] text-[#e3e3d6]">
+              Análise Semanal
+            </h2>
           </div>
 
-          <span className="text-[10px] font-bold text-slate-400 bg-slate-card-light/60 px-2.5 py-1 rounded-full border border-border/40">
-            {currentWeekKey.replace('W', 'Semana ')}
+          <span className="bg-[rgba(255,185,95,0.1)] text-[#ffb95f] px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">
+            Sugestão
           </span>
         </div>
 
         {loadingCache ? (
-          <div className="py-4 flex justify-center items-center gap-2 text-xs text-slate-400">
-            <Loader2 className="h-4 w-4 animate-spin text-lime-neon" />
+          <div className="py-3 flex items-center gap-2 text-xs text-[#909284]">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ffb95f]" />
             <span>Verificando análise da semana...</span>
           </div>
-        ) : insight ? (
-          <div className="space-y-3 relative z-10 text-xs">
-            {/* Quick Chips */}
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold">
-              {insight.pesoInfo?.pesoAtual ? (
-                <div className="bg-slate-card-light/50 border border-border/40 px-2.5 py-1 rounded-lg flex items-center gap-1.5 text-slate-300">
-                  <Scale className="h-3 w-3 text-lime-neon" />
-                  <span>Peso: <strong className="text-slate-100 font-bold">{insight.pesoInfo.pesoAtual}kg</strong></span>
-                  {insight.pesoInfo.deltaPesoKg && (
-                    <span className={insight.pesoInfo.deltaPesoKg.startsWith('+') ? 'text-success font-bold' : 'text-danger font-bold'}>
-                      ({insight.pesoInfo.deltaPesoKg})
-                    </span>
-                  )}
-                </div>
-              ) : null}
-
-              {asymmetryBadge && (
-                <div className={`border px-2.5 py-1 rounded-lg flex items-center gap-1 ${asymmetryBadge.className}`}>
-                  <Layers className="h-3 w-3" />
-                  <span>{asymmetryBadge.label}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Destaque Curto */}
-            {insight.destaqueSemanal && (
-              <div className="bg-lime-neon/5 border border-lime-neon/20 rounded-xl p-3 space-y-1">
-                <div className="flex items-center gap-1.5 text-lime-neon font-bold text-[10px] uppercase tracking-wider">
-                  <Trophy className="h-3 w-3" /> Destaque: {insight.destaqueSemanal.split('.')[0]}
-                </div>
-              </div>
-            )}
-
-            {/* Link para aba dedicada com histórico */}
-            <Link
-              href="/insights"
-              className="w-full bg-slate-card-light hover:bg-slate-card-light/80 text-lime-neon border border-lime-neon/30 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5"
-            >
-              <span>Ver Análise Completa & Histórico</span>
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Receba um diagnóstico completo cruzando cargas, medidas corporais e assimetrias.
+          <div className="space-y-2.5 relative z-10">
+            <p className="text-xs text-[#c7c7b8] leading-[19.5px] line-clamp-3">
+              {summaryText}
             </p>
-            <Link
-              href="/insights"
-              className="w-full bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-2.5 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
-            >
-              <Sparkles className="h-4 w-4" /> Ir para Aba de Análises
-            </Link>
+
+            <div className="pt-0.5">
+              <Link
+                href="/insights"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#ffb95f] hover:opacity-85 transition-opacity"
+              >
+                <span>Ver relatório detalhado</span>
+                <span>→</span>
+              </Link>
+            </div>
           </div>
         )}
       </div>

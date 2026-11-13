@@ -1,722 +1,969 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import Link from 'next/link';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
-import InstallPWA from '@/components/InstallPWA';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
-import { User, Award, Activity, TrendingUp, TrendingDown, ChevronRight, Loader2, AlertTriangle, Play, Clock, Trash2 } from 'lucide-react';
-import BodyMap from '@/components/BodyMap';
-import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
+import DashboardStrengthScoreCard, { MuscleReadinessStat } from '@/components/DashboardStrengthScoreCard';
+import { MUSCLE_GROUPS, PREDEFINED_EXERCISES, getExerciseGuide } from '@/data/exercises';
+import { fetchAndEnsureSavedWorkouts } from '@/data/defaultWorkouts';
+import {
+  Dumbbell,
+  Play,
+  Flame,
+  ChevronRight,
+  Clock,
+  Trophy,
+  Scale,
+  CheckCircle2,
+  RefreshCw
+} from 'lucide-react';
 
-interface StrengthLog {
-  exerciseId: string;
-  muscleGroup: string;
-  oneRmCalculado: number;
-  cargaKg: number;
-  reps: number;
-  data: any; // Timestamp
+interface UserProfile {
+  nome: string;
+  email: string;
+  idade?: number;
+  altura?: number;
+  pesoInicial?: number;
+  weeklySetGoals?: {
+    peito?: number;
+    costas?: number;
+    bracos?: number;
+    pernas?: number;
+    ombros?: number;
+  };
 }
 
-export default function Dashboard() {
-  const { user, profile, loading: authLoading, isOnboarding, firestoreError, logout } = useAuth();
+interface Measurement {
+  id: string;
+  pesoKg: number;
+  imcCalculado: number;
+  data: any;
+}
+
+interface StrengthLog {
+  id: string;
+  exerciseId: string;
+  muscleGroup: string;
+  cargaKg?: number;
+  reps?: number;
+  oneRmCalculado: number;
+  totalSetsCompleted?: number;
+  allSets?: Array<any>;
+  data: any;
+}
+
+interface SavedWorkoutItem {
+  id: string;
+  userId: string;
+  title: string;
+  defaultKey?: string;
+  muscleGroups: string[];
+  exercises: Array<{
+    exerciseId: string;
+    nomeExercicio: string;
+    muscleGroup: string;
+    sets: Array<{ setNumber: number; cargaKg: number | ''; reps: number | '' }>;
+  }>;
+  createdAt?: any;
+}
+
+export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [latestMeasure, setLatestMeasure] = useState<Measurement | null>(null);
+  const [previousMonthMeasure, setPreviousMonthMeasure] = useState<Measurement | null>(null);
+  const [strengthLogs, setStrengthLogs] = useState<StrengthLog[]>([]);
+  const [customExerciseNames, setCustomExerciseNames] = useState<Record<string, string>>({});
+  const [savedWorkouts, setSavedWorkouts] = useState<SavedWorkoutItem[]>([]);
+  const [selectedWorkoutIdx, setSelectedWorkoutIdx] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
-  const [userLogs, setUserLogs] = useState<StrengthLog[]>([]);
-  const [muscleEvolutions, setMuscleEvolutions] = useState<Record<string, number>>({});
-  const [musclesWithData, setMusclesWithData] = useState<Record<string, { hasLogs: boolean; hasMultipleSessions: boolean }>>({});
-  const [generalScore, setGeneralScore] = useState<number>(0);
-  const [timedOut, setTimedOut] = useState(false);
-  const [localDbError, setLocalDbError] = useState<string | null>(null);
-  
-  // State for interactive body map selection
-  const [selectedMuscle, setSelectedMuscle] = useState<string>('');
 
-  // Active workout in progress check
-  const [activeWorkout, setActiveWorkout] = useState<{ title: string; elapsedSeconds: number } | null>(null);
+  // Active Workout Banner State (from localStorage)
+  const [activeWorkoutBanner, setActiveWorkoutBanner] = useState<{
+    title: string;
+    exerciseCount: number;
+    elapsedSeconds: number;
+  } | null>(null);
 
+  // Check if there is an active in-progress workout in localStorage
   useEffect(() => {
-    if (!user || typeof window === 'undefined') return;
-
+    if (!user) return;
     const storageKey = `clipzbody_active_workout_${user.uid}`;
 
     const checkActiveWorkout = () => {
       try {
-        const saved = localStorage.getItem(storageKey);
-        if (!saved) {
-          setActiveWorkout(null);
+        const raw = localStorage.getItem(storageKey);
+        if (!raw) {
+          setActiveWorkoutBanner(null);
           return;
         }
-
-        const parsed = JSON.parse(saved);
-        if (
-          !parsed ||
-          parsed.isCompleted ||
-          parsed.isFinished ||
-          !Array.isArray(parsed.exercises) ||
-          parsed.exercises.length === 0
-        ) {
+        const parsed = JSON.parse(raw);
+        if (parsed && (parsed.isCompleted || parsed.isFinished)) {
           localStorage.removeItem(storageKey);
-          setActiveWorkout(null);
+          setActiveWorkoutBanner(null);
           return;
         }
+        if (parsed && Array.isArray(parsed.exercises) && parsed.exercises.length > 0) {
+          const now = Date.now();
+          const lastSaved = parsed.lastSavedAt || parsed.lastResumeTime || now;
+          if (Math.floor((now - lastSaved) / 1000) >= 64800) {
+            localStorage.removeItem(storageKey);
+            setActiveWorkoutBanner(null);
+            return;
+          }
 
-        const now = Date.now();
-        const lastSaved = parsed.lastSavedAt || parsed.lastResumeTime || now;
-        const diffFromSave = Math.floor((now - lastSaved) / 1000);
+          const acc =
+            typeof parsed.accumulatedSeconds === 'number'
+              ? parsed.accumulatedSeconds
+              : parsed.elapsedSeconds || 0;
+          const liveSecs =
+            parsed.isWorkoutStarted && !parsed.isTimerPaused && parsed.lastResumeTime
+              ? acc + Math.max(0, Math.floor((now - parsed.lastResumeTime) / 1000))
+              : acc;
 
-        // Auto-clean stale abandoned workouts older than 18 hours
-        if (diffFromSave >= 64800) {
-          localStorage.removeItem(storageKey);
-          setActiveWorkout(null);
-          return;
-        }
-
-        const isStarted = !!parsed.isWorkoutStarted;
-        if (!isStarted) {
-          setActiveWorkout({
-            title: parsed.title || 'Treino do Dia',
-            elapsedSeconds: 0
+          setActiveWorkoutBanner({
+            title: parsed.title || 'Treino em Andamento',
+            exerciseCount: parsed.exercises.length,
+            elapsedSeconds: liveSecs
           });
-          return;
+        } else {
+          setActiveWorkoutBanner(null);
         }
-
-        const acc = typeof parsed.accumulatedSeconds === 'number'
-          ? parsed.accumulatedSeconds
-          : (parsed.elapsedSeconds || 0);
-
-        let liveSeconds = acc;
-        if (!parsed.isTimerPaused && parsed.lastResumeTime) {
-          liveSeconds = acc + Math.max(0, Math.floor((now - parsed.lastResumeTime) / 1000));
-        }
-
-        setActiveWorkout({
-          title: parsed.title || 'Treino do Dia',
-          elapsedSeconds: liveSeconds
-        });
-      } catch (e) {
-        console.error('Error checking active workout in dashboard:', e);
-        setActiveWorkout(null);
+      } catch {
+        setActiveWorkoutBanner(null);
       }
     };
 
     checkActiveWorkout();
-
-    // Live tick while dashboard is open so elapsed time stays live and up to date
-    const interval = setInterval(checkActiveWorkout, 1000);
-
-    // Sync immediately on visibility change or window focus
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible' || document.hasFocus()) {
-        checkActiveWorkout();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
-    window.addEventListener('focus', handleVisibilityOrFocus);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
-      window.removeEventListener('focus', handleVisibilityOrFocus);
-    };
+    window.addEventListener('focus', checkActiveWorkout);
+    return () => window.removeEventListener('focus', checkActiveWorkout);
   }, [user]);
 
-  const handleDiscardActiveWorkout = () => {
-    if (!user || typeof window === 'undefined') return;
-    if (confirm('Deseja realmente descartar este treino em andamento?')) {
-      try {
-        localStorage.removeItem(`clipzbody_active_workout_${user.uid}`);
-        setActiveWorkout(null);
-      } catch (e) {
-        console.error('Error discarding workout from dashboard:', e);
-      }
-    }
-  };
-
+  // 1. Protect route if not authenticated
   useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.replace('/login');
-      } else if (isOnboarding) {
-        router.replace('/login');
-      } else {
-        fetchMetrics();
+    if (!authLoading && !user) {
+      router.replace('/login');
+    }
+  }, [user, authLoading, router]);
+
+  // 2. Fetch User Profile, Measurements, Strength Logs, and Saved Workouts (including A, B, C)
+  useEffect(() => {
+    async function fetchDashboardData() {
+      if (!user) return;
+      setLoadingData(true);
+
+      try {
+        // 2a. User Profile
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data() as UserProfile;
+          if (!userData.idade || !userData.altura) {
+            router.replace('/onboarding');
+            return;
+          }
+          setProfile(userData);
+        } else {
+          router.replace('/onboarding');
+          return;
+        }
+
+        // 2b. Measurements (sorted newest first)
+        const measuresQuery = query(collection(db, 'measures'), where('userId', '==', user.uid));
+        const measuresSnap = await getDocs(measuresQuery);
+
+        if (!measuresSnap.empty) {
+          const measuresList = measuresSnap.docs.map((d) => ({
+            id: d.id,
+            ...d.data()
+          })) as Measurement[];
+
+          measuresList.sort((a, b) => {
+            const timeA = a.data?.seconds ? a.data.seconds * 1000 : new Date(a.data).getTime();
+            const timeB = b.data?.seconds ? b.data.seconds * 1000 : new Date(b.data).getTime();
+            return timeB - timeA;
+          });
+
+          setLatestMeasure(measuresList[0]);
+          if (measuresList.length > 1) {
+            setPreviousMonthMeasure(measuresList[1]);
+          }
+        }
+
+        // 2c. Custom exercises for name resolution
+        const exQuery = query(collection(db, 'exercises'), where('userId', '==', user.uid));
+        const exSnap = await getDocs(exQuery);
+        const exNameMap: Record<string, string> = {};
+        exSnap.forEach((d) => {
+          const data = d.data();
+          if (data.nomeExercicio) {
+            exNameMap[d.id] = data.nomeExercicio;
+          }
+        });
+        setCustomExerciseNames(exNameMap);
+
+        // 2d. Strength Logs
+        const logsQuery = query(collection(db, 'strength_logs'), where('userId', '==', user.uid));
+        const logsSnap = await getDocs(logsQuery);
+
+        if (!logsSnap.empty) {
+          const rawLogs = logsSnap.docs.map((d) => {
+            const data = d.data();
+            let mg = data.muscleGroup;
+            if (
+              data.exerciseId === 'pre_mesa_flexora' ||
+              data.exerciseId?.toLowerCase().includes('flexora')
+            ) {
+              mg = 'Posterior de Coxa';
+            }
+            return {
+              id: d.id,
+              ...data,
+              muscleGroup: mg
+            };
+          }) as StrengthLog[];
+
+          setStrengthLogs(rawLogs);
+        }
+
+        // 2e. Saved Workouts (ensuring Treino A, B, C exist)
+        const workoutsList = await fetchAndEnsureSavedWorkouts(user.uid);
+        setSavedWorkouts(workoutsList);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoadingData(false);
       }
     }
-  }, [user, authLoading, isOnboarding, router]);
 
-  const fetchMetrics = async () => {
-    if (!user) return;
-    setLoadingData(true);
-    setTimedOut(false);
-    setLocalDbError(null);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user, router]);
 
-    const timer = setTimeout(() => {
-      setTimedOut(true);
-    }, 6000);
+  // --- COMPUTED METRICS (Score Geral de Força, RP Score pts, Mapa Corporal, PRs Recentes) ---
+  const {
+    rpScorePts,
+    totalEvolutionPct,
+    muscleReadinessMap,
+    recentPrCards,
+    latestByExerciseMap
+  } = useMemo(() => {
+    const nowMs = Date.now();
+    const sevenDaysMs = 7 * 24 * 3600 * 1000;
+    const fourteenDaysMs = 14 * 24 * 3600 * 1000;
 
-    try {
-      // Helper: extract session date key (YYYY-MM-DD)
-      const getSessionDateKey = (rawDate: any): string => {
-        if (!rawDate) return '';
-        const d = rawDate?.seconds ? new Date(rawDate.seconds * 1000) : new Date(rawDate);
-        if (isNaN(d.getTime())) return '';
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
+    // Group logs by exerciseId sorted chronologically (oldest -> newest)
+    const logsByExercise: Record<string, StrengthLog[]> = {};
+    strengthLogs.forEach((log) => {
+      if (!logsByExercise[log.exerciseId]) {
+        logsByExercise[log.exerciseId] = [];
+      }
+      logsByExercise[log.exerciseId].push(log);
+    });
+
+    Object.values(logsByExercise).forEach((arr) => {
+      arr.sort((a, b) => {
+        const tA = a.data?.seconds ? a.data.seconds * 1000 : new Date(a.data).getTime();
+        const tB = b.data?.seconds ? b.data.seconds * 1000 : new Date(b.data).getTime();
+        return tA - tB;
+      });
+    });
+
+    // Latest load by exerciseId (for estimating workout volume in Hero Card)
+    const latestExMap: Record<string, { cargaKg: number; reps: number; oneRm: number }> = {};
+
+    // Calculate RP Score (sum of peak 1RMs across exercises) & per-exercise evolution
+    let totalPeak1RM = 0;
+    const prList: Array<{
+      exerciseId: string;
+      exerciseName: string;
+      muscleGroup: string;
+      best1RM: number;
+      deltaKg: number;
+      lastTimestamp: number;
+    }> = [];
+
+    const exercisesEvoByMuscle: Record<string, number[]> = {};
+    MUSCLE_GROUPS.forEach((m) => {
+      exercisesEvoByMuscle[m] = [];
+    });
+
+    Object.entries(logsByExercise).forEach(([exId, exLogs]) => {
+      if (exLogs.length === 0) return;
+      const firstLog = exLogs[0];
+      const latestLog = exLogs[exLogs.length - 1];
+      const best1RM = Math.max(...exLogs.map((l) => l.oneRmCalculado || 0));
+      totalPeak1RM += best1RM;
+
+      latestExMap[exId] = {
+        cargaKg: latestLog.cargaKg || 20,
+        reps: latestLog.reps || 10,
+        oneRm: latestLog.oneRmCalculado || 0
       };
 
-      // 1. Fetch user exercises to map them to muscle groups (predefined + custom)
-      const exercisesQuery = query(collection(db, 'exercises'), where('userId', '==', user.uid));
-      const exercisesSnap = await getDocs(exercisesQuery);
-      const exerciseToMuscle: Record<string, string> = {};
+      // Exercise evolution %
+      let evoPct = 0;
+      let delta1RmKg = 0;
+      if (exLogs.length >= 2 && firstLog.oneRmCalculado > 0) {
+        evoPct = ((latestLog.oneRmCalculado - firstLog.oneRmCalculado) / firstLog.oneRmCalculado) * 100;
+        const prevLog = exLogs[exLogs.length - 2];
+        delta1RmKg = (latestLog.oneRmCalculado || 0) - (prevLog.oneRmCalculado || 0);
+      }
 
-      // Load all predefined exercises
-      PREDEFINED_EXERCISES.forEach((pe) => {
-        exerciseToMuscle[pe.id] = pe.muscleGroup;
+      const mg = latestLog.muscleGroup || 'Peito';
+      if (!exercisesEvoByMuscle[mg]) {
+        exercisesEvoByMuscle[mg] = [];
+      }
+      if (exLogs.length >= 2) {
+        exercisesEvoByMuscle[mg].push(evoPct);
+      }
+
+      // Resolve exercise display name
+      const predefined = PREDEFINED_EXERCISES.find((p) => p.id === exId);
+      const guide = getExerciseGuide({ id: exId });
+      const resolvedName =
+        predefined?.nome || customExerciseNames[exId] || guide.nome || 'Exercício';
+
+      const lastTime = latestLog.data?.seconds
+        ? latestLog.data.seconds * 1000
+        : new Date(latestLog.data).getTime();
+
+      prList.push({
+        exerciseId: exId,
+        exerciseName: resolvedName,
+        muscleGroup: mg,
+        best1RM,
+        deltaKg: delta1RmKg,
+        lastTimestamp: isNaN(lastTime) ? 0 : lastTime
+      });
+    });
+
+    // Build per-muscle readiness & evolution stats
+    const readinessMap: Record<string, MuscleReadinessStat> = {};
+    let sumMuscleEvo = 0;
+    let musclesWithEvo = 0;
+
+    MUSCLE_GROUPS.forEach((muscle) => {
+      const mLogs = strengthLogs.filter((l) => l.muscleGroup === muscle);
+      const evos = exercisesEvoByMuscle[muscle] || [];
+      const avgEvo =
+        evos.length > 0 ? evos.reduce((acc, c) => acc + c, 0) / evos.length : 0;
+
+      if (evos.length > 0) {
+        sumMuscleEvo += avgEvo;
+        musclesWithEvo++;
+      }
+
+      let latestTimeMs: number | null = null;
+      let weeklySets = 0;
+      let bestMuscle1RM = 0;
+
+      mLogs.forEach((l) => {
+        const t = l.data?.seconds ? l.data.seconds * 1000 : new Date(l.data).getTime();
+        if (!isNaN(t)) {
+          if (latestTimeMs === null || t > latestTimeMs) {
+            latestTimeMs = t;
+          }
+          if (nowMs - t <= sevenDaysMs) {
+            const sCount =
+              typeof l.totalSetsCompleted === 'number' && l.totalSetsCompleted > 0
+                ? l.totalSetsCompleted
+                : 3;
+            weeklySets += sCount;
+          }
+        }
+        if ((l.oneRmCalculado || 0) > bestMuscle1RM) {
+          bestMuscle1RM = l.oneRmCalculado;
+        }
       });
 
-      // Load user custom exercises
-      exercisesSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        const name = (data.nomeExercicio || '').toLowerCase();
+      const hoursSinceLast =
+        latestTimeMs !== null ? Math.max(0, (nowMs - latestTimeMs) / (1000 * 3600)) : null;
 
-        // Biomechanical rule: Flexora (Mesa/Cadeira) & Stiff belong strictly to Posterior de Coxa
-        if (name.includes('flexora') || name.includes('stiff') || data.predefinedId?.includes('flexora') || data.predefinedId?.includes('stiff')) {
-          exerciseToMuscle[docSnap.id] = 'Posterior de Coxa';
-          if (data.muscleGroup === 'Quadríceps') {
-            deleteDoc(docSnap.ref).catch(console.error);
-          }
+      let status: 'ready' | 'recovering' | 'inactive' = 'inactive';
+      if (hoursSinceLast !== null) {
+        if (hoursSinceLast <= 48) {
+          status = 'recovering';
+        } else if (nowMs - (latestTimeMs || 0) <= fourteenDaysMs) {
+          status = 'ready';
         } else {
-          exerciseToMuscle[docSnap.id] = data.muscleGroup;
+          status = 'ready'; // Previously trained muscle
         }
-      });
+      }
 
-      // 2. Fetch all user logs
-      const logsQuery = query(collection(db, 'strength_logs'), where('userId', '==', user.uid));
-      const logsSnap = await getDocs(logsQuery);
+      readinessMap[muscle] = {
+        muscleGroup: muscle,
+        evolutionPct: Number(avgEvo.toFixed(1)),
+        hoursSinceLast,
+        weeklySets,
+        best1RM: bestMuscle1RM,
+        status
+      };
+    });
 
-      const logsList: StrengthLog[] = [];
-      const logsByExercise: Record<string, StrengthLog[]> = {};
-      const musclesWithLogsSet = new Set<string>();
+    const overallEvo = musclesWithEvo > 0 ? Number((sumMuscleEvo / musclesWithEvo).toFixed(1)) : 0;
 
-      logsSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        let muscle = data.muscleGroup;
+    // Sort PR cards: most recent workouts first, prioritizing positive PR gains
+    prList.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
 
-        // Biomechanical rules & self-healing for flexora / stiff
-        const isFlexoraOrStiff =
-          data.exerciseId === 'pre_mesa_flexora' ||
-          data.exerciseId === 'pre_cadeira_flexora' ||
-          data.exerciseId === 'pre_stiff' ||
-          data.exerciseId?.toLowerCase().includes('flexora') ||
-          data.exerciseId?.toLowerCase().includes('stiff') ||
-          exerciseToMuscle[data.exerciseId] === 'Posterior de Coxa';
+    return {
+      rpScorePts: Math.round(totalPeak1RM),
+      totalEvolutionPct: overallEvo,
+      muscleReadinessMap: readinessMap,
+      recentPrCards: prList.slice(0, 8),
+      latestByExerciseMap: latestExMap
+    };
+  }, [strengthLogs, customExerciseNames]);
 
-        if (isFlexoraOrStiff) {
-          muscle = 'Posterior de Coxa';
-          if (data.muscleGroup !== 'Posterior de Coxa') {
-            updateDoc(docSnap.ref, { muscleGroup: 'Posterior de Coxa' }).catch(console.error);
-          }
-        } else if (!muscle && exerciseToMuscle[data.exerciseId]) {
-          muscle = exerciseToMuscle[data.exerciseId];
-        }
-
-        if (muscle) {
-          musclesWithLogsSet.add(muscle);
-        }
-
-        const logObj: StrengthLog = {
-          exerciseId: data.exerciseId,
-          muscleGroup: muscle,
-          oneRmCalculado: data.oneRmCalculado || 0,
-          cargaKg: data.cargaKg || 0,
-          reps: data.reps || 0,
-          data: data.data
-        };
-
-        logsList.push(logObj);
-
-        if (!logsByExercise[data.exerciseId]) {
-          logsByExercise[data.exerciseId] = [];
-        }
-        logsByExercise[data.exerciseId].push(logObj);
-      });
-      setUserLogs(logsList);
-
-      // 3. Group by workout session per exercise and extract peak 1RM (RP)
-      const deltasByMuscle: Record<string, number[]> = {};
-      const muscleMultipleSessions: Record<string, boolean> = {};
-      MUSCLE_GROUPS.forEach((m) => {
-        deltasByMuscle[m] = [];
-        muscleMultipleSessions[m] = false;
-      });
-
-      Object.entries(logsByExercise).forEach(([exerciseId, logs]) => {
-        let muscle = exerciseToMuscle[exerciseId];
-        if (!muscle) {
-          const sample = logs[0];
-          muscle = sample?.muscleGroup;
-        }
-        if (exerciseId === 'pre_mesa_flexora' || exerciseId?.toLowerCase().includes('flexora') || exerciseId?.toLowerCase().includes('stiff')) {
-          muscle = 'Posterior de Coxa';
-        }
-
-        // Group sets by session date key
-        const sessionsMap: Record<string, StrengthLog[]> = {};
-        logs.forEach((l) => {
-          const dateKey = getSessionDateKey(l.data) || 'single';
-          if (!sessionsMap[dateKey]) sessionsMap[dateKey] = [];
-          sessionsMap[dateKey].push(l);
-        });
-
-        // Find peak 1RM per workout session
-        const sessionPeaks = Object.entries(sessionsMap).map(([dateKey, sets]) => {
-          const max1RM = Math.max(...sets.map((s) => s.oneRmCalculado || 0));
-          const sampleDate = sets[0]?.data;
-          const time = sampleDate?.seconds ? sampleDate.seconds * 1000 : new Date(sampleDate).getTime();
-          return { dateKey, time, peak1RM: max1RM };
-        });
-
-        sessionPeaks.sort((a, b) => a.time - b.time);
-
-        // If at least 2 distinct workout sessions exist, compute progression between latest and previous peak
-        if (muscle && sessionPeaks.length >= 2) {
-          const latestPeak = sessionPeaks[sessionPeaks.length - 1].peak1RM;
-          const previousPeak = sessionPeaks[sessionPeaks.length - 2].peak1RM;
-          if (previousPeak > 0) {
-            const exerciseDelta = ((latestPeak - previousPeak) / previousPeak) * 100;
-            if (deltasByMuscle[muscle]) {
-              deltasByMuscle[muscle].push(exerciseDelta);
-              muscleMultipleSessions[muscle] = true;
-            }
-          }
-        }
-      });
-
-      // 4. Calculate muscle group evolution (average of exercise deltas)
-      const evolutions: Record<string, number> = {};
-      const withDataState: Record<string, { hasLogs: boolean; hasMultipleSessions: boolean }> = {};
-      let totalDeltasSum = 0;
-      let muscleGroupsWithDataCount = 0;
-
-      MUSCLE_GROUPS.forEach((muscle) => {
-        const deltas = deltasByMuscle[muscle] || [];
-        const hasLogs = musclesWithLogsSet.has(muscle);
-        const hasMultiple = muscleMultipleSessions[muscle] && deltas.length > 0;
-
-        withDataState[muscle] = {
-          hasLogs,
-          hasMultipleSessions: hasMultiple
-        };
-
-        if (hasMultiple) {
-          const avg = deltas.reduce((sum, d) => sum + d, 0) / deltas.length;
-          evolutions[muscle] = Number(avg.toFixed(1));
-          totalDeltasSum += avg;
-          muscleGroupsWithDataCount++;
-        } else {
-          evolutions[muscle] = 0;
-        }
-      });
-
-      setMuscleEvolutions(evolutions);
-      setMusclesWithData(withDataState);
-
-      // Score Geral de Força (average of all active muscle groups with progress)
-      const generalScoreAvg = muscleGroupsWithDataCount > 0 
-        ? totalDeltasSum / muscleGroupsWithDataCount 
-        : 0;
-      setGeneralScore(Number(generalScoreAvg.toFixed(1)));
-
-    } catch (error: any) {
-      console.error('Error fetching dashboard metrics:', error);
-      setLocalDbError(error.message || String(error));
-    } finally {
-      clearTimeout(timer);
-      setLoadingData(false);
-    }
+  // --- GREETING HELPER ---
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
   };
 
-  const dbError = firestoreError || localDbError;
+  // --- HERO CARD SELECTED WORKOUT METADATA ---
+  const selectedWorkout = savedWorkouts[selectedWorkoutIdx] || null;
 
-  if (authLoading || (loadingData && !timedOut && !dbError)) {
+  const heroWorkoutMeta = useMemo(() => {
+    if (!selectedWorkout) {
+      return {
+        displayTitle: 'Treino A • Push',
+        subtitle: 'Peito, Tríceps e Ombro',
+        exerciseCount: 7,
+        estimatedMinutes: 55,
+        estimatedVolumeKg: 4200,
+        lastDoneLabel: 'Pronto p/ iniciar'
+      };
+    }
+
+    const exCount = selectedWorkout.exercises.length;
+    const estMinutes = Math.max(30, exCount * 8);
+
+    // Estimate total load based on user's past logs or default 30kg x 10 reps x 3 sets
+    let estVol = 0;
+    selectedWorkout.exercises.forEach((ex) => {
+      const past = latestByExerciseMap[ex.exerciseId];
+      const setsCount = Array.isArray(ex.sets) && ex.sets.length > 0 ? ex.sets.length : 3;
+      const load = past?.cargaKg || 25;
+      const reps = past?.reps || 10;
+      estVol += load * reps * setsCount;
+    });
+
+    // Find last log date for the primary muscle group of this workout
+    const primaryMg = selectedWorkout.muscleGroups[0];
+    const stat = primaryMg ? muscleReadinessMap[primaryMg] : null;
+    let lastDoneLabel = 'Pronto p/ iniciar';
+    if (stat && stat.hoursSinceLast !== null) {
+      const days = Math.floor(stat.hoursSinceLast / 24);
+      const dayStr = days === 0 ? 'Hoje' : days === 1 ? 'Há 1 dia' : `Há ${days} dias`;
+      const evoStr =
+        stat.evolutionPct !== 0
+          ? ` (${stat.evolutionPct > 0 ? '+' : ''}${stat.evolutionPct.toFixed(1)}% PR)`
+          : '';
+      lastDoneLabel = `${dayStr}${evoStr}`;
+    }
+
+    // Format title & subtitle cleanly
+    const parts = selectedWorkout.title.split('•');
+    const mainTitle = parts[0]?.trim() || selectedWorkout.title;
+    const sub =
+      parts[1]?.trim() ||
+      (selectedWorkout.muscleGroups.length > 0
+        ? selectedWorkout.muscleGroups.join(', ')
+        : 'Ficha personalizada');
+
+    return {
+      displayTitle: selectedWorkout.defaultKey
+        ? `Treino ${selectedWorkout.defaultKey} • ${selectedWorkout.muscleGroups[0] || 'Geral'}`
+        : mainTitle,
+      subtitle: sub,
+      exerciseCount: exCount,
+      estimatedMinutes: estMinutes,
+      estimatedVolumeKg: estVol,
+      lastDoneLabel
+    };
+  }, [selectedWorkout, latestByExerciseMap, muscleReadinessMap]);
+
+  const handleCycleWorkout = () => {
+    if (savedWorkouts.length <= 1) return;
+    setSelectedWorkoutIdx((prev) => (prev + 1) % savedWorkouts.length);
+  };
+
+  // --- PHYSICAL SUMMARY HELPERS ---
+  const imcValue = latestMeasure?.imcCalculado || 0;
+  const pesoValue = latestMeasure?.pesoKg || profile?.pesoInicial || 0;
+  const pesoDelta =
+    latestMeasure && previousMonthMeasure
+      ? Number((latestMeasure.pesoKg - previousMonthMeasure.pesoKg).toFixed(1))
+      : null;
+
+  const daysSinceMeasure = useMemo(() => {
+    if (!latestMeasure?.data) return null;
+    const t = latestMeasure.data?.seconds
+      ? latestMeasure.data.seconds * 1000
+      : new Date(latestMeasure.data).getTime();
+    if (isNaN(t)) return null;
+    return Math.max(0, Math.floor((Date.now() - t) / (1000 * 3600 * 24)));
+  }, [latestMeasure]);
+
+  const getImcStatus = (imc: number) => {
+    if (!imc || imc <= 0) {
+      return {
+        label: 'SEM REGISTRO',
+        badgeClass: 'bg-[#2a2b21] border-[rgba(70,72,59,0.3)] text-[#909284]',
+        activeSegment: 0
+      };
+    }
+    if (imc < 18.5) {
+      return {
+        label: 'ABAIXO DO PESO',
+        badgeClass: 'bg-[rgba(255,185,95,0.15)] border-[rgba(255,185,95,0.3)] text-[#ffb95f]',
+        activeSegment: 1
+      };
+    }
+    if (imc < 25) {
+      return {
+        label: 'PESO NORMAL',
+        badgeClass: 'bg-[rgba(211,225,86,0.15)] border-[rgba(211,225,86,0.3)] text-[#d3e156]',
+        activeSegment: 2
+      };
+    }
+    return {
+      label: 'SOBREPESO',
+      badgeClass: 'bg-[rgba(255,185,95,0.15)] border-[rgba(255,185,95,0.3)] text-[#ffb95f]',
+      activeSegment: 3
+    };
+  };
+
+  const imcStatus = getImcStatus(imcValue);
+  const alturaMetros = profile?.altura ? (profile.altura / 100).toFixed(2) : '--';
+  const firstName = profile?.nome?.split(' ')[0] || 'Atleta';
+
+  if (authLoading || loadingData) {
     return (
-      <div className="flex h-[80vh] flex-col items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-lime-neon" />
-        <span className="mt-2 text-xs text-slate-400">Calculando métricas...</span>
+      <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#d3e156]" />
       </div>
     );
-  }
-
-  // Display helpful database error/timeout template
-  if (dbError || timedOut || !profile) {
-    return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center py-6">
-        <div className="bg-slate-card border border-border rounded-2xl p-6 shadow-xl w-full max-w-sm text-center space-y-4">
-          <div className="rounded-full bg-danger/10 p-4 text-danger w-fit mx-auto border border-danger/20">
-            <AlertTriangle className="h-8 w-8 animate-bounce" />
-          </div>
-          <h2 className="text-base font-bold text-slate-100">Falha na conexão do Banco de Dados</h2>
-          
-          <div className="bg-slate-card-light/50 border border-border/30 rounded-xl p-3 text-xs text-slate-300 text-left space-y-2 leading-relaxed">
-            {timedOut ? (
-              <p>⏱️ **Tempo limite esgotado**: A conexão com o Firestore demorou mais que o esperado.</p>
-            ) : dbError ? (
-              <p>❌ **Erro**: {dbError}</p>
-            ) : (
-              <p>👤 **Perfil não encontrado**: Não foi possível carregar os seus dados de perfil.</p>
-            )}
-            
-            <p className="font-semibold text-lime-neon mt-2">Como resolver:</p>
-            <ul className="list-disc pl-4 space-y-1 text-[11px] text-slate-400">
-              <li>Certifique-se de que ativou o **Cloud Firestore** no console do Firebase.</li>
-              <li>Verifique se as **Regras do Firestore** estão ativadas no modo de teste ou permitem escrita/leitura.</li>
-              <li>Confirme se as chaves em `.env.local` e na Vercel estão corretas.</li>
-            </ul>
-          </div>
-
-          <button
-            onClick={() => {
-              setTimedOut(false);
-              setLocalDbError(null);
-              router.refresh();
-              fetchMetrics();
-            }}
-            className="w-full bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-bold py-3 rounded-xl text-xs transition-colors"
-          >
-            Tentar Novamente
-          </button>
-          
-          <button
-            onClick={() => logout()}
-            className="w-full bg-slate-card-light hover:bg-slate-card-light/80 text-slate-300 font-semibold py-2 rounded-xl text-xs transition-colors border border-border"
-          >
-            Sair da Conta
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // IMC Calculation
-  // IMC = Peso / (Altura_m)^2
-  const peso = profile.pesoAtual || 70;
-  const alturaCm = profile.altura || 170;
-  const imc = peso / Math.pow(alturaCm / 100, 2);
-  
-  let imcClass = 'Saudável';
-  let imcColor = 'text-success border-success/20 bg-success/10';
-  
-  if (imc < 18.5) {
-    imcClass = 'Abaixo do peso';
-    imcColor = 'text-orange-500 border-orange-500/20 bg-orange-500/10';
-  } else if (imc >= 18.5 && imc < 25) {
-    imcClass = 'Saudável';
-    imcColor = 'text-success border-success/20 bg-success/10';
-  } else if (imc >= 25 && imc < 30) {
-    imcClass = 'Sobrepeso';
-    imcColor = 'text-orange-500 border-orange-500/20 bg-orange-500/10';
-  } else {
-    imcClass = 'Obesidade';
-    imcColor = 'text-danger border-danger/20 bg-danger/10';
   }
 
   return (
-    <div className="space-y-6 pb-6">
-      <InstallPWA />
-
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Dashboard</span>
-          <h1 className="text-2xl font-bold text-slate-100">Olá, {profile.nome.split(' ')[0]}!</h1>
+    <div className="min-h-screen bg-[#0D1117] text-[#e3e3d6] pb-28">
+      {/* Top App Bar (Untouched as requested) */}
+      <header className="sticky top-0 z-10 bg-obsidian/90 backdrop-blur-md border-b border-border px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Dumbbell className="h-6 w-6 text-lime-neon" />
+          <span className="font-heading font-extrabold text-lg tracking-wider text-slate-100">
+            CLIPZ<span className="text-lime-neon">BODY</span>
+          </span>
         </div>
-        <div className="rounded-full bg-slate-card p-2 border border-border">
-          <User className="h-5 w-5 text-lime-neon" />
-        </div>
-      </div>
-
-      {/* Active Workout In-Progress Banner */}
-      {activeWorkout && (
-        <div className="bg-gradient-to-r from-lime-neon/20 via-slate-card to-slate-card border border-lime-neon/50 rounded-2xl p-4 shadow-xl flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-lime-neon text-slate-900 flex items-center justify-center font-bold shrink-0 shadow-md shadow-lime-neon/20">
-              <Play className="h-5 w-5 fill-current ml-0.5" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-lime-neon block">
-                Treino em Andamento
-              </span>
-              <h3 className="text-sm font-bold text-slate-100 truncate max-w-[150px] sm:max-w-xs">
-                {activeWorkout.title}
-              </h3>
-              <span className="text-[11px] font-mono text-slate-400 flex items-center gap-1 mt-0.5">
-                <Clock className="h-3 w-3 text-lime-neon" />
-                {Math.floor(activeWorkout.elapsedSeconds / 60)}:{(activeWorkout.elapsedSeconds % 60).toString().padStart(2, '0')} decorridos
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-            <button
-              onClick={handleDiscardActiveWorkout}
-              className="p-2 text-slate-400 hover:text-danger rounded-xl hover:bg-slate-card-light transition-colors"
-              title="Descartar treino em andamento"
-              aria-label="Descartar treino em andamento"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => router.push('/workout/active')}
-              className="px-3.5 py-2.5 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs rounded-xl shadow-md shadow-lime-neon/20 transition-all flex items-center gap-1 active:scale-95 whitespace-nowrap"
-            >
-              Continuar <ChevronRight className="h-4 w-4 stroke-[3]" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Start Workout Hero Card (If no active workout) */}
-      {!activeWorkout && (
-        <div className="bg-gradient-to-br from-slate-card via-slate-card to-slate-card-light/40 border border-lime-neon/30 rounded-2xl p-5 shadow-xl relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-lg font-black text-slate-100 mb-1">Pronto para treinar hoje?</h2>
-            <p className="text-xs text-slate-400 mb-4 leading-relaxed">
-              Marque séries, controle o tempo de descanso automático e registre suas cargas diretamente na academia.
-            </p>
-
-            <button
-              onClick={() => router.push('/workout/active')}
-              className="w-full py-3.5 px-4 bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold text-xs rounded-xl shadow-lg shadow-lime-neon/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-            >
-              <Play className="h-4 w-4 fill-current" /> Iniciar Treino Ativo
-            </button>
-
-            {/* Quick Preset Buttons */}
-            <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-              {[
-                { label: 'Peito & Tríceps', preset: 'Peito' },
-                { label: 'Costas & Bíceps', preset: 'Costas' },
-                { label: 'Pernas Completo', preset: 'Quadríceps' }
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => router.push(`/workout/active?preset=${encodeURIComponent(item.preset)}`)}
-                  className="py-1.5 px-1 bg-slate-card-light/60 hover:bg-slate-card-light text-slate-300 text-[10px] font-semibold rounded-lg border border-border/40 text-center truncate transition-colors"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Personal Info & IMC Card */}
-      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg">
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-          <Activity className="h-4 w-4 text-lime-neon" /> Resumo Físico
-        </h2>
-        <div className="grid grid-cols-3 gap-2 text-center mb-4">
-          <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
-            <span className="block text-[10px] text-slate-400">Peso</span>
-            <span className="text-lg font-bold font-heading text-slate-100">{peso}kg</span>
-          </div>
-          <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
-            <span className="block text-[10px] text-slate-400">Idade</span>
-            <span className="text-lg font-bold font-heading text-slate-100">{profile.idade} anos</span>
-          </div>
-          <div className="bg-slate-card-light/50 rounded-xl p-2.5 border border-border/30">
-            <span className="block text-[10px] text-slate-400">Altura</span>
-            <span className="text-lg font-bold font-heading text-slate-100">{alturaCm}cm</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between border-t border-border/50 pt-4">
-          <div>
-            <span className="text-[10px] text-slate-400 block">IMC Calculado</span>
-            <span className="text-2xl font-black font-heading text-slate-100">{imc.toFixed(1)}</span>
-          </div>
-          <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${imcColor}`}>
-            {imcClass}
-          </div>
-        </div>
-      </div>
-
-      {/* General Strength Score Card */}
-      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg relative overflow-hidden">
-        <div className="relative z-10">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Award className="h-4 w-4 text-lime-neon" /> Score Geral de Força
-          </h2>
-          <div className="flex items-baseline gap-2 mt-3">
-            <span className="text-4xl font-black font-heading text-slate-100 tracking-tight">
-              {generalScore >= 0 ? `+${generalScore}%` : `${generalScore}%`}
+        <Link href="/profile" className="flex items-center gap-3 group">
+          <div className="text-right">
+            <span className="text-xs text-slate-400 block group-hover:text-lime-neon transition-colors">
+              Olá,
             </span>
-            <span className="text-[10px] text-slate-400 font-semibold">de evolução geral de 1RM</span>
+            <span className="text-sm font-semibold text-slate-100 leading-tight block">
+              {firstName}
+            </span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">
-            Média de evolução de força baseada na diferença entre as duas últimas medições de cada exercício cadastrado.
-          </p>
-        </div>
-      </div>
+          <div className="h-9 w-9 rounded-full bg-slate-card border border-border flex items-center justify-center text-lime-neon font-bold text-sm group-hover:border-lime-neon transition-colors">
+            {profile?.nome?.charAt(0).toUpperCase() || 'U'}
+          </div>
+        </Link>
+      </header>
 
-      {/* Mini-Gráfico Interativo de Volume Semanal */}
-      <WeeklyVolumeBars logs={userLogs} />
+      {/* Main Content Container */}
+      <main className="px-4 py-5 max-w-md mx-auto space-y-5">
+        {/* SECTION 1: Saudação + Hero Card "TREINO DE HOJE" */}
+        <section className="space-y-3">
+          <div className="px-1">
+            <h1 className="text-[26px] font-black font-heading text-[#e3e3d6] tracking-[-0.65px] leading-tight">
+              {getGreeting()}, {firstName} 👋
+            </h1>
+          </div>
 
-      {/* Coach IA • Weekly Insights (Resumo Compacto com Link para /insights) */}
-      {user && profile && (
-        <WeeklyInsightsCard
-          userId={user.uid}
-          userName={profile.nome}
-          pesoAtual={peso}
-          userProfile={{
-            idade: profile.idade,
-            altura: profile.altura,
-            sexo: profile.sexo
-          }}
-          logs={userLogs}
-          compact={true}
-        />
-      )}
-
-      {/* Interactive Body Map */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visualizar Força Muscular</h2>
-          <span className="text-[10px] text-slate-500">Toque no grupo muscular</span>
-        </div>
-        <BodyMap selectedMuscle={selectedMuscle} onMuscleSelect={setSelectedMuscle} />
-
-        {/* Selected Muscle detail panel */}
-        {selectedMuscle && (() => {
-          const dataInfo = musclesWithData[selectedMuscle] || { hasLogs: false, hasMultipleSessions: false };
-          const val = muscleEvolutions[selectedMuscle] || 0;
-          const hasData = dataInfo.hasLogs;
-          const hasMultipleSessions = dataInfo.hasMultipleSessions;
-          const isPositive = val >= 0;
-
-          return (
-            <div className="bg-slate-card border border-lime-neon/20 bg-lime-neon/5 rounded-2xl p-4 sm:p-5 shadow-md space-y-3 animate-fade-in w-full">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Grupo Selecionado</span>
-                <span className="text-sm font-bold text-lime-neon">{selectedMuscle}</span>
-              </div>
-              <div className="flex items-center justify-between border-t border-border/30 pt-3">
-                <div>
-                  <span className="text-[10px] text-slate-400 block">Evolução Geral</span>
-                  {hasData ? (
-                    hasMultipleSessions ? (
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {isPositive ? (
-                          <>
-                            <TrendingUp className="h-4 w-4 text-success" />
-                            <span className="text-sm font-bold text-success">+{val}%</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="h-4 w-4 text-danger" />
-                            <span className="text-sm font-bold text-danger">{val}%</span>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-sm font-bold text-slate-200">0.0%</span>
-                        <span className="text-[9px] font-bold bg-lime-neon/15 text-lime-neon border border-lime-neon/25 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                          Base
-                        </span>
-                      </div>
-                    )
-                  ) : (
-                    <span className="text-xs text-slate-500 font-medium block mt-0.5">Sem dados cadastrados</span>
-                  )}
+          {/* Active Workout In-Progress Banner (if user has an unfinished session) */}
+          {activeWorkoutBanner && (
+            <Link
+              href="/workout/active"
+              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-2xl p-4 shadow-lg transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#d3e156]/20 p-2.5 rounded-xl text-[#d3e156] animate-pulse">
+                    <Flame className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-[#d3e156]">
+                      Treino em Andamento • Retomar
+                    </span>
+                    <span className="block font-heading font-extrabold text-sm text-[#e3e3d6]">
+                      {activeWorkoutBanner.title}
+                    </span>
+                    <span className="block text-[11px] text-[#909284]">
+                      {activeWorkoutBanner.exerciseCount} exercício(s) •{' '}
+                      {Math.floor(activeWorkoutBanner.elapsedSeconds / 60)} min decorridos
+                    </span>
+                  </div>
                 </div>
+                <div className="bg-[#d3e156] text-[#1a1c00] font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1">
+                  <span>Continuar</span>
+                  <ChevronRight className="h-4 w-4" />
+                </div>
+              </div>
+            </Link>
+          )}
 
-                <button
-                  onClick={() => router.push(`/strength?muscle=${encodeURIComponent(selectedMuscle)}`)}
-                  className="bg-lime-neon hover:bg-lime-neon-hover text-slate-900 font-extrabold px-3 py-2 rounded-xl text-xs transition-colors flex items-center gap-1"
-                >
-                  Ver Exercícios
-                  <ChevronRight className="h-3 w-3" />
-                </button>
+          {/* Hero Card: TREINO DE HOJE */}
+          <div className="bg-[#2a2b21] border border-[rgba(211,225,86,0.25)] rounded-3xl p-5 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)] relative overflow-hidden space-y-4">
+            {/* Ambient Neon Glow */}
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[rgba(211,225,86,0.08)] rounded-full blur-2xl pointer-events-none" />
+
+            {/* Top Info Row */}
+            <div className="flex items-start justify-between gap-2 relative z-10">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#d3e156]" />
+                  <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#d3e156]">
+                    Treino de Hoje
+                  </span>
+                </div>
+                <h2 className="text-xl font-extrabold font-heading text-[#e3e3d6] mt-0.5 leading-snug">
+                  {heroWorkoutMeta.displayTitle}
+                </h2>
+                <p className="text-xs font-medium text-[#c7c7b8]">{heroWorkoutMeta.subtitle}</p>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="block text-[10px] text-[#909284]">Último feito</span>
+                <span className="block text-xs font-bold text-[#e3e3d6]">
+                  {heroWorkoutMeta.lastDoneLabel}
+                </span>
               </div>
             </div>
-          );
-        })()}
-      </div>
 
-      {/* Muscle Groups Grid */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Evolução por Músculo</h2>
-          <span className="text-[10px] text-slate-500">Toque para ver exercícios</span>
-        </div>
+            {/* Quick Template Selector Pills (A, B, C + Custom) */}
+            {savedWorkouts.length > 1 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none relative z-10">
+                {savedWorkouts.map((w, idx) => {
+                  const isSelected = idx === selectedWorkoutIdx;
+                  const pillLabel = w.defaultKey
+                    ? `Ficha ${w.defaultKey}`
+                    : w.title.length > 14
+                    ? `${w.title.slice(0, 14)}…`
+                    : w.title;
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => setSelectedWorkoutIdx(idx)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
+                        isSelected
+                          ? 'bg-[#d3e156] text-[#1a1c00] shadow-sm'
+                          : 'bg-[rgba(14,15,7,0.5)] text-[#909284] hover:text-[#e3e3d6] border border-[rgba(70,72,59,0.25)]'
+                      }`}
+                    >
+                      {pillLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-        <div className="grid grid-cols-2 gap-3">
-          {MUSCLE_GROUPS.map((muscle) => {
-            const dataInfo = musclesWithData[muscle] || { hasLogs: false, hasMultipleSessions: false };
-            const val = muscleEvolutions[muscle] || 0;
-            const hasData = dataInfo.hasLogs;
-            const hasMultipleSessions = dataInfo.hasMultipleSessions;
-            const isPositive = val >= 0;
+            {/* 3 Metadata Chips */}
+            <div className="grid grid-cols-3 gap-2 relative z-10">
+              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
+                <Dumbbell className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
+                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
+                  {heroWorkoutMeta.exerciseCount} exercícios
+                </span>
+              </div>
 
-            return (
-              <button
-                key={muscle}
-                onClick={() => router.push(`/strength?muscle=${encodeURIComponent(muscle)}`)}
-                className="bg-slate-card border border-border hover:border-slate-500 rounded-xl p-4 text-left shadow transition-all duration-200 flex flex-col justify-between h-28 group"
+              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
+                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
+                  ~{heroWorkoutMeta.estimatedMinutes} min
+                </span>
+              </div>
+
+              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
+                <Scale className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
+                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
+                  {heroWorkoutMeta.estimatedVolumeKg.toLocaleString('pt-BR')} kg
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Action Buttons: INICIAR TREINO + TROCAR */}
+            <div className="flex items-center gap-2.5 relative z-10">
+              <Link
+                href={
+                  selectedWorkout
+                    ? `/workout/active?templateId=${encodeURIComponent(selectedWorkout.id)}`
+                    : '/workout/active'
+                }
+                className="flex-1 bg-[#d3e156] hover:bg-[#c5d347] text-[#1a1c00] font-extrabold font-heading text-[13px] tracking-[0.33px] py-3.5 px-4 rounded-2xl shadow-[0_4px_20px_rgba(211,225,86,0.25)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
-                <div className="flex justify-between items-start w-full">
-                  <span className="text-xs font-semibold text-slate-200 group-hover:text-lime-neon transition-colors">
-                    {muscle}
-                  </span>
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-lime-neon transition-colors" />
-                </div>
+                <Play className="h-4 w-4 fill-current" />
+                <span>INICIAR TREINO</span>
+              </Link>
 
-                <div className="mt-4">
-                  {hasData ? (
-                    hasMultipleSessions ? (
-                      <div className="flex items-center gap-1">
-                        {isPositive ? (
-                          <>
-                            <TrendingUp className="h-4 w-4 text-success" />
-                            <span className="text-sm font-bold text-success">+{val}%</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="h-4 w-4 text-danger" />
-                            <span className="text-sm font-bold text-danger">{val}%</span>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-bold text-slate-200">0.0%</span>
-                        <span className="text-[9px] font-bold bg-lime-neon/15 text-lime-neon border border-lime-neon/25 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                          Base
-                        </span>
-                      </div>
-                    )
-                  ) : (
-                    <span className="text-[10px] text-slate-500 font-medium">Sem histórico</span>
-                  )}
-                  <span className="text-[9px] text-slate-500 block mt-0.5">Variação de força</span>
-                </div>
+              <button
+                type="button"
+                onClick={handleCycleWorkout}
+                className="bg-[#34352a] hover:bg-[#3f4033] border border-[rgba(70,72,59,0.4)] text-[#e3e3d6] font-bold text-xs py-3.5 px-4 rounded-2xl transition-colors active:scale-95 flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-[#c7c7b8]" />
+                <span>TROCAR</span>
               </button>
-            );
-          })}
-        </div>
-      </div>
+            </div>
+          </div>
+        </section>
 
+        {/* SECTION 2: Card RESUMO FÍSICO */}
+        <section className="bg-[#202017] rounded-3xl p-5 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-4">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Scale className="h-4 w-4 text-[#d3e156]" />
+              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284]">
+                Resumo Físico
+              </span>
+            </div>
+
+            <Link
+              href="/measures"
+              className="bg-[#2a2b21] hover:bg-[#34352a] px-2.5 py-1 rounded text-[10px] font-semibold text-[#909284] hover:text-[#e3e3d6] transition-colors"
+            >
+              {daysSinceMeasure !== null
+                ? daysSinceMeasure === 0
+                  ? 'ATUALIZADO HOJE'
+                  : `ATUALIZADO HÁ ${daysSinceMeasure}D`
+                : 'REGISTRAR MEDIDAS →'}
+            </Link>
+          </div>
+
+          {/* IMC Highlight Box */}
+          <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#909284] block">
+                  Índice de Massa Corporal (IMC)
+                </span>
+                <div className="flex items-baseline gap-1.5 mt-0.5">
+                  <span className="text-3xl font-black font-heading text-[#e3e3d6] tracking-[-0.75px]">
+                    {imcValue > 0 ? imcValue.toFixed(1) : '--'}
+                  </span>
+                  <span className="text-xs font-medium text-[#909284]">kg/m²</span>
+                </div>
+              </div>
+
+              <div
+                className={`border px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 ${imcStatus.badgeClass}`}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span className="text-xs font-extrabold font-heading tracking-[0.3px]">
+                  {imcStatus.label}
+                </span>
+              </div>
+            </div>
+
+            {/* 3-Segment IMC Gauge Bar */}
+            <div className="space-y-1.5">
+              <div className="w-full h-1.5 bg-[#202017] rounded-full overflow-hidden flex gap-0.5">
+                <div
+                  className={`w-1/4 h-full rounded-l-full ${
+                    imcStatus.activeSegment === 1 ? 'bg-[#ffb95f]' : 'bg-[rgba(144,146,132,0.25)]'
+                  }`}
+                />
+                <div
+                  className={`w-2/4 h-full ${
+                    imcStatus.activeSegment === 2
+                      ? 'bg-[#d3e156] shadow-[0_0_8px_rgba(211,225,86,0.5)]'
+                      : 'bg-[rgba(144,146,132,0.25)]'
+                  }`}
+                />
+                <div
+                  className={`w-1/4 h-full rounded-r-full ${
+                    imcStatus.activeSegment === 3 ? 'bg-[#ffb95f]' : 'bg-[rgba(144,146,132,0.25)]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[9px] text-[#909284]">
+                <span>Baixo &lt;18.5</span>
+                <span>Normal (18.5 - 24.9)</span>
+                <span>Sobrepeso &gt;25</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Metric Sub-Cards: Peso, Idade, Altura */}
+          <div className="grid grid-cols-3 gap-2.5">
+            {/* Peso */}
+            <Link
+              href="/measures"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+            >
+              <span className="text-[10px] font-bold uppercase text-[#909284]">Peso</span>
+              <div className="flex items-baseline gap-0.5 mt-1">
+                <span className="text-lg font-black font-heading text-[#e3e3d6]">
+                  {pesoValue > 0 ? pesoValue : '--'}
+                </span>
+                <span className="text-[10px] font-semibold text-[#909284]">kg</span>
+              </div>
+              <span className="text-[9px] font-bold text-[#d3e156] mt-1 truncate">
+                {pesoDelta !== null
+                  ? `${pesoDelta > 0 ? '↗ +' : '↘ '}${pesoDelta}kg mês`
+                  : 'Toque p/ atualizar'}
+              </span>
+            </Link>
+
+            {/* Idade */}
+            <Link
+              href="/profile"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+            >
+              <span className="text-[10px] font-bold uppercase text-[#909284]">Idade</span>
+              <div className="flex items-baseline gap-1 mt-1">
+                <span className="text-lg font-black font-heading text-[#e3e3d6]">
+                  {profile?.idade || '--'}
+                </span>
+                <span className="text-[10px] font-semibold text-[#909284]">anos</span>
+              </div>
+              <span className="text-[9px] font-semibold text-[#909284] mt-1">Perfil Ativo</span>
+            </Link>
+
+            {/* Altura */}
+            <Link
+              href="/profile"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+            >
+              <span className="text-[10px] font-bold uppercase text-[#909284]">Altura</span>
+              <div className="flex items-baseline gap-0.5 mt-1">
+                <span className="text-lg font-black font-heading text-[#e3e3d6]">
+                  {alturaMetros}
+                </span>
+                <span className="text-[10px] font-semibold text-[#909284]">m</span>
+              </div>
+              <span className="text-[9px] font-semibold text-[#909284] mt-1">Base cálculo</span>
+            </Link>
+          </div>
+        </section>
+
+        {/* SECTION 3: SCORE GERAL DE FORÇA + MAPA CORPORAL ANATÔMICO */}
+        <DashboardStrengthScoreCard
+          rpScorePts={rpScorePts}
+          totalEvolutionPct={totalEvolutionPct}
+          muscleStats={muscleReadinessMap}
+          onSelectMuscle={(muscle) =>
+            router.push(`/strength?muscle=${encodeURIComponent(muscle)}`)
+          }
+        />
+
+        {/* SECTION 4: VOLUME SEMANAL DE SÉRIES */}
+        <WeeklyVolumeBars logs={strengthLogs} weeklySetGoals={profile?.weeklySetGoals} />
+
+        {/* SECTION 5: RECORDES RECENTES (PRS) */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284]">
+              Recordes Recentes (PRs)
+            </span>
+            <Link href="/strength" className="text-xs font-bold text-[#d3e156] hover:underline">
+              Ver todos
+            </Link>
+          </div>
+
+          {recentPrCards.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+              {recentPrCards.map((pr) => {
+                const isPositiveRecord = pr.deltaKg > 0;
+                return (
+                  <button
+                    key={pr.exerciseId}
+                    type="button"
+                    onClick={() =>
+                      router.push(`/strength?muscle=${encodeURIComponent(pr.muscleGroup)}`)
+                    }
+                    className="w-[160px] shrink-0 bg-[#202017] hover:bg-[#2a2b21] border border-[rgba(70,72,59,0.2)] hover:border-[#d3e156]/40 rounded-2xl p-3.5 text-left flex flex-col justify-between transition-all active:scale-95"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-[10px] font-bold uppercase text-[#909284] truncate">
+                        {pr.muscleGroup}
+                      </span>
+                      {isPositiveRecord ? (
+                        <Trophy className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
+                      ) : (
+                        <Dumbbell className="h-3.5 w-3.5 text-[#909284] shrink-0" />
+                      )}
+                    </div>
+
+                    <div className="mt-2.5">
+                      <span className="block text-xs font-bold text-[#e3e3d6] truncate">
+                        {pr.exerciseName}
+                      </span>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-xl font-black font-heading text-[#d3e156]">
+                          {pr.best1RM.toFixed(1)}
+                        </span>
+                        <span className="text-[10px] text-[#909284]">kg 1RM</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5">
+                      {isPositiveRecord ? (
+                        <span className="inline-block bg-[rgba(211,225,86,0.1)] text-[#d3e156] px-2 py-0.5 rounded text-[10px] font-bold">
+                          +{pr.deltaKg.toFixed(1)} kg recorde!
+                        </span>
+                      ) : (
+                        <span className="inline-block bg-[#2a2b21] text-[#909284] px-2 py-0.5 rounded text-[10px] font-bold">
+                          PR • 1RM Máximo
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-[#202017] border border-[rgba(70,72,59,0.2)] rounded-2xl p-4 text-center">
+              <p className="text-xs text-[#909284]">
+                Conclua seu primeiro treino para registrar seus recordes de 1RM (Brzycki) aqui.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 6: ANÁLISE SEMANAL (COACH IA COMPACT CARD) */}
+        {user && profile && (
+          <WeeklyInsightsCard
+            userId={user.uid}
+            userName={profile.nome}
+            pesoAtual={latestMeasure?.pesoKg || profile.pesoInicial}
+            userProfile={{
+              idade: profile.idade,
+              altura: profile.altura
+            }}
+            logs={strengthLogs}
+            compact={true}
+          />
+        )}
+      </main>
+
+      {/* Bottom Navigation (Untouched as requested) */}
       <BottomNavigation />
     </div>
   );

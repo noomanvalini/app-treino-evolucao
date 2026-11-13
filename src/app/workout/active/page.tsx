@@ -13,6 +13,7 @@ import {
   normalizeExerciseName,
   resolveExerciseMigration
 } from '@/data/exercises';
+import { fetchAndEnsureSavedWorkouts } from '@/data/defaultWorkouts';
 import { 
   Play, Pause, Plus, Trash2, Check, ArrowLeft, Dumbbell, 
   Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2, Info,
@@ -228,7 +229,8 @@ function ActiveWorkoutComponent() {
         }
       }
 
-      // If no saved workout, check URL params for initial preset
+      // If no saved workout, check URL params for initial preset or templateId
+      const templateIdParam = searchParams.get('templateId');
       const presetGroup = searchParams.get('preset');
       const initialTitle = presetGroup ? `Treino: ${presetGroup}` : 'Treino do Dia';
       setWorkoutTitle(initialTitle);
@@ -241,6 +243,47 @@ function ActiveWorkoutComponent() {
       isWorkoutStartedRef.current = false;
       setExercises([]);
       setIsInitialized(true);
+
+      if (templateIdParam && user) {
+        fetchAndEnsureSavedWorkouts(user.uid)
+          .then((templates) => {
+            const matched = templates.find(
+              (t) => t.id === templateIdParam || t.defaultKey === templateIdParam
+            );
+            if (matched) {
+              setWorkoutTitle(matched.title);
+              const reconstructed: ActiveExercise[] = matched.exercises.map((savedEx, idx) => {
+                const guide = getExerciseGuide({ id: savedEx.exerciseId, name: savedEx.nomeExercicio });
+                const setsData =
+                  Array.isArray(savedEx.sets) && savedEx.sets.length > 0
+                    ? savedEx.sets
+                    : [
+                        { setNumber: 1, cargaKg: '', reps: 10 },
+                        { setNumber: 2, cargaKg: '', reps: 10 },
+                        { setNumber: 3, cargaKg: '', reps: 10 }
+                      ];
+                return {
+                  id: `ex_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+                  exerciseId: savedEx.exerciseId,
+                  nomeExercicio: guide.nome || savedEx.nomeExercicio,
+                  muscleGroup: savedEx.muscleGroup || guide.muscleGroup || '',
+                  thumbnailUrl: guide.thumbnailUrl || savedEx.thumbnailUrl,
+                  gifUrl: guide.gifUrl || savedEx.gifUrl,
+                  description: savedEx.description || guide.description,
+                  sets: setsData.map((s, sIdx) => ({
+                    id: `set_${idx}_${sIdx}_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+                    setNumber: s.setNumber || sIdx + 1,
+                    cargaKg: typeof s.cargaKg === 'number' ? s.cargaKg : '',
+                    reps: typeof s.reps === 'number' ? s.reps : '',
+                    completed: false
+                  }))
+                };
+              });
+              setExercises(reconstructed);
+            }
+          })
+          .catch((e) => console.error('Error auto-loading template from URL:', e));
+      }
     }
   }, [user, authLoading, storageKey, router, searchParams]);
 
@@ -358,6 +401,23 @@ function ActiveWorkoutComponent() {
           cleanMap[k] = { cargaKg: v.cargaKg, reps: v.reps };
         });
         setLatestLogsCache(cleanMap);
+
+        // Enrich any pre-loaded template exercises with previousRef & past load if empty
+        setExercises((prev) =>
+          prev.map((ex) => {
+            const past = cleanMap[ex.exerciseId];
+            if (!past) return ex;
+            const prevRef = `${past.cargaKg}kg × ${past.reps}`;
+            return {
+              ...ex,
+              sets: ex.sets.map((s) => ({
+                ...s,
+                previousRef: s.previousRef || prevRef,
+                cargaKg: s.cargaKg === '' ? past.cargaKg : s.cargaKg
+              }))
+            };
+          })
+        );
       } catch (err) {
         console.error('Error loading exercises/logs:', err);
       } finally {
@@ -833,28 +893,7 @@ function ActiveWorkoutComponent() {
     setIsLoadTemplateModalOpen(true);
     setIsLoadingTemplates(true);
     try {
-      const q = query(collection(db, 'saved_workouts'), where('userId', '==', user.uid));
-      const snap = await getDocs(q);
-      const list: SavedWorkoutTemplate[] = [];
-      snap.forEach((doc) => {
-        const d = doc.data();
-        list.push({
-          id: doc.id,
-          userId: d.userId,
-          title: d.title || 'Treino Salvo',
-          muscleGroups: Array.isArray(d.muscleGroups) ? d.muscleGroups : [],
-          exercises: Array.isArray(d.exercises) ? d.exercises : [],
-          createdAt: d.createdAt
-        });
-      });
-
-      // Sort newest first
-      list.sort((a, b) => {
-        const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt || 0).getTime();
-        const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt || 0).getTime();
-        return timeB - timeA;
-      });
-
+      const list = await fetchAndEnsureSavedWorkouts(user.uid);
       setSavedTemplates(list);
     } catch (err) {
       console.error('Error fetching saved workouts:', err);
