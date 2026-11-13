@@ -2,11 +2,17 @@
 
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import RestTimerModal from '@/components/RestTimerModal';
-import { PREDEFINED_EXERCISES, MUSCLE_GROUPS, getExerciseGuide } from '@/data/exercises';
+import {
+  PREDEFINED_EXERCISES,
+  MUSCLE_GROUPS,
+  getExerciseGuide,
+  normalizeExerciseName,
+  resolveExerciseMigration
+} from '@/data/exercises';
 import { 
   Play, Pause, Plus, Trash2, Check, ArrowLeft, Dumbbell, 
   Clock, Flame, Award, AlertCircle, ChevronRight, X, Search, Sparkles, Loader2, Info,
@@ -149,8 +155,8 @@ function ActiveWorkoutComponent() {
     setExerciseGuideModal({
       nomeExercicio: exercise.nomeExercicio,
       muscleGroup: exercise.muscleGroup || guide.muscleGroup || '',
-      gifUrl: exercise.gifUrl || guide.gifUrl,
-      thumbnailUrl: exercise.thumbnailUrl || guide.thumbnailUrl,
+      gifUrl: guide.gifUrl || exercise.gifUrl,
+      thumbnailUrl: guide.thumbnailUrl || exercise.thumbnailUrl,
       description: exercise.description || guide.description
     });
   };
@@ -249,16 +255,56 @@ function ActiveWorkoutComponent() {
         const exQuery = query(collection(db, 'exercises'), where('userId', '==', user.uid));
         const exSnap = await getDocs(exQuery);
         const customList: AvailableExercise[] = [];
-        exSnap.forEach((doc) => {
-          const d = doc.data();
-          const guide = getExerciseGuide({ id: doc.id, name: d.nomeExercicio });
-          customList.push({
-            id: doc.id,
+        const docToPredefinedId: Record<string, string> = {};
+
+        const hasAlternadoDoc = exSnap.docs.some(
+          (d) => normalizeExerciseName(d.data().nomeExercicio || '') === 'alternado'
+        );
+
+        exSnap.forEach((docSnap) => {
+          const d = docSnap.data();
+          const rawNorm = normalizeExerciseName(d.nomeExercicio || '');
+          if (hasAlternadoDoc && rawNorm === 'rosca alternada') {
+            deleteDoc(docSnap.ref).catch(console.error);
+            return;
+          }
+
+          const migration = resolveExerciseMigration({
             nomeExercicio: d.nomeExercicio,
+            predefinedId: d.predefinedId,
+            migratedV2: d.migratedV2
+          });
+
+          if (migration.shouldDelete) {
+            deleteDoc(docSnap.ref).catch(console.error);
+            return;
+          }
+
+          let currentName = d.nomeExercicio;
+          let currentPredefinedId = d.predefinedId;
+
+          if (migration.newName || migration.newPredefinedId) {
+            currentName = migration.newName || currentName;
+            currentPredefinedId = migration.newPredefinedId || currentPredefinedId;
+            const updatePayload: Record<string, any> = {
+              nomeExercicio: currentName
+            };
+            if (currentPredefinedId) updatePayload.predefinedId = currentPredefinedId;
+            if (migration.markMigratedV2) updatePayload.migratedV2 = true;
+            updateDoc(docSnap.ref, updatePayload).catch(console.error);
+          }
+
+          const guide = getExerciseGuide({ id: currentPredefinedId || docSnap.id, name: currentName });
+          if (currentPredefinedId) {
+            docToPredefinedId[docSnap.id] = currentPredefinedId;
+          }
+          customList.push({
+            id: docSnap.id,
+            nomeExercicio: currentName,
             muscleGroup: d.muscleGroup,
-            thumbnailUrl: d.thumbnailUrl || guide.thumbnailUrl,
-            gifUrl: d.gifUrl || guide.gifUrl,
-            description: d.description || guide.description
+            thumbnailUrl: guide.thumbnailUrl || d.thumbnailUrl,
+            gifUrl: guide.gifUrl || d.gifUrl,
+            description: guide.description || d.description
           });
         });
 
@@ -274,7 +320,10 @@ function ActiveWorkoutComponent() {
 
         // Combine and deduplicate
         const combined = [...customList, ...predefinedList];
-        const unique = combined.filter((v, i, a) => a.findIndex((t) => t.nomeExercicio.toLowerCase() === v.nomeExercicio.toLowerCase()) === i);
+        const unique = combined.filter(
+          (v, i, a) =>
+            a.findIndex((t) => normalizeExerciseName(t.nomeExercicio) === normalizeExerciseName(v.nomeExercicio)) === i
+        );
         unique.sort((a, b) => a.nomeExercicio.localeCompare(b.nomeExercicio));
         setAvailableExercises(unique);
 
@@ -289,6 +338,14 @@ function ActiveWorkoutComponent() {
           const exId = data.exerciseId;
           if (!latestMap[exId] || t > latestMap[exId].timestamp) {
             latestMap[exId] = {
+              cargaKg: data.cargaKg,
+              reps: data.reps,
+              timestamp: t
+            };
+          }
+          const mappedPredefined = docToPredefinedId[exId];
+          if (mappedPredefined && (!latestMap[mappedPredefined] || t > latestMap[mappedPredefined].timestamp)) {
+            latestMap[mappedPredefined] = {
               cargaKg: data.cargaKg,
               reps: data.reps,
               timestamp: t
@@ -832,10 +889,10 @@ function ActiveWorkoutComponent() {
       return {
         id: `ex_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
         exerciseId: savedEx.exerciseId,
-        nomeExercicio: savedEx.nomeExercicio,
+        nomeExercicio: guide.nome || savedEx.nomeExercicio,
         muscleGroup: savedEx.muscleGroup || guide.muscleGroup || '',
-        thumbnailUrl: savedEx.thumbnailUrl || guide.thumbnailUrl,
-        gifUrl: savedEx.gifUrl || guide.gifUrl,
+        thumbnailUrl: guide.thumbnailUrl || savedEx.thumbnailUrl,
+        gifUrl: guide.gifUrl || savedEx.gifUrl,
         description: savedEx.description || guide.description,
         sets: setsData.map((s, sIdx) => {
           const finalCarga: number | '' = typeof s.cargaKg === 'number' ? s.cargaKg : '';

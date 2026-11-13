@@ -12,7 +12,13 @@ import {
   ChevronDown, ChevronUp, X, Loader2, Save, AlertTriangle, Pencil, Trash2,
   ChevronRight, Award, Sparkles
 } from 'lucide-react';
-import { PREDEFINED_EXERCISES, MUSCLE_GROUPS } from '@/data/exercises';
+import {
+  PREDEFINED_EXERCISES,
+  MUSCLE_GROUPS,
+  getExerciseGuide,
+  normalizeExerciseName,
+  resolveExerciseMigration
+} from '@/data/exercises';
 
 interface Exercise {
   id: string;
@@ -21,6 +27,8 @@ interface Exercise {
   dataCriacao?: any;
   thumbnailUrl?: string;
   isPredefined?: boolean;
+  predefinedId?: string;
+  aliasIds?: string[];
 }
 
 interface LogSetDetail {
@@ -189,27 +197,85 @@ function StrengthContent() {
       );
       const exSnap = await getDocs(exQuery);
       const customExList: Exercise[] = [];
-      exSnap.forEach((doc) => {
-        const d = doc.data();
-        if (hiddenIds.includes(doc.id)) return;
+
+      // Check if user has an "Alternado" custom exercise so any duplicate "Rosca Alternada" doc can be merged into it
+      const hasAlternadoDoc = exSnap.docs.some(
+        (d) => normalizeExerciseName(d.data().nomeExercicio || '') === 'alternado'
+      );
+
+      exSnap.forEach((docSnap) => {
+        const d = docSnap.data();
+        if (hiddenIds.includes(docSnap.id)) return;
 
         // Auto-cleanup: If in Quadríceps and an exercise is Mesa Flexora (or flexora),
         // remove it from Quadríceps in Firestore and do not display in Quadríceps
         if (selectedMuscle === 'Quadríceps' && (d.nomeExercicio?.toLowerCase().includes('flexora') || d.predefinedId?.includes('flexora'))) {
-          deleteDoc(doc.ref).catch(console.error);
+          deleteDoc(docSnap.ref).catch(console.error);
           return;
         }
 
-        const predefined = PREDEFINED_EXERCISES.find(
-          (pe) => pe.id === d.predefinedId || pe.nome.toLowerCase() === d.nomeExercicio?.toLowerCase()
-        );
-        customExList.push({
-          id: doc.id,
+        // If "Alternado" exists and this is a separate "Rosca Alternada" doc, remove the duplicate doc
+        const rawNorm = normalizeExerciseName(d.nomeExercicio || '');
+        if (hasAlternadoDoc && rawNorm === 'rosca alternada') {
+          deleteDoc(docSnap.ref).catch(console.error);
+          return;
+        }
+
+        // Check migration rules (removals & renames)
+        const migration = resolveExerciseMigration({
           nomeExercicio: d.nomeExercicio,
+          predefinedId: d.predefinedId,
+          migratedV2: d.migratedV2
+        });
+
+        if (migration.shouldDelete) {
+          deleteDoc(docSnap.ref).catch(console.error);
+          return;
+        }
+
+        let currentName = d.nomeExercicio;
+        let currentPredefinedId = d.predefinedId;
+
+        if (migration.newName || migration.newPredefinedId) {
+          currentName = migration.newName || currentName;
+          currentPredefinedId = migration.newPredefinedId || currentPredefinedId;
+          const updatePayload: Record<string, any> = {
+            nomeExercicio: currentName
+          };
+          if (currentPredefinedId) updatePayload.predefinedId = currentPredefinedId;
+          if (migration.markMigratedV2) updatePayload.migratedV2 = true;
+          updateDoc(docSnap.ref, updatePayload).catch(console.error);
+        }
+
+        const predefined = PREDEFINED_EXERCISES.find(
+          (pe) =>
+            pe.id === currentPredefinedId ||
+            normalizeExerciseName(pe.nome) === normalizeExerciseName(currentName || '')
+        );
+        const guide = getExerciseGuide({ id: currentPredefinedId || docSnap.id, name: currentName });
+        const resolvedPredefinedId = currentPredefinedId || predefined?.id;
+
+        // Deduplicate within customExList if two docs resolved to the same name
+        const existingIdx = customExList.findIndex(
+          (ce) => normalizeExerciseName(ce.nomeExercicio) === normalizeExerciseName(currentName || '')
+        );
+        if (existingIdx !== -1) {
+          const existing = customExList[existingIdx];
+          existing.aliasIds = Array.from(
+            new Set([...(existing.aliasIds || [existing.id]), docSnap.id, ...(resolvedPredefinedId ? [resolvedPredefinedId] : [])])
+          );
+          return;
+        }
+
+        customExList.push({
+          id: docSnap.id,
+          predefinedId: resolvedPredefinedId,
+          aliasIds: resolvedPredefinedId ? [docSnap.id, resolvedPredefinedId] : [docSnap.id],
+          nomeExercicio: currentName,
           muscleGroup: d.muscleGroup,
           dataCriacao: d.dataCriacao,
-          thumbnailUrl: predefined?.thumbnailUrl || d.thumbnailUrl,
-          isPredefined: !!d.predefinedId || !!predefined
+          thumbnailUrl: predefined?.thumbnailUrl || guide.thumbnailUrl || d.thumbnailUrl,
+          isPredefined: !!resolvedPredefinedId || !!predefined
         });
       });
 
@@ -219,11 +285,17 @@ function StrengthContent() {
           (pe) =>
             pe.muscleGroup === selectedMuscle &&
             !hiddenIds.includes(pe.id) &&
-            !customExList.some((ce) => ce.nomeExercicio.toLowerCase() === pe.nome.toLowerCase()) &&
+            !customExList.some(
+              (ce) =>
+                ce.predefinedId === pe.id ||
+                normalizeExerciseName(ce.nomeExercicio) === normalizeExerciseName(pe.nome)
+            ) &&
             !(selectedMuscle === 'Quadríceps' && pe.nome.toLowerCase().includes('flexora'))
         )
         .map((pe) => ({
           id: pe.id,
+          predefinedId: pe.id,
+          aliasIds: [pe.id],
           nomeExercicio: pe.nome,
           muscleGroup: pe.muscleGroup,
           thumbnailUrl: pe.thumbnailUrl,
@@ -370,10 +442,11 @@ function StrengthContent() {
   };
 
   // Process exercise calculations: latest logs, 1RM, delta, session peaks
-  const getExerciseMetrics = (exerciseId: string) => {
+  const getExerciseMetrics = (exerciseId: string, aliasIds?: string[]) => {
+    const validIds = new Set([exerciseId, ...(aliasIds || [])]);
     // 1. All raw logs for this exercise, sorted chronologically
     const exerciseLogs = logs
-      .filter((l) => l.exerciseId === exerciseId)
+      .filter((l) => validIds.has(l.exerciseId))
       .sort((a, b) => {
         const timeA = a.data?.seconds ? a.data.seconds * 1000 : new Date(a.data).getTime();
         const timeB = b.data?.seconds ? b.data.seconds * 1000 : new Date(b.data).getTime();
@@ -506,7 +579,7 @@ function StrengthContent() {
     let count = 0;
 
     exercises.forEach((ex) => {
-      const { delta } = getExerciseMetrics(ex.id);
+      const { delta } = getExerciseMetrics(ex.id, ex.aliasIds);
       if (delta !== null) {
         sumDeltas += delta;
         count++;
@@ -932,7 +1005,10 @@ function StrengthContent() {
         ) : (
           <div className="space-y-3">
             {exercises.map((exercise) => {
-              const { latest, delta, history, peakHistory, peakLogIds, sessionRows } = getExerciseMetrics(exercise.id);
+              const { latest, delta, history, peakHistory, peakLogIds, sessionRows } = getExerciseMetrics(
+                exercise.id,
+                exercise.aliasIds
+              );
               const isExpanded = expandedExercise === exercise.id;
 
               return (
