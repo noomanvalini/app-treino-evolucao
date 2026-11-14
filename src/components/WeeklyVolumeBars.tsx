@@ -123,7 +123,7 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
   }, [logs, weeklySetGoals]);
 
   return (
-    <div className="bg-[#202017] border border-[rgba(70,72,59,0.2)] rounded-3xl p-5 shadow-xl space-y-4">
+    <div className="bg-[#202017] border border-[rgba(70,72,59,0.2)] rounded-3xl p-4 shadow-xl space-y-3.5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

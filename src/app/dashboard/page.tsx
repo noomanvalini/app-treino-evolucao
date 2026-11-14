@@ -743,7 +743,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0D1117] text-[#e3e3d6] pb-28">
       {/* Top App Bar (Untouched as requested) */}
-      <header className="sticky top-0 z-10 bg-obsidian/90 backdrop-blur-md border-b border-border px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-10 -mx-4 -mt-6 bg-obsidian/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Dumbbell className="h-6 w-6 text-lime-neon" />
           <span className="font-heading font-extrabold text-lg tracking-wider text-slate-100">
@@ -766,10 +766,10 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content Container */}
-      <main className="px-4 py-5 max-w-md mx-auto space-y-5">
+      <main className="py-4 max-w-md mx-auto space-y-4">
         {/* SECTION 1: Saudação + Hero Card "TREINO DE HOJE" */}
         <section className="space-y-3">
-          <div className="px-1">
+          <div className="px-0.5">
             <h1 className="text-[26px] font-black font-heading text-[#e3e3d6] tracking-[-0.65px] leading-tight">
               {getGreeting()}, {firstName} 👋
             </h1>
@@ -779,7 +779,7 @@ export default function DashboardPage() {
           {activeWorkoutBanner && (
             <Link
               href="/workout/active"
-              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-2xl p-4 shadow-lg transition-all active:scale-[0.98]"
+              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-2xl p-3.5 shadow-lg transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -808,7 +808,7 @@ export default function DashboardPage() {
           )}
 
           {/* Hero Card: TREINO DE HOJE */}
-          <div className="bg-[#2a2b21] border border-[rgba(211,225,86,0.25)] rounded-3xl p-5 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)] relative overflow-hidden space-y-4">
+          <div className="bg-[#2a2b21] border border-[rgba(211,225,86,0.25)] rounded-3xl p-4 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)] relative overflow-hidden space-y-3.5">
             {/* Ambient Neon Glow */}
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-[rgba(211,225,86,0.08)] rounded-full blur-2xl pointer-events-none" />
 
@@ -914,7 +914,7 @@ export default function DashboardPage() {
         </section>
 
         {/* SECTION 2: Card RESUMO FÍSICO */}
-        <section className="bg-[#202017] rounded-3xl p-5 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-4">
+        <section className="bg-[#202017] rounded-3xl p-4 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-3.5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -937,7 +937,7 @@ export default function DashboardPage() {
           </div>
 
           {/* IMC Highlight Box */}
-          <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-4 space-y-3">
+          <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-3 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#909284] block">
@@ -952,7 +952,7 @@ export default function DashboardPage() {
               </div>
 
               <div
-                className={`border px-3 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 ${imcStatus.badgeClass}`}
+                className={`border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 ${imcStatus.badgeClass}`}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span className="text-xs font-extrabold font-heading tracking-[0.3px]">
@@ -992,11 +992,11 @@ export default function DashboardPage() {
           </div>
 
           {/* 3 Metric Sub-Cards: Peso, Idade, Altura */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             {/* Peso */}
             <Link
               href="/measures"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
             >
               <span className="text-[10px] font-bold uppercase text-[#909284]">Peso</span>
               <div className="flex items-baseline gap-0.5 mt-1">
@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
             {/* Idade */}
             <Link
               href="/profile"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
             >
               <span className="text-[10px] font-bold uppercase text-[#909284]">Idade</span>
               <div className="flex items-baseline gap-1 mt-1">
@@ -1030,7 +1030,7 @@ export default function DashboardPage() {
             {/* Altura */}
             <Link
               href="/profile"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-3 flex flex-col justify-between transition-colors"
+              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
             >
               <span className="text-[10px] font-bold uppercase text-[#909284]">Altura</span>
               <div className="flex items-baseline gap-0.5 mt-1">

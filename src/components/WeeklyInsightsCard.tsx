@@ -557,7 +557,7 @@ export default function WeeklyInsightsCard({
       : 'Registre seus treinos e medidas para receber sugestões personalizadas de volume, recuperação e progressão de carga.';
 
     return (
-      <div className="bg-[#202017] border border-[rgba(255,185,95,0.2)] rounded-3xl p-5 shadow-xl relative overflow-hidden space-y-3">
+      <div className="bg-[#202017] border border-[rgba(255,185,95,0.2)] rounded-3xl p-4 shadow-xl relative overflow-hidden space-y-3">
         <div className="absolute -top-6 -right-6 w-24 h-24 bg-[rgba(255,185,95,0.06)] rounded-full blur-xl pointer-events-none" />
 
         {/* Header */}

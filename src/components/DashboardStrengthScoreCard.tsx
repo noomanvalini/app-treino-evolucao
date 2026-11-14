@@ -126,7 +126,7 @@ export default function DashboardStrengthScoreCard({
   const formattedTotalEvo = `${totalEvolutionPct >= 0 ? '+' : ''}${totalEvolutionPct.toFixed(1)}%`;
 
   return (
-    <div className="bg-[#202017] rounded-3xl p-5 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-4">
+    <div className="bg-[#202017] rounded-3xl p-4 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-3.5">
       {/* Top Score Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
@@ -160,7 +160,7 @@ export default function DashboardStrengthScoreCard({
       </div>
 
       {/* Anatomical Body Map Dual View + Muscle Readiness Column */}
-      <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-3.5">
+      <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-3">
         <div className="grid grid-cols-12 gap-2 items-center">
           {/* Vista Anterior (Front) */}
           <div className="col-span-4 flex flex-col items-center">
