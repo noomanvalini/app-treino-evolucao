@@ -620,12 +620,14 @@ export default function DashboardPage() {
   const heroWorkoutMeta = useMemo(() => {
     if (!selectedWorkout) {
       return {
-        displayTitle: 'Treino A • Push',
-        subtitle: 'Peito, Tríceps e Ombro',
+        displayTitle: 'Treino A • Peito/Tríceps/Ombro',
+        subtitle: 'Peito/Tríceps/Ombro',
         exerciseCount: 7,
         estimatedMinutes: 55,
         estimatedVolumeKg: 4200,
-        lastDoneLabel: 'Pronto p/ iniciar'
+        lastDoneLabel: 'Pronto p/ iniciar',
+        lastDaysText: 'Há 3 dias',
+        lastPrText: '(+2.5% PR)'
       };
     }
 
@@ -662,18 +664,32 @@ export default function DashboardPage() {
     const sub =
       parts[1]?.trim() ||
       (selectedWorkout.muscleGroups.length > 0
-        ? selectedWorkout.muscleGroups.join(', ')
+        ? selectedWorkout.muscleGroups.join('/')
         : 'Ficha personalizada');
 
+    const fullHeroHeading = selectedWorkout.defaultKey
+      ? `Treino ${selectedWorkout.defaultKey} • ${selectedWorkout.muscleGroups.join('/')}`
+      : `${mainTitle} • ${sub}`;
+
+    let lastDaysText = 'Pronto p/ iniciar';
+    let lastPrText = '';
+    if (stat && stat.hoursSinceLast !== null) {
+      const days = Math.floor(stat.hoursSinceLast / 24);
+      lastDaysText = days === 0 ? 'Hoje' : days === 1 ? 'Há 1 dia' : `Há ${days} dias`;
+      if (stat.evolutionPct !== 0) {
+        lastPrText = `(${stat.evolutionPct > 0 ? '+' : ''}${stat.evolutionPct.toFixed(1)}% PR)`;
+      }
+    }
+
     return {
-      displayTitle: selectedWorkout.defaultKey
-        ? `Treino ${selectedWorkout.defaultKey} • ${selectedWorkout.muscleGroups[0] || 'Geral'}`
-        : mainTitle,
+      displayTitle: fullHeroHeading,
       subtitle: sub,
       exerciseCount: exCount,
       estimatedMinutes: estMinutes,
       estimatedVolumeKg: estVol,
-      lastDoneLabel
+      lastDoneLabel,
+      lastDaysText,
+      lastPrText
     };
   }, [selectedWorkout, latestByExerciseMap, muscleReadinessMap]);
 
@@ -769,9 +785,9 @@ export default function DashboardPage() {
       <main className="py-4 max-w-md mx-auto space-y-4">
         {/* SECTION 1: Saudação + Hero Card "TREINO DE HOJE" */}
         <section className="space-y-3">
-          <div className="px-0.5">
-            <h1 className="text-[26px] font-black font-heading text-[#e3e3d6] tracking-[-0.65px] leading-tight">
-              {getGreeting()}, {firstName} 👋
+          <div className="pt-1">
+            <h1 className="text-[18px] font-semibold font-heading text-[#f8fafc] tracking-[-0.45px] leading-[24px]">
+              {getGreeting()}, {firstName}
             </h1>
           </div>
 
@@ -779,7 +795,7 @@ export default function DashboardPage() {
           {activeWorkoutBanner && (
             <Link
               href="/workout/active"
-              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-2xl p-3.5 shadow-lg transition-all active:scale-[0.98]"
+              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-[12px] p-3.5 shadow-lg transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -807,107 +823,126 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {/* Hero Card: TREINO DE HOJE */}
-          <div className="bg-[#2a2b21] border border-[rgba(211,225,86,0.25)] rounded-3xl p-4 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.4)] relative overflow-hidden space-y-3.5">
-            {/* Ambient Neon Glow */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-[rgba(211,225,86,0.08)] rounded-full blur-2xl pointer-events-none" />
+          {/* Hero Card: TREINO DE HOJE (Figma Node 27:399 + 27:436) */}
+          <div className="bg-[#2a2b21] rounded-[12px] p-[16px] shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] relative overflow-hidden">
+            {/* Ambient Glow Behind CTA (Figma Node 27:400) */}
+            <div className="absolute bg-[rgba(211,225,86,0.1)] blur-[64px] -bottom-[40px] -right-[40px] rounded-full w-[176px] h-[176px] pointer-events-none" />
 
-            {/* Top Info Row */}
-            <div className="flex items-start justify-between gap-2 relative z-10">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#d3e156]" />
-                  <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#d3e156]">
-                    Treino de Hoje
-                  </span>
-                </div>
-                <h2 className="text-xl font-extrabold font-heading text-[#e3e3d6] mt-0.5 leading-snug">
-                  {heroWorkoutMeta.displayTitle}
-                </h2>
-                <p className="text-xs font-medium text-[#c7c7b8]">{heroWorkoutMeta.subtitle}</p>
-              </div>
-
-              <div className="text-right shrink-0">
-                <span className="block text-[10px] text-[#909284]">Último feito</span>
-                <span className="block text-xs font-bold text-[#e3e3d6]">
-                  {heroWorkoutMeta.lastDoneLabel}
-                </span>
-              </div>
+            {/* Top Info Row (Figma Node 27:402) */}
+            <div className="flex flex-col items-start relative z-10 w-full">
+              <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#d3e156] leading-[14px]">
+                TREINO DE HOJE
+              </span>
+              <h2 className="font-heading font-semibold text-[18px] tracking-[-0.22px] uppercase text-[#f8fafc] leading-[27.5px] mt-[1px]">
+                {heroWorkoutMeta.displayTitle}
+              </h2>
             </div>
 
-            {/* Quick Template Selector Pills (A, B, C + Custom) */}
-            {savedWorkouts.length > 1 && (
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none relative z-10">
-                {savedWorkouts.map((w, idx) => {
-                  const isSelected = idx === selectedWorkoutIdx;
-                  const pillLabel = w.defaultKey
-                    ? `Ficha ${w.defaultKey}`
-                    : w.title.length > 14
-                    ? `${w.title.slice(0, 14)}…`
-                    : w.title;
-                  return (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => setSelectedWorkoutIdx(idx)}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all shrink-0 ${
-                        isSelected
-                          ? 'bg-[#d3e156] text-[#1a1c00] shadow-sm'
-                          : 'bg-[rgba(14,15,7,0.5)] text-[#909284] hover:text-[#e3e3d6] border border-[rgba(70,72,59,0.25)]'
-                      }`}
-                    >
-                      {pillLabel}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* 3 Metadata Chips */}
-            <div className="grid grid-cols-3 gap-2 relative z-10">
-              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
-                <Dumbbell className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
-                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
+            {/* 3 Metadata Tags (Figma Node 27:412) */}
+            <div className="flex flex-wrap items-center gap-[8px] pt-[12px] relative z-10">
+              <div className="bg-[#1c1c13] rounded-[6px] px-[8px] py-[4px] flex items-center gap-[4px]">
+                <Dumbbell className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
+                <span className="text-[12px] font-normal text-[#94a3b8] leading-[16px] whitespace-nowrap">
                   {heroWorkoutMeta.exerciseCount} exercícios
                 </span>
               </div>
 
-              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
-                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
+              <div className="bg-[#1c1c13] rounded-[6px] px-[8px] py-[4px] flex items-center gap-[4px]">
+                <Clock className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
+                <span className="text-[12px] font-normal text-[#94a3b8] leading-[16px] whitespace-nowrap">
                   ~{heroWorkoutMeta.estimatedMinutes} min
                 </span>
               </div>
 
-              <div className="bg-[rgba(14,15,7,0.6)] border border-[rgba(70,72,59,0.2)] rounded-xl px-2.5 py-2 flex items-center gap-1.5">
-                <Scale className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
-                <span className="text-[11px] font-semibold text-[#e3e3d6] truncate">
-                  {heroWorkoutMeta.estimatedVolumeKg.toLocaleString('pt-BR')} kg
+              <div className="bg-[#1c1c13] rounded-[6px] px-[8px] py-[4px] flex items-center gap-[4px]">
+                <Scale className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
+                <span className="text-[12px] font-normal text-[#94a3b8] leading-[16px] whitespace-nowrap">
+                  Carga {heroWorkoutMeta.estimatedVolumeKg.toLocaleString('pt-BR')} kg
                 </span>
               </div>
             </div>
 
-            {/* Bottom Action Buttons: INICIAR TREINO + TROCAR */}
-            <div className="flex items-center gap-2.5 relative z-10">
+            {/* Previous Workout Badge (Figma Node 27:429) */}
+            <div className="flex items-center gap-[6px] pt-[12px] relative z-10">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#D3E156"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="shrink-0"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M12 7v5l4 2" />
+              </svg>
+              <p className="text-[12px] leading-[16px] text-[#64748b]">
+                <span>Último feito: </span>
+                <strong className="font-bold text-[#f8fafc]">{heroWorkoutMeta.lastDaysText}</strong>
+              </p>
+              {heroWorkoutMeta.lastPrText && (
+                <span className="text-[11px] leading-[16px] text-[#d3e156]">
+                  {heroWorkoutMeta.lastPrText}
+                </span>
+              )}
+            </div>
+
+            {/* Bottom Action Buttons Container (Figma Node 27:436) */}
+            <div className="flex items-start gap-[8px] pt-[12px] relative z-10 w-full">
+              {/* Primary Pill Button: INICIAR TREINO (Figma Node 27:437) */}
               <Link
                 href={
                   selectedWorkout
                     ? `/workout/active?templateId=${encodeURIComponent(selectedWorkout.id)}`
                     : '/workout/active'
                 }
-                className="flex-1 bg-[#d3e156] hover:bg-[#c5d347] text-[#1a1c00] font-extrabold font-heading text-[13px] tracking-[0.33px] py-3.5 px-4 rounded-2xl shadow-[0_4px_20px_rgba(211,225,86,0.25)] flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                className="bg-[#f8fafc] hover:bg-white flex-1 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full shadow-[0px_8px_20px_-4px_rgba(255,255,255,0.08)] flex items-center justify-between transition-transform active:scale-[0.98]"
               >
-                <Play className="h-4 w-4 fill-current" />
-                <span>INICIAR TREINO</span>
+                <span className="font-heading font-semibold text-[#202017] text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap">
+                  INICIAR TREINO
+                </span>
+                <span className="bg-[#effe6f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M9.13125 6.75H0V5.25H9.13125L4.93125 1.05L6 0L12 6L6 12L4.93125 10.95L9.13125 6.75V6.75"
+                      fill="#202017"
+                    />
+                  </svg>
+                </span>
               </Link>
 
+              {/* Secondary Pill Button: TROCAR (Figma Node 34:2357) */}
               <button
                 type="button"
                 onClick={handleCycleWorkout}
-                className="bg-[#34352a] hover:bg-[#3f4033] border border-[rgba(70,72,59,0.4)] text-[#e3e3d6] font-bold text-xs py-3.5 px-4 rounded-2xl transition-colors active:scale-95 flex items-center gap-1.5 shrink-0"
+                className="bg-transparent hover:bg-white/5 border border-[#f8fafc] min-w-[132px] min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between transition-transform active:scale-[0.98] shrink-0"
               >
-                <RefreshCw className="h-3.5 w-3.5 text-[#c7c7b8]" />
-                <span>TROCAR</span>
+                <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap">
+                  TROCAR
+                </span>
+                <span className="bg-[#1e91b1] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                  <svg
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M13.694 5.5H13.714C13.8466 5.5 13.9738 5.55268 14.0676 5.64645C14.1613 5.74021 14.214 5.86739 14.214 6C14.214 6.13261 14.1613 6.25979 14.0676 6.35355C13.9738 6.44732 13.8466 6.5 13.714 6.5C12.427 6.5 11.432 6.5 10.637 6.564C9.841 6.627 9.301 6.751 8.903 6.964C8.12616 7.3858 7.50221 8.04194 7.12 8.839C6.91 9.272 6.792 9.795 6.732 10.566C6.672 11.343 6.672 12.328 6.672 13.68V14.393L8.218 12.846C8.31189 12.7522 8.43917 12.6996 8.57185 12.6997C8.70454 12.6998 8.83175 12.7526 8.9255 12.8465C9.01925 12.9404 9.07187 13.0677 9.07178 13.2004C9.07168 13.333 9.01889 13.4602 8.925 13.554L6.525 15.954C6.47703 16.0018 6.41984 16.0394 6.35692 16.0644C6.29399 16.0895 6.22663 16.1015 6.15893 16.0997C6.09122 16.0979 6.02459 16.0824 5.96306 16.0541C5.90153 16.0258 5.8464 15.9853 5.801 15.935L3.629 13.535C3.54374 13.4361 3.50057 13.3077 3.50873 13.1774C3.5169 13.047 3.57573 12.925 3.67267 12.8375C3.7696 12.75 3.89694 12.7038 4.02744 12.709C4.15794 12.7141 4.28125 12.7701 4.371 12.865L5.671 14.302V13.658C5.671 12.333 5.671 11.308 5.735 10.488C5.8 9.659 5.932 8.996 6.22 8.403C6.69463 7.41603 7.46876 6.60411 8.432 6.083C9.012 5.772 9.715 5.634 10.558 5.567C11.398 5.5 12.431 5.5 13.694 5.5ZM17.841 7.9C17.9087 7.90181 17.9754 7.91737 18.0369 7.94573C18.0985 7.9741 18.1536 8.01467 18.199 8.065L20.371 10.465C20.4563 10.5639 20.4994 10.6923 20.4913 10.8226C20.4831 10.953 20.4243 11.075 20.3273 11.1625C20.2304 11.25 20.1031 11.2962 19.9726 11.291C19.8421 11.2859 19.7187 11.2299 19.629 11.135L18.329 9.698V10.342C18.329 11.668 18.329 12.692 18.265 13.512C18.2 14.341 18.068 15.004 17.78 15.597C17.3054 16.584 16.5312 17.3959 15.568 17.917C14.988 18.228 14.285 18.366 13.442 18.433C12.603 18.5 11.569 18.5 10.306 18.5H10.286C10.1534 18.5 10.0262 18.4473 9.93245 18.3536C9.83868 18.2598 9.786 18.1326 9.786 18C9.786 17.8674 9.83868 17.7402 9.93245 17.6464C10.0262 17.5527 10.1534 17.5 10.286 17.5C11.573 17.5 12.568 17.5 13.363 17.436C14.159 17.373 14.699 17.249 15.097 17.036C15.8742 16.6144 16.4985 15.9582 16.881 15.161C17.091 14.727 17.208 14.205 17.268 13.434C17.328 12.657 17.328 11.672 17.328 10.32V9.607L15.782 11.154C15.6881 11.2478 15.5608 11.3004 15.4281 11.3003C15.2955 11.3002 15.1683 11.2474 15.0745 11.1535C14.9807 11.0596 14.9281 10.9323 14.9282 10.7996C14.9283 10.667 14.9811 10.5398 15.075 10.446L17.475 8.046C17.5229 7.99814 17.5801 7.96052 17.643 7.93542C17.7059 7.91033 17.7733 7.89828 17.841 7.9Z"
+                      fill="#F8FAFC"
+                    />
+                  </svg>
+                </span>
               </button>
             </div>
           </div>

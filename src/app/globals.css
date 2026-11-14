@@ -42,7 +42,6 @@
 
 .font-heading {
   font-family: var(--font-heading), 'Oswald', sans-serif;
-  letter-spacing: -0.02em;
 }
 
 button:not(.rounded-full):not([class*="rounded-none"]) {
