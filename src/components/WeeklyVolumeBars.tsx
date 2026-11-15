@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 export interface VolumeLogItem {
   data: any;
@@ -25,8 +25,6 @@ interface WeeklyVolumeBarsProps {
 }
 
 export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVolumeBarsProps) {
-  const baseTarget = weeklySetGoals?.peito || 16;
-
   const categories = useMemo(() => {
     // Current week window (last 7 days inclusive)
     const now = new Date();
@@ -59,7 +57,13 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
         setsByCategory.peito += setsCount;
       } else if (mg.includes('costas')) {
         setsByCategory.costas += setsCount;
-      } else if (mg.includes('bíceps') || mg.includes('biceps') || mg.includes('tríceps') || mg.includes('triceps') || mg.includes('antebra')) {
+      } else if (
+        mg.includes('bíceps') ||
+        mg.includes('biceps') ||
+        mg.includes('tríceps') ||
+        mg.includes('triceps') ||
+        mg.includes('antebra')
+      ) {
         setsByCategory.bracos += setsCount;
       } else if (
         mg.includes('quadr') ||
@@ -110,76 +114,92 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
     return rows.map((r) => {
       const rawPct = r.target > 0 ? Math.round((r.sets / r.target) * 100) : 0;
       const barPct = Math.min(100, rawPct);
-      const isGoalMet = r.sets >= r.target;
-      const isLow = rawPct > 0 && rawPct < 55;
+      const isGoalMet = rawPct >= 100;
       return {
         ...r,
         rawPct,
         barPct,
-        isGoalMet,
-        isLow
+        isGoalMet
       };
     });
   }, [logs, weeklySetGoals]);
 
-  return (
-    <div className="bg-[#202017] border border-[rgba(70,72,59,0.2)] rounded-3xl p-4 shadow-xl space-y-3.5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
-            Volume Semanal de Séries
-          </h3>
-          <span className="text-[11px] text-[#c7c7b8] block mt-0.5">
-            Meta base: {baseTarget} séries/músculo
-          </span>
-        </div>
+  // Color scale based on percentage of weekly goal reached:
+  // 0% to 59% -> Orange (#ffb95f)
+  // 60% to 79% -> Blue (bar #1e91b1, text #6ecddd)
+  // 80% to 100%+ -> Green (#d3e156)
+  const getTierStyles = (rawPct: number, isGoalMet: boolean) => {
+    if (rawPct >= 80) {
+      return {
+        pctTextColor: 'text-[#d3e156]',
+        barColor: isGoalMet
+          ? 'bg-[#d3e156] shadow-[0px_0px_8px_0px_rgba(211,225,86,0.6)]'
+          : 'bg-[#d3e156]'
+      };
+    }
+    if (rawPct >= 60) {
+      return {
+        pctTextColor: 'text-[#6ecddd]',
+        barColor: 'bg-[#1e91b1]'
+      };
+    }
+    return {
+      pctTextColor: 'text-[#ffb95f]',
+      barColor: 'bg-[#ffb95f]'
+    };
+  };
 
-        <div className="bg-[#2a2b21] border border-[rgba(70,72,59,0.3)] rounded-lg p-2 text-[#d3e156]">
-          <BarChart3 className="h-3.5 w-3.5" />
-        </div>
+  return (
+    <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
+      {/* Header (Figma Node 27:625 - No icon on the right) */}
+      <div className="flex flex-col items-start w-full">
+        <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
+          Meta de Volume Semanal
+        </h3>
+        <span className="pt-[2px] font-medium text-[#64748b] text-[11px] leading-[20px]">
+          Com base no seu plano de treino
+        </span>
       </div>
 
-      {/* Muscle Group Goal Progress Bars */}
-      <div className="space-y-3.5">
+      {/* Muscle Group Goal Progress Bars (Figma Node 27:635) */}
+      <div className="pt-[16px] space-y-[10px] w-full">
         {categories.map((item) => {
-          const textColor = item.isGoalMet
-            ? 'text-[#d3e156] font-extrabold'
-            : item.isLow
-            ? 'text-[#ffb95f] font-bold'
-            : item.sets === 0
-            ? 'text-[#909284] font-bold'
-            : 'text-[#d3e156] font-bold';
-
-          const barColor = item.isGoalMet
-            ? 'bg-[#d3e156] shadow-[0_0_8px_rgba(211,225,86,0.5)]'
-            : item.isLow
-            ? 'bg-[#ffb95f]'
-            : item.sets === 0
-            ? 'bg-[#34352a]'
-            : 'bg-[#d3e156]';
+          const { pctTextColor, barColor } = getTierStyles(item.rawPct, item.isGoalMet);
 
           return (
-            <div key={item.key} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-[#e3e3d6]">{item.label}</span>
-                <div className="flex items-center gap-1.5">
+            <div key={item.key} className="w-full">
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-[6px] min-w-0">
+                  <span className="font-normal text-[#f8fafc] text-[12px] leading-[16px] truncate">
+                    {item.label}
+                  </span>
                   {item.isGoalMet && (
-                    <span className="bg-[rgba(211,225,86,0.15)] text-[#d3e156] px-1.5 py-0.5 rounded text-[9px] font-bold">
-                      Meta batida! 🏆
+                    <span className="bg-[rgba(211,225,86,0.1)] flex items-center gap-[3px] px-[5px] py-[1px] rounded-[4px] shrink-0">
+                      <span className="font-normal text-[#d3e156] text-[10px] leading-[16px]">
+                        Meta batida!
+                      </span>
+                      <Trophy className="w-[11px] h-[11px] text-[#d3e156] shrink-0" />
                     </span>
                   )}
-                  <span className={`text-xs font-heading ${textColor}`}>
-                    {item.sets}/{item.target} ({item.rawPct}%)
+                </div>
+
+                <div className="flex items-baseline gap-[4px] shrink-0 text-[12px] leading-[16px]">
+                  <span className="font-mono text-[#94a3b8]">
+                    {item.sets}/{item.target}
+                  </span>
+                  <span className={`font-normal ${pctTextColor}`}>
+                    ({item.rawPct}%)
                   </span>
                 </div>
               </div>
 
-              <div className="w-full h-2 bg-[#0e0f07] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                  style={{ width: `${item.sets === 0 ? 4 : item.barPct}%` }}
-                />
+              <div className="pt-[4px] w-full">
+                <div className="w-full h-[8px] bg-[rgba(255,255,255,0.08)] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${barColor}`}
+                    style={{ width: `${item.sets === 0 ? 0 : item.barPct}%` }}
+                  />
+                </div>
               </div>
             </div>
           );
@@ -188,3 +208,4 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
     </div>
   );
 }
+

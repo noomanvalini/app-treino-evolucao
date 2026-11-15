@@ -202,7 +202,7 @@ export default function DashboardPage() {
               cargaKg: 84,
               reps: 8,
               oneRmCalculado: 102.5,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 5,
               data: new Date(now - 1.8 * dayMs) // ~90% (85%-99% -> Green on body map)
             },
             {
@@ -212,7 +212,7 @@ export default function DashboardPage() {
               cargaKg: 32,
               reps: 10,
               oneRmCalculado: 42.6,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 5,
               data: new Date(now - 1.8 * dayMs)
             },
             {
@@ -252,7 +252,7 @@ export default function DashboardPage() {
               cargaKg: 35,
               reps: 10,
               oneRmCalculado: 46.6,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 6,
               data: new Date(now - 1.8 * dayMs) // ~90% (85%-99% -> Green on body map)
             },
             {
@@ -272,7 +272,7 @@ export default function DashboardPage() {
               cargaKg: 112,
               reps: 8,
               oneRmCalculado: 140.0,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 3,
               data: new Date(now - 4 * dayMs)
             },
             {
@@ -282,7 +282,7 @@ export default function DashboardPage() {
               cargaKg: 240,
               reps: 10,
               oneRmCalculado: 320.0,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 3,
               data: new Date(now - 4 * dayMs)
             },
             {
@@ -302,7 +302,7 @@ export default function DashboardPage() {
               cargaKg: 72,
               reps: 10,
               oneRmCalculado: 94.0,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 8,
               data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
             },
             {
@@ -312,7 +312,7 @@ export default function DashboardPage() {
               cargaKg: 75,
               reps: 8,
               oneRmCalculado: 95.0,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 8,
               data: new Date(now - 0.8 * dayMs)
             },
             {
@@ -322,7 +322,7 @@ export default function DashboardPage() {
               cargaKg: 38,
               reps: 10,
               oneRmCalculado: 50.6,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 6,
               data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
             },
             {
@@ -332,7 +332,7 @@ export default function DashboardPage() {
               cargaKg: 90,
               reps: 10,
               oneRmCalculado: 120.0,
-              totalSetsCompleted: 4,
+              totalSetsCompleted: 3,
               data: new Date(now - 0.8 * dayMs) // Recovering (<48h) -> Amber highlight!
             }
           ]);
@@ -1133,19 +1133,22 @@ export default function DashboardPage() {
         {/* SECTION 4: VOLUME SEMANAL DE SÉRIES */}
         <WeeklyVolumeBars logs={strengthLogs} weeklySetGoals={profile?.weeklySetGoals} />
 
-        {/* SECTION 5: RECORDES RECENTES (PRS) */}
-        <section className="space-y-3">
-          <div className="flex items-center justify-between px-1">
+        {/* SECTION 5: RECORDES RECENTES (PRS) (Figma Node 27:696) */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between px-[2px]">
             <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
               Recordes Recentes (PRs)
             </h3>
-            <Link href="/strength" className="text-xs font-bold text-[#d3e156] hover:underline">
+            <Link
+              href="/strength"
+              className="font-normal text-[#64748b] hover:text-[#94a3b8] text-[12px] leading-[16px] transition-colors"
+            >
               Ver todos
             </Link>
           </div>
 
           {recentPrCards.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+            <div className="-mx-4 px-4 flex gap-[12px] overflow-x-auto pb-2 scrollbar-none">
               {recentPrCards.map((pr) => {
                 const isPositiveRecord = pr.deltaKg > 0;
                 return (
@@ -1155,38 +1158,63 @@ export default function DashboardPage() {
                     onClick={() =>
                       router.push(`/strength?muscle=${encodeURIComponent(pr.muscleGroup)}`)
                     }
-                    className="w-[160px] shrink-0 bg-[#202017] hover:bg-[#2a2b21] border border-[rgba(70,72,59,0.2)] hover:border-[#d3e156]/40 rounded-2xl p-3.5 text-left flex flex-col justify-between transition-all active:scale-95"
+                    className="min-w-[210px] w-[210px] shrink-0 bg-[#2a2b21] hover:bg-[#323328] rounded-[12px] p-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] text-left flex flex-col justify-between transition-all active:scale-[0.98]"
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-[10px] font-bold uppercase text-[#909284] truncate">
+                    {/* Top Row: Muscle Label + Circular Icon Badge */}
+                    <div className="flex items-start justify-between w-full">
+                      <span className="font-semibold text-[#94a3b8] text-[11px] tracking-[0.55px] uppercase leading-[20px] truncate">
                         {pr.muscleGroup}
                       </span>
                       {isPositiveRecord ? (
-                        <Trophy className="h-3.5 w-3.5 text-[#d3e156] shrink-0" />
+                        <span className="bg-[rgba(238,152,0,0.2)] rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0">
+                          <Trophy className="w-[14px] h-[14px] text-[#f59e0b]" />
+                        </span>
                       ) : (
-                        <Dumbbell className="h-3.5 w-3.5 text-[#909284] shrink-0" />
+                        <span className="bg-[rgba(255,255,255,0.08)] rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0">
+                          <Dumbbell className="w-[14px] h-[14px] text-[#94a3b8]" />
+                        </span>
                       )}
                     </div>
 
-                    <div className="mt-2.5">
-                      <span className="block text-xs font-bold text-[#e3e3d6] truncate">
+                    {/* Middle Row: Exercise Title + 1RM Value */}
+                    <div className="pt-[12px] flex flex-col gap-[2px] items-start w-full">
+                      <span className="block font-bold text-[#f8fafc] text-[15px] leading-[20px] truncate w-full">
                         {pr.exerciseName}
                       </span>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className="text-xl font-black font-heading text-[#d3e156]">
+                      <div className="flex items-baseline gap-[4px]">
+                        <span className="font-heading font-semibold text-[#f8fafc] text-[22px] tracking-[-0.22px] leading-[28px]">
                           {pr.best1RM.toFixed(1)}
                         </span>
-                        <span className="text-[10px] text-[#909284]">kg 1RM</span>
+                        <span className="font-medium text-[#64748b] text-[12px] leading-[16px]">
+                          kg 1RM
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-2.5">
+                    {/* Bottom Pill Badge */}
+                    <div className="pt-[12px]">
                       {isPositiveRecord ? (
-                        <span className="inline-block bg-[rgba(211,225,86,0.1)] text-[#d3e156] px-2 py-0.5 rounded text-[10px] font-bold">
-                          +{pr.deltaKg.toFixed(1)} kg recorde!
+                        <span className="inline-flex items-center gap-[4px] bg-[rgba(211,225,86,0.1)] text-[#d3e156] px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px]">
+                          <svg
+                            width="10"
+                            height="6"
+                            viewBox="0 0 10 6"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="shrink-0"
+                          >
+                            <path
+                              d="M1 5L3.66667 2.33333L5.66667 4.33333L9 1M9 1H6.33333M9 1V3.66667"
+                              stroke="#D3E156"
+                              strokeWidth="1.3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <span>+{pr.deltaKg.toFixed(1)} kg recorde!</span>
                         </span>
                       ) : (
-                        <span className="inline-block bg-[#2a2b21] text-[#909284] px-2 py-0.5 rounded text-[10px] font-bold">
+                        <span className="inline-flex items-center bg-[rgba(255,255,255,0.08)] text-[#94a3b8] px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px]">
                           PR • 1RM Máximo
                         </span>
                       )}
@@ -1196,8 +1224,8 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <div className="bg-[#202017] border border-[rgba(70,72,59,0.2)] rounded-2xl p-4 text-center">
-              <p className="text-xs text-[#909284]">
+            <div className="bg-[#202017] rounded-[12px] p-4 text-center">
+              <p className="text-xs text-[#94a3b8]">
                 Conclua seu primeiro treino para registrar seus recordes de 1RM (Brzycki) aqui.
               </p>
             </div>
