@@ -571,14 +571,17 @@ export default function DashboardPage() {
       const hoursSinceLast =
         latestTimeMs !== null ? Math.max(0, (nowMs - latestTimeMs) / (1000 * 3600)) : null;
 
+      const recoveryPct =
+        hoursSinceLast !== null
+          ? Math.min(100, Math.max(0, Math.round((hoursSinceLast / 48) * 100)))
+          : 100;
+
       let status: 'ready' | 'recovering' | 'inactive' = 'inactive';
       if (hoursSinceLast !== null) {
-        if (hoursSinceLast <= 48) {
+        if (recoveryPct < 85) {
           status = 'recovering';
-        } else if (nowMs - (latestTimeMs || 0) <= fourteenDaysMs) {
-          status = 'ready';
         } else {
-          status = 'ready'; // Previously trained muscle
+          status = 'ready';
         }
       }
 
@@ -586,6 +589,7 @@ export default function DashboardPage() {
         muscleGroup: muscle,
         evolutionPct: Number(avgEvo.toFixed(1)),
         hoursSinceLast,
+        recoveryPct,
         weeklySets,
         best1RM: bestMuscle1RM,
         status

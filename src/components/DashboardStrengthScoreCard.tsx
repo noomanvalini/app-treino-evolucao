@@ -7,6 +7,7 @@ export interface MuscleReadinessStat {
   muscleGroup: string;
   evolutionPct: number;
   hoursSinceLast: number | null;
+  recoveryPct: number;
   weeklySets: number;
   best1RM: number;
   status: 'ready' | 'recovering' | 'inactive';
@@ -36,6 +37,20 @@ const BACK_PATH_TO_MUSCLE: Array<{ pathKey: string; muscleGroup: string }> = [
   { pathKey: 'panturrilha-verso', muscleGroup: 'Panturrilha/Canela' }
 ];
 
+// 2-Column Grid Order from Figma Node 27:588 (Left = Front muscles, Right = Back muscles)
+const MUSCLE_GRID_ITEMS: Array<{ label: string; muscleGroup: string }> = [
+  { label: 'Peitoral', muscleGroup: 'Peito' },
+  { label: 'Costas', muscleGroup: 'Costas' },
+  { label: 'Bíceps', muscleGroup: 'Bíceps' },
+  { label: 'Tríceps', muscleGroup: 'Tríceps' },
+  { label: 'Ombro', muscleGroup: 'Ombro' },
+  { label: 'Glúteos', muscleGroup: 'Glúteos' },
+  { label: 'Quadríceps', muscleGroup: 'Quadríceps' },
+  { label: 'Posteriores', muscleGroup: 'Posterior de Coxa' },
+  { label: 'Abdominal', muscleGroup: 'Abdômen' },
+  { label: 'Panturrilha', muscleGroup: 'Panturrilha/Canela' }
+];
+
 export default function DashboardStrengthScoreCard({
   rpScorePts,
   totalEvolutionPct,
@@ -43,6 +58,14 @@ export default function DashboardStrengthScoreCard({
   onSelectMuscle
 }: DashboardStrengthScoreCardProps) {
   const [hoveredMuscle, setHoveredMuscle] = useState<string | null>(null);
+
+  const getRecoveryPct = (muscleGroup: string): number => {
+    const stat = muscleStats[muscleGroup];
+    if (!stat) return 100;
+    if (typeof stat.recoveryPct === 'number') return stat.recoveryPct;
+    if (stat.hoursSinceLast === null) return 100;
+    return Math.min(100, Math.max(0, Math.round((stat.hoursSinceLast / 48) * 100)));
+  };
 
   const getMuscleFill = (muscleGroup: string) => {
     const stat = muscleStats[muscleGroup];
@@ -53,7 +76,8 @@ export default function DashboardStrengthScoreCard({
         opacity: isHovered ? 0.45 : 0
       };
     }
-    if (stat.status === 'recovering') {
+    const pct = getRecoveryPct(muscleGroup);
+    if (pct < 85) {
       return {
         fill: '#FFB95F',
         opacity: isHovered ? 1 : 0.88
@@ -65,238 +89,206 @@ export default function DashboardStrengthScoreCard({
     };
   };
 
-  // Build combined summary rows for the right column (matching Figma layout)
-  const summaryGroups = [
-    {
-      label: 'Peito / Ombro',
-      primaryMuscle: 'Peito',
-      muscles: ['Peito', 'Ombro']
-    },
-    {
-      label: 'Costas / Bíceps',
-      primaryMuscle: 'Costas',
-      muscles: ['Costas', 'Bíceps']
-    },
-    {
-      label: 'Quadríceps',
-      primaryMuscle: 'Quadríceps',
-      muscles: ['Quadríceps']
-    },
-    {
-      label: 'Posterior / Glúteos',
-      primaryMuscle: 'Posterior de Coxa',
-      muscles: ['Posterior de Coxa', 'Glúteos']
-    }
-  ];
-
-  const getGroupDisplay = (muscles: string[]) => {
-    const stats = muscles.map((m) => muscleStats[m]).filter(Boolean);
-    if (stats.length === 0 || stats.every((s) => s.status === 'inactive')) {
-      return {
-        dotColor: 'bg-[#46483b]',
-        textColor: 'text-[#909284]',
-        subtitle: 'Pronto p/ treinar'
-      };
-    }
-
-    const recoveringStat = stats.find((s) => s.status === 'recovering');
-    const avgEvo =
-      stats.reduce((acc, curr) => acc + (curr.evolutionPct || 0), 0) / stats.length;
-    const evoFormatted = `${avgEvo >= 0 ? '+' : ''}${avgEvo.toFixed(1)}%`;
-
-    if (recoveringStat) {
-      const hoursLeft = Math.max(
-        6,
-        48 - Math.round(recoveringStat.hoursSinceLast ?? 24)
-      );
-      return {
-        dotColor: 'bg-[#ffb95f] shadow-[0_0_8px_rgba(255,185,95,0.5)]',
-        textColor: 'text-[#ffb95f]',
-        subtitle: `Recup. (${hoursLeft}h) • ${evoFormatted}`
-      };
-    }
-
-    return {
-      dotColor: 'bg-[#d3e156] shadow-[0_0_8px_rgba(211,225,86,0.5)]',
-      textColor: 'text-[#d3e156]',
-      subtitle: `Pronto • ${evoFormatted}`
-    };
-  };
-
   const formattedTotalEvo = `${totalEvolutionPct >= 0 ? '+' : ''}${totalEvolutionPct.toFixed(1)}%`;
 
   return (
-    <div className="bg-[#202017] rounded-3xl p-4 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-3.5">
-      {/* Top Score Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
+    <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
+      {/* Header with Metric (Figma Node 27:521) */}
+      <div className="flex flex-col items-start w-full">
+        <div className="flex items-center gap-[8px] w-full">
           <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
             Score Geral de Força
           </h3>
-          <div className="flex items-baseline gap-2.5 mt-1 flex-wrap">
-            <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black font-heading text-[#e3e3d6] tracking-[-0.9px]">
-                {rpScorePts.toLocaleString('pt-BR')}
-              </span>
-              <span className="text-sm font-bold text-[#909284]">pts</span>
-            </div>
-            <span
-              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                totalEvolutionPct >= 0
-                  ? 'bg-[rgba(211,225,86,0.1)] text-[#d3e156]'
-                  : 'bg-danger/10 text-danger'
-              }`}
-            >
-              {totalEvolutionPct >= 0 ? '▲' : '▼'} {formattedTotalEvo} este mês
+          <div className="bg-[rgba(255,255,255,0.08)] px-[6px] py-[2px] rounded-[4px] shrink-0">
+            <span className="font-bold text-[#64748b] text-[10px] tracking-[0.8px] leading-[14px] block">
+              Brzycki 1RM
             </span>
           </div>
         </div>
 
-        <div className="bg-[#2a2b21] border border-[rgba(70,72,59,0.3)] rounded-lg px-2.5 py-1.5 shrink-0">
-          <span className="text-[10px] font-semibold text-[#c7c7b8] block leading-none">
-            Brzycki 1RM
-          </span>
+        <div className="pt-[4px] flex items-baseline gap-[8px] flex-wrap w-full">
+          <div className="flex items-baseline gap-[4px]">
+            <span className="font-heading font-bold text-[#f8fafc] text-[36px] tracking-[-0.9px] leading-[40px]">
+              {rpScorePts.toLocaleString('pt-BR')}
+            </span>
+            <span className="font-normal text-[#64748b] text-[12px] leading-[16px]">
+              pts
+            </span>
+          </div>
+
+          <div
+            className={`flex items-center gap-[3px] px-[8px] py-[2px] rounded-full ${
+              totalEvolutionPct >= 0
+                ? 'bg-[rgba(211,225,86,0.1)]'
+                : 'bg-danger/10'
+            }`}
+          >
+            <span
+              className={`font-medium text-[11px] leading-[20px] ${
+                totalEvolutionPct >= 0 ? 'text-[#d3e156]' : 'text-danger'
+              }`}
+            >
+              {totalEvolutionPct >= 0 ? '▲' : '▼'} {formattedTotalEvo}
+            </span>
+            <span className="font-normal text-[#94a3b8] text-[11px] leading-[20px]">
+              este mês
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Anatomical Body Map Dual View + Muscle Readiness Column */}
-      <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-3">
-        <div className="grid grid-cols-12 gap-2 items-center">
-          {/* Vista Anterior (Front) */}
-          <div className="col-span-4 flex flex-col items-center">
-            <div className="relative w-full h-[165px] flex items-center justify-center select-none">
-              <img
-                src="/images/body-map/corpo-base-frente.svg"
-                alt="Mapa Corporal Anterior"
-                className="w-full h-full object-contain opacity-45 pointer-events-none"
-                draggable={false}
-              />
-              <svg
-                viewBox="0 0 2000 3373.03"
-                preserveAspectRatio="xMidYMid meet"
-                className="absolute inset-0 w-full h-full"
-              >
-                {FRONT_PATH_TO_MUSCLE.map(({ pathKey, muscleGroup }) => {
-                  const paths = BODY_MAP_PATHS[pathKey] || [];
-                  const { fill, opacity } = getMuscleFill(muscleGroup);
-                  return (
-                    <g
-                      key={pathKey}
-                      onClick={() => onSelectMuscle(muscleGroup)}
-                      onMouseEnter={() => setHoveredMuscle(muscleGroup)}
-                      onMouseLeave={() => setHoveredMuscle(null)}
-                      className="cursor-pointer transition-opacity duration-200"
-                    >
-                      <title>{muscleGroup}</title>
-                      {paths.map((d, i) => (
-                        <path
-                          key={i}
-                          d={d}
-                          fill={fill}
-                          fillOpacity={opacity}
-                          stroke={hoveredMuscle === muscleGroup ? '#D3E156' : 'none'}
-                          strokeWidth={hoveredMuscle === muscleGroup ? 18 : 0}
-                        />
-                      ))}
-                    </g>
-                  );
-                })}
-              </svg>
+      {/* Visual Anatomical Muscle Silhouette & Status (Figma Node 27:537) */}
+      <div className="pt-[16px] w-full">
+        <div className="bg-[#0e0f07] rounded-[8px] p-[12px] flex flex-col items-center w-full">
+          {/* Larger Dual Body Map View (Front & Back) */}
+          <div className="grid grid-cols-2 gap-3 py-[8px] w-full items-center">
+            {/* Vista Anterior (Front - Figma Node 27:539) */}
+            <div className="flex flex-col items-center">
+              <span className="font-medium text-[#64748b] text-[9px] tracking-[0.45px] uppercase leading-[20px] pb-[4px]">
+                VISTA ANTERIOR
+              </span>
+              <div className="relative w-full h-[220px] flex items-center justify-center select-none drop-shadow-[0px_0px_8px_rgba(211,225,86,0.12)]">
+                <img
+                  src="/images/body-map/corpo-base-frente.svg"
+                  alt="Mapa Corporal Anterior"
+                  className="w-full h-full object-contain opacity-45 pointer-events-none"
+                  draggable={false}
+                />
+                <svg
+                  viewBox="0 0 2000 3373.03"
+                  preserveAspectRatio="xMidYMid meet"
+                  className="absolute inset-0 w-full h-full"
+                >
+                  {FRONT_PATH_TO_MUSCLE.map(({ pathKey, muscleGroup }) => {
+                    const paths = BODY_MAP_PATHS[pathKey] || [];
+                    const { fill, opacity } = getMuscleFill(muscleGroup);
+                    return (
+                      <g
+                        key={pathKey}
+                        onClick={() => onSelectMuscle(muscleGroup)}
+                        onMouseEnter={() => setHoveredMuscle(muscleGroup)}
+                        onMouseLeave={() => setHoveredMuscle(null)}
+                        className="cursor-pointer transition-opacity duration-200"
+                      >
+                        <title>{muscleGroup}</title>
+                        {paths.map((d, i) => (
+                          <path
+                            key={i}
+                            d={d}
+                            fill={fill}
+                            fillOpacity={opacity}
+                            stroke={hoveredMuscle === muscleGroup ? '#D3E156' : 'none'}
+                            strokeWidth={hoveredMuscle === muscleGroup ? 18 : 0}
+                          />
+                        ))}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-[0.45px] text-[#909284] mt-1">
-              Anterior
-            </span>
+
+            {/* Vista Posterior (Back - Figma Node 27:567) */}
+            <div className="flex flex-col items-center">
+              <span className="font-medium text-[#64748b] text-[9px] tracking-[0.45px] uppercase leading-[20px] pb-[4px]">
+                VISTA POSTERIOR
+              </span>
+              <div className="relative w-full h-[220px] flex items-center justify-center select-none drop-shadow-[0px_0px_8px_rgba(211,225,86,0.12)]">
+                <img
+                  src="/images/body-map/corpo-base-verso.svg"
+                  alt="Mapa Corporal Posterior"
+                  className="w-full h-full object-contain opacity-45 pointer-events-none"
+                  draggable={false}
+                />
+                <svg
+                  viewBox="0 0 2000 3373.03"
+                  preserveAspectRatio="xMidYMid meet"
+                  className="absolute inset-0 w-full h-full"
+                >
+                  {BACK_PATH_TO_MUSCLE.map(({ pathKey, muscleGroup }) => {
+                    const paths = BODY_MAP_PATHS[pathKey] || [];
+                    const { fill, opacity } = getMuscleFill(muscleGroup);
+                    return (
+                      <g
+                        key={pathKey}
+                        onClick={() => onSelectMuscle(muscleGroup)}
+                        onMouseEnter={() => setHoveredMuscle(muscleGroup)}
+                        onMouseLeave={() => setHoveredMuscle(null)}
+                        className="cursor-pointer transition-opacity duration-200"
+                      >
+                        <title>{muscleGroup}</title>
+                        {paths.map((d, i) => (
+                          <path
+                            key={i}
+                            d={d}
+                            fill={fill}
+                            fillOpacity={opacity}
+                            stroke={hoveredMuscle === muscleGroup ? '#D3E156' : 'none'}
+                            strokeWidth={hoveredMuscle === muscleGroup ? 18 : 0}
+                          />
+                        ))}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
           </div>
 
-          {/* Vista Posterior (Back) */}
-          <div className="col-span-4 flex flex-col items-center">
-            <div className="relative w-full h-[165px] flex items-center justify-center select-none">
-              <img
-                src="/images/body-map/corpo-base-verso.svg"
-                alt="Mapa Corporal Posterior"
-                className="w-full h-full object-contain opacity-45 pointer-events-none"
-                draggable={false}
-              />
-              <svg
-                viewBox="0 0 2000 3373.03"
-                preserveAspectRatio="xMidYMid meet"
-                className="absolute inset-0 w-full h-full"
-              >
-                {BACK_PATH_TO_MUSCLE.map(({ pathKey, muscleGroup }) => {
-                  const paths = BODY_MAP_PATHS[pathKey] || [];
-                  const { fill, opacity } = getMuscleFill(muscleGroup);
-                  return (
-                    <g
-                      key={pathKey}
-                      onClick={() => onSelectMuscle(muscleGroup)}
-                      onMouseEnter={() => setHoveredMuscle(muscleGroup)}
-                      onMouseLeave={() => setHoveredMuscle(null)}
-                      className="cursor-pointer transition-opacity duration-200"
-                    >
-                      <title>{muscleGroup}</title>
-                      {paths.map((d, i) => (
-                        <path
-                          key={i}
-                          d={d}
-                          fill={fill}
-                          fillOpacity={opacity}
-                          stroke={hoveredMuscle === muscleGroup ? '#D3E156' : 'none'}
-                          strokeWidth={hoveredMuscle === muscleGroup ? 18 : 0}
-                        />
-                      ))}
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-            <span className="text-[9px] font-bold uppercase tracking-[0.45px] text-[#909284] mt-1">
-              Posterior
-            </span>
-          </div>
-
-          {/* Right Column: Muscle Readiness & Evolution Breakdown */}
-          <div className="col-span-4 border-l border-[rgba(70,72,59,0.15)] pl-2.5 flex flex-col justify-center gap-2.5">
-            {summaryGroups.map((group) => {
-              const display = getGroupDisplay(group.muscles);
+          {/* 2-Column Muscle Readiness Breakdown (Figma Node 27:588) */}
+          <div className="grid grid-cols-2 gap-[6px] w-full mt-[4px]">
+            {MUSCLE_GRID_ITEMS.map(({ label, muscleGroup }) => {
+              const recoveryPct = getRecoveryPct(muscleGroup);
+              const isBelow85 = recoveryPct < 85;
               return (
                 <button
-                  key={group.label}
+                  key={label}
                   type="button"
-                  onClick={() => onSelectMuscle(group.primaryMuscle)}
-                  onMouseEnter={() => setHoveredMuscle(group.primaryMuscle)}
+                  onClick={() => onSelectMuscle(muscleGroup)}
+                  onMouseEnter={() => setHoveredMuscle(muscleGroup)}
                   onMouseLeave={() => setHoveredMuscle(null)}
-                  className="text-left group focus:outline-none hover:opacity-90 transition-opacity"
+                  className="bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.1)] px-[8px] py-[4px] rounded-[8px] flex items-center justify-between w-full transition-colors text-left"
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${display.dotColor}`} />
-                    <span className="text-[11px] font-bold text-[#e3e3d6] group-hover:text-[#d3e156] transition-colors truncate">
-                      {group.label}
-                    </span>
-                  </div>
-                  <span className={`block text-[10px] font-bold pl-3.5 leading-tight ${display.textColor}`}>
-                    {display.subtitle}
+                  <span className="font-medium text-[#94a3b8] text-[10px] leading-[20px] truncate">
+                    {label}
+                  </span>
+                  <span
+                    className={`font-normal text-[10px] leading-[16px] text-right shrink-0 ${
+                      isBelow85 ? 'text-[#f59e0b]' : 'text-[#d3e156]'
+                    }`}
+                  >
+                    {recoveryPct}%
                   </span>
                 </button>
               );
             })}
           </div>
-        </div>
-      </div>
 
-      {/* Bottom Legend */}
-      <div className="border-t border-[rgba(70,72,59,0.15)] pt-3 flex items-center justify-between flex-wrap gap-2 text-[10px] text-[#909284]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#d3e156]" />
-            <span>Pronto / Ativo</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#ffb95f]" />
-            <span>Em recuperação</span>
+          {/* Legend Tags (Figma Node 27:613) */}
+          <div className="pt-[8px] w-full">
+            <div className="border-t border-[rgba(255,255,255,0.08)] pt-[9px] flex items-center justify-center gap-[12px] flex-wrap w-full">
+              <span className="font-medium text-[#94a3b8] text-[10px] leading-[20px] whitespace-nowrap">
+                <strong className="font-black text-[#f8fafc]">%</strong> de descanso
+              </span>
+
+              <div className="flex items-center gap-[6px]">
+                <span className="bg-[#d3e156] rounded-full shadow-[0px_0px_6px_0px_rgba(211,225,86,0.8)] w-[8px] h-[8px] shrink-0" />
+                <span className="font-medium text-[#94a3b8] text-[10px] leading-[20px] whitespace-nowrap">
+                  Pronto para Treinar
+                </span>
+              </div>
+
+              <div className="flex items-center gap-[6px]">
+                <span className="bg-[#ffb95f] rounded-full shadow-[0px_0px_6px_0px_rgba(255,185,95,0.8)] w-[8px] h-[8px] shrink-0" />
+                <span className="font-medium text-[#94a3b8] text-[10px] leading-[20px] whitespace-nowrap">
+                  Em Recuperação
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-        <span className="text-[10px] text-[#909284]">Toque no músculo p/ detalhes</span>
       </div>
     </div>
   );
 }
+
