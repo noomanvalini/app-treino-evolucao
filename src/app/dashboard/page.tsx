@@ -959,16 +959,13 @@ export default function DashboardPage() {
 
             <Link
               href="/measures"
-              className="bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)] flex gap-[4px] items-center px-[8px] py-[2px] rounded-full transition-colors shrink-0"
+              className="font-medium text-[#64748b] hover:text-[#94a3b8] text-[10px] tracking-[0.5px] uppercase leading-[14px] whitespace-nowrap transition-colors shrink-0"
             >
-              <span className="bg-[#d3e156] rounded-full shadow-[0px_0px_6px_0px_rgba(211,225,86,0.8)] shrink-0 w-[6px] h-[6px]" />
-              <span className="font-bold text-[#94a3b8] text-[10px] tracking-[0.8px] uppercase leading-[14px] whitespace-nowrap">
-                {daysSinceMeasure !== null
-                  ? daysSinceMeasure === 0
-                    ? 'ATUALIZADO HOJE'
-                    : `ATUALIZADO HÁ ${daysSinceMeasure}D`
-                  : 'REGISTRAR MEDIDAS'}
-              </span>
+              {daysSinceMeasure !== null
+                ? daysSinceMeasure === 0
+                  ? 'ATUALIZADO HOJE'
+                  : `ATUALIZADO HÁ ${daysSinceMeasure} ${daysSinceMeasure === 1 ? 'DIA' : 'DIAS'}`
+                : 'REGISTRAR MEDIDAS'}
             </Link>
           </div>
 
