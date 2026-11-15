@@ -557,40 +557,38 @@ export default function WeeklyInsightsCard({
       : 'Registre seus treinos e medidas para receber sugestões personalizadas de volume, recuperação e progressão de carga.';
 
     return (
-      <div className="bg-[#202017] border border-[rgba(255,185,95,0.2)] rounded-3xl p-4 shadow-xl relative overflow-hidden space-y-3">
-        <div className="absolute -top-6 -right-6 w-24 h-24 bg-[rgba(255,185,95,0.06)] rounded-full blur-xl pointer-events-none" />
+      <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] relative overflow-hidden">
+        <div className="absolute bg-[rgba(255,185,95,0.1)] blur-[40px] -left-[48px] -top-[48px] rounded-full w-[128px] h-[128px] pointer-events-none" />
 
         {/* Header */}
-        <div className="flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[rgba(255,185,95,0.1)] border border-[rgba(255,185,95,0.2)] flex items-center justify-center text-[#ffb95f]">
-              <Lightbulb className="h-4 w-4" />
-            </div>
-            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
-              Análise Semanal
-            </h3>
-          </div>
+        <div className="flex items-center justify-between relative z-10 w-full">
+          <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
+            Análise Semanal
+          </h3>
 
-          <span className="bg-[rgba(255,185,95,0.1)] text-[#ffb95f] px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">
-            Sugestão
+          <span className="bg-[rgba(255,185,95,0.15)] text-[#ffb95f] px-[8px] py-[2px] rounded-[4px] flex items-center gap-[4px] shrink-0">
+            <Lightbulb className="h-[12px] w-[12px] shrink-0" />
+            <span className="font-bold text-[10px] tracking-[0.8px] uppercase leading-[14px]">
+              SUGESTÃO
+            </span>
           </span>
         </div>
 
         {loadingCache ? (
-          <div className="py-3 flex items-center gap-2 text-xs text-[#909284]">
+          <div className="pt-[10px] py-2 flex items-center gap-2 text-xs text-[#909284] relative z-10">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-[#ffb95f]" />
             <span>Verificando análise da semana...</span>
           </div>
         ) : (
-          <div className="space-y-2.5 relative z-10">
-            <p className="text-xs text-[#c7c7b8] leading-[19.5px] line-clamp-3">
+          <div className="pt-[10px] relative z-10 w-full">
+            <p className="font-medium text-[#c8c8b1] text-[14px] leading-[22.75px] line-clamp-4">
               {summaryText}
             </p>
 
-            <div className="pt-0.5">
+            <div className="pt-[12px] flex items-center justify-end w-full">
               <Link
                 href="/insights"
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#ffb95f] hover:opacity-85 transition-opacity"
+                className="inline-flex items-center gap-[4px] text-[12px] font-normal text-[#d3e156] hover:opacity-85 transition-opacity"
               >
                 <span>Ver relatório detalhado</span>
                 <span>→</span>
