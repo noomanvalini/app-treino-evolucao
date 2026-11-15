@@ -203,7 +203,7 @@ export default function DashboardPage() {
               reps: 8,
               oneRmCalculado: 102.5,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs) // ~90% (85%-99% -> Green on body map)
             },
             {
               id: 'p3',
@@ -213,7 +213,7 @@ export default function DashboardPage() {
               reps: 10,
               oneRmCalculado: 42.6,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs)
             },
             {
               id: 'p4',
@@ -223,7 +223,7 @@ export default function DashboardPage() {
               reps: 12,
               oneRmCalculado: 91.0,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs)
             },
             {
               id: 'p5',
@@ -233,7 +233,7 @@ export default function DashboardPage() {
               reps: 8,
               oneRmCalculado: 63.3,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs) // ~90% (85%-99% -> Green on body map)
             },
             {
               id: 'p6',
@@ -243,7 +243,7 @@ export default function DashboardPage() {
               reps: 12,
               oneRmCalculado: 19.6,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs)
             },
             {
               id: 'p7',
@@ -253,7 +253,7 @@ export default function DashboardPage() {
               reps: 10,
               oneRmCalculado: 46.6,
               totalSetsCompleted: 4,
-              data: new Date(now - 3 * dayMs)
+              data: new Date(now - 1.8 * dayMs) // ~90% (85%-99% -> Green on body map)
             },
             {
               id: 'p8',

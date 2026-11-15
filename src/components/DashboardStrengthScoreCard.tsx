@@ -77,14 +77,23 @@ export default function DashboardStrengthScoreCard({
       };
     }
     const pct = getRecoveryPct(muscleGroup);
-    if (pct < 85) {
+    // 100% rested -> returns to the default light color of the base silhouette
+    if (pct >= 100) {
       return {
-        fill: '#FFB95F',
+        fill: isHovered ? '#D3E156' : 'transparent',
+        opacity: isHovered ? 0.45 : 0
+      };
+    }
+    // 85% to 99% -> lime green
+    if (pct >= 85) {
+      return {
+        fill: '#D3E156',
         opacity: isHovered ? 1 : 0.88
       };
     }
+    // Below 85% -> orange
     return {
-      fill: '#D3E156',
+      fill: '#FFB95F',
       opacity: isHovered ? 1 : 0.88
     };
   };
