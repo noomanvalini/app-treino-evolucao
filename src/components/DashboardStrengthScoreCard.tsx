@@ -130,9 +130,9 @@ export default function DashboardStrengthScoreCard({
       {/* Top Score Header */}
       <div className="flex items-start justify-between gap-2">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284] block">
+          <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
             Score Geral de Força
-          </span>
+          </h3>
           <div className="flex items-baseline gap-2.5 mt-1 flex-wrap">
             <div className="flex items-baseline gap-1">
               <span className="text-4xl font-black font-heading text-[#e3e3d6] tracking-[-0.9px]">

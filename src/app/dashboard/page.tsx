@@ -718,28 +718,36 @@ export default function DashboardPage() {
   const getImcStatus = (imc: number) => {
     if (!imc || imc <= 0) {
       return {
-        label: 'SEM REGISTRO',
-        badgeClass: 'bg-[#2a2b21] border-[rgba(70,72,59,0.3)] text-[#909284]',
+        label: 'Sem Registro',
+        badgeBg: 'bg-[rgba(255,255,255,0.08)]',
+        dotColor: 'bg-[#64748b]',
+        textColor: 'text-[#94a3b8]',
         activeSegment: 0
       };
     }
     if (imc < 18.5) {
       return {
-        label: 'ABAIXO DO PESO',
-        badgeClass: 'bg-[rgba(255,185,95,0.15)] border-[rgba(255,185,95,0.3)] text-[#ffb95f]',
+        label: 'Abaixo do Ideal',
+        badgeBg: 'bg-[rgba(30,145,177,0.15)]',
+        dotColor: 'bg-[#1e91b1]',
+        textColor: 'text-[#1e91b1]',
         activeSegment: 1
       };
     }
     if (imc < 25) {
       return {
-        label: 'PESO NORMAL',
-        badgeClass: 'bg-[rgba(211,225,86,0.15)] border-[rgba(211,225,86,0.3)] text-[#d3e156]',
+        label: 'Faixa Ideal',
+        badgeBg: 'bg-[rgba(211,225,86,0.1)]',
+        dotColor: 'bg-[#d3e156]',
+        textColor: 'text-[#d3e156]',
         activeSegment: 2
       };
     }
     return {
-      label: 'SOBREPESO',
-      badgeClass: 'bg-[rgba(255,185,95,0.15)] border-[rgba(255,185,95,0.3)] text-[#ffb95f]',
+      label: 'Acima do Ideal',
+      badgeBg: 'bg-[rgba(245,158,11,0.15)]',
+      dotColor: 'bg-[#f59e0b]',
+      textColor: 'text-[#f59e0b]',
       activeSegment: 3
     };
   };
@@ -838,7 +846,7 @@ export default function DashboardPage() {
               </h2>
             </div>
 
-            {/* 3 Metadata Tags (Figma Node 27:412) */}
+            {/* 2 Metadata Tags: Exercícios + Previsão de Tempo */}
             <div className="flex flex-wrap items-center gap-[8px] pt-[12px] relative z-10">
               <div className="bg-[#1c1c13] rounded-[6px] px-[8px] py-[4px] flex items-center gap-[4px]">
                 <Dumbbell className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
@@ -851,13 +859,6 @@ export default function DashboardPage() {
                 <Clock className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
                 <span className="text-[12px] font-normal text-[#94a3b8] leading-[16px] whitespace-nowrap">
                   ~{heroWorkoutMeta.estimatedMinutes} min
-                </span>
-              </div>
-
-              <div className="bg-[#1c1c13] rounded-[6px] px-[8px] py-[4px] flex items-center gap-[4px]">
-                <Scale className="h-[11.5px] w-[11.5px] text-[#94a3b8] shrink-0" />
-                <span className="text-[12px] font-normal text-[#94a3b8] leading-[16px] whitespace-nowrap">
-                  Carga {heroWorkoutMeta.estimatedVolumeKg.toLocaleString('pt-BR')} kg
                 </span>
               </div>
             </div>
@@ -948,134 +949,173 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* SECTION 2: Card RESUMO FÍSICO */}
-        <section className="bg-[#202017] rounded-3xl p-4 border border-[rgba(70,72,59,0.2)] shadow-xl space-y-3.5">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Scale className="h-4 w-4 text-[#d3e156]" />
-              <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284]">
-                Resumo Físico
-              </span>
-            </div>
+        {/* SECTION 2: Card RESUMO FÍSICO (Figma Node 27:445) */}
+        <section className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
+          {/* Header (Figma Node 27:447) */}
+          <div className="flex items-center justify-between w-full">
+            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
+              Resumo físico
+            </h3>
 
             <Link
               href="/measures"
-              className="bg-[#2a2b21] hover:bg-[#34352a] px-2.5 py-1 rounded text-[10px] font-semibold text-[#909284] hover:text-[#e3e3d6] transition-colors"
+              className="bg-[rgba(255,255,255,0.08)] hover:bg-[rgba(255,255,255,0.12)] flex gap-[4px] items-center px-[8px] py-[2px] rounded-full transition-colors shrink-0"
             >
-              {daysSinceMeasure !== null
-                ? daysSinceMeasure === 0
-                  ? 'ATUALIZADO HOJE'
-                  : `ATUALIZADO HÁ ${daysSinceMeasure}D`
-                : 'REGISTRAR MEDIDAS →'}
+              <span className="bg-[#d3e156] rounded-full shadow-[0px_0px_6px_0px_rgba(211,225,86,0.8)] shrink-0 w-[6px] h-[6px]" />
+              <span className="font-bold text-[#94a3b8] text-[10px] tracking-[0.8px] uppercase leading-[14px] whitespace-nowrap">
+                {daysSinceMeasure !== null
+                  ? daysSinceMeasure === 0
+                    ? 'ATUALIZADO HOJE'
+                    : `ATUALIZADO HÁ ${daysSinceMeasure}D`
+                  : 'REGISTRAR MEDIDAS'}
+              </span>
             </Link>
           </div>
 
-          {/* IMC Highlight Box */}
-          <div className="bg-[#0e0f07] border border-[rgba(70,72,59,0.15)] rounded-2xl p-3 space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#909284] block">
-                  Índice de Massa Corporal (IMC)
-                </span>
-                <div className="flex items-baseline gap-1.5 mt-0.5">
-                  <span className="text-3xl font-black font-heading text-[#e3e3d6] tracking-[-0.75px]">
-                    {imcValue > 0 ? imcValue.toFixed(1) : '--'}
+          {/* Primary Highlighted Metric: IMC (Figma Node 27:456) */}
+          <div className="pt-[16px] w-full">
+            <div className="bg-[#0e0f07] rounded-[8px] p-[12px] w-full">
+              <div className="flex items-start justify-between gap-2 w-full">
+                <div className="flex flex-col gap-[4px] items-start pt-[4px]">
+                  <span className="font-bold text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
+                    ÍNDICE DE MASSA CORPORAL
                   </span>
-                  <span className="text-xs font-medium text-[#909284]">kg/m²</span>
+                  <div className="flex gap-[8px] items-baseline">
+                    <span className="font-heading font-bold text-[#f8fafc] text-[36px] tracking-[-0.9px] leading-[40px]">
+                      {imcValue > 0 ? imcValue.toFixed(1) : '--'}
+                    </span>
+                    <span className="font-medium text-[#64748b] text-[12px] leading-[16px]">
+                      IMC
+                    </span>
+                  </div>
+                </div>
+
+                {/* Smaller Status Badge (Figma Node 27:464) */}
+                <div
+                  className={`${imcStatus.badgeBg} flex gap-[4px] items-center px-[8px] py-[2px] rounded-full shrink-0`}
+                >
+                  <span className={`${imcStatus.dotColor} rounded-full shrink-0 w-[6px] h-[6px]`} />
+                  <span
+                    className={`font-medium ${imcStatus.textColor} text-[11px] leading-[20px] whitespace-nowrap`}
+                  >
+                    {imcStatus.label}
+                  </span>
                 </div>
               </div>
 
-              <div
-                className={`border px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shrink-0 ${imcStatus.badgeClass}`}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span className="text-xs font-extrabold font-heading tracking-[0.3px]">
-                  {imcStatus.label}
-                </span>
-              </div>
-            </div>
+              {/* 3-Segment IMC Gauge Bar & Range Labels (Figma Nodes 45:19, 48:2, 48:15) */}
+              <div className="pt-[12px] w-full">
+                <div className="bg-[rgba(255,255,255,0.08)] flex h-[6px] w-full rounded-full overflow-hidden">
+                  <div
+                    className={`w-1/4 h-full transition-colors ${
+                      imcStatus.activeSegment === 1 ? 'bg-[#1e91b1]' : 'bg-transparent'
+                    }`}
+                  />
+                  <div
+                    className={`w-2/4 h-full transition-colors ${
+                      imcStatus.activeSegment === 2
+                        ? 'bg-[#c2cf46]'
+                        : 'bg-[rgba(255,255,255,0.06)]'
+                    }`}
+                  />
+                  <div
+                    className={`w-1/4 h-full transition-colors ${
+                      imcStatus.activeSegment === 3 ? 'bg-[#f59e0b]' : 'bg-transparent'
+                    }`}
+                  />
+                </div>
 
-            {/* 3-Segment IMC Gauge Bar */}
-            <div className="space-y-1.5">
-              <div className="w-full h-1.5 bg-[#202017] rounded-full overflow-hidden flex gap-0.5">
-                <div
-                  className={`w-1/4 h-full rounded-l-full ${
-                    imcStatus.activeSegment === 1 ? 'bg-[#ffb95f]' : 'bg-[rgba(144,146,132,0.25)]'
-                  }`}
-                />
-                <div
-                  className={`w-2/4 h-full ${
-                    imcStatus.activeSegment === 2
-                      ? 'bg-[#d3e156] shadow-[0_0_8px_rgba(211,225,86,0.5)]'
-                      : 'bg-[rgba(144,146,132,0.25)]'
-                  }`}
-                />
-                <div
-                  className={`w-1/4 h-full rounded-r-full ${
-                    imcStatus.activeSegment === 3 ? 'bg-[#ffb95f]' : 'bg-[rgba(144,146,132,0.25)]'
-                  }`}
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[9px] text-[#909284]">
-                <span>Baixo &lt;18.5</span>
-                <span>Normal (18.5 - 24.9)</span>
-                <span>Sobrepeso &gt;25</span>
+                <div className="pt-[4px] flex items-center justify-between w-full text-[9px] font-medium leading-[20px]">
+                  <span
+                    className={
+                      imcStatus.activeSegment === 1 ? 'text-[#1e91b1]' : 'text-[#64748b]'
+                    }
+                  >
+                    Baixo &lt;18.5
+                  </span>
+                  <span
+                    className={
+                      imcStatus.activeSegment === 2 ? 'text-[#d3e156]' : 'text-[#64748b]'
+                    }
+                  >
+                    Normal (18.5 - 24.9)
+                  </span>
+                  <span
+                    className={
+                      imcStatus.activeSegment === 3 ? 'text-[#f59e0b]' : 'text-[#64748b]'
+                    }
+                  >
+                    Sobrepeso &gt;25
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* 3 Metric Sub-Cards: Peso, Idade, Altura */}
-          <div className="grid grid-cols-3 gap-2">
-            {/* Peso */}
-            <Link
-              href="/measures"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
-            >
-              <span className="text-[10px] font-bold uppercase text-[#909284]">Peso</span>
-              <div className="flex items-baseline gap-0.5 mt-1">
-                <span className="text-lg font-black font-heading text-[#e3e3d6]">
-                  {pesoValue > 0 ? pesoValue : '--'}
+          {/* 3-Column Grid Metrics: Peso, Idade, Altura (Figma Node 27:484) */}
+          <div className="pt-[16px] w-full">
+            <div className="grid grid-cols-3 gap-[8px] w-full">
+              {/* Peso (Figma Node 27:485) */}
+              <Link
+                href="/measures"
+                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+              >
+                <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
+                  PESO
                 </span>
-                <span className="text-[10px] font-semibold text-[#909284]">kg</span>
-              </div>
-              <span className="text-[9px] font-bold text-[#d3e156] mt-1 truncate">
-                {pesoDelta !== null
-                  ? `${pesoDelta > 0 ? '↗ +' : '↘ '}${pesoDelta}kg mês`
-                  : 'Toque p/ atualizar'}
-              </span>
-            </Link>
+                <div className="pt-[4px] flex items-baseline gap-[2px]">
+                  <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] leading-[22.5px]">
+                    {pesoValue > 0 ? pesoValue : '--'}
+                  </span>
+                  <span className="font-medium text-[#64748b] text-[11px] leading-[20px]">kg</span>
+                </div>
+                <span className="pt-[2px] font-medium text-[#d3e156] text-[10px] leading-[10px] truncate w-full">
+                  {pesoDelta !== null
+                    ? `${pesoDelta > 0 ? '+' : ''}${pesoDelta} kg este mês`
+                    : 'Toque p/ atualizar'}
+                </span>
+              </Link>
 
-            {/* Idade */}
-            <Link
-              href="/profile"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
-            >
-              <span className="text-[10px] font-bold uppercase text-[#909284]">Idade</span>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-lg font-black font-heading text-[#e3e3d6]">
-                  {profile?.idade || '--'}
+              {/* Idade (Figma Node 27:496) */}
+              <Link
+                href="/profile"
+                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+              >
+                <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
+                  IDADE
                 </span>
-                <span className="text-[10px] font-semibold text-[#909284]">anos</span>
-              </div>
-              <span className="text-[9px] font-semibold text-[#909284] mt-1">Perfil Ativo</span>
-            </Link>
+                <div className="pt-[4px] flex items-baseline gap-[3px]">
+                  <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] leading-[22.5px]">
+                    {profile?.idade || '--'}
+                  </span>
+                  <span className="font-medium text-[#64748b] text-[11px] leading-[20px]">
+                    anos
+                  </span>
+                </div>
+                <span className="pt-[2px] font-medium text-[#94a3b8] text-[10px] leading-[10px] truncate w-full">
+                  Metab. ativo
+                </span>
+              </Link>
 
-            {/* Altura */}
-            <Link
-              href="/profile"
-              className="bg-[#2a2b21] hover:bg-[#34352a] border border-[rgba(70,72,59,0.2)] rounded-2xl p-2.5 flex flex-col justify-between transition-colors"
-            >
-              <span className="text-[10px] font-bold uppercase text-[#909284]">Altura</span>
-              <div className="flex items-baseline gap-0.5 mt-1">
-                <span className="text-lg font-black font-heading text-[#e3e3d6]">
-                  {alturaMetros}
+              {/* Altura (Figma Node 27:507) */}
+              <Link
+                href="/profile"
+                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+              >
+                <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
+                  ALTURA
                 </span>
-                <span className="text-[10px] font-semibold text-[#909284]">m</span>
-              </div>
-              <span className="text-[9px] font-semibold text-[#909284] mt-1">Base cálculo</span>
-            </Link>
+                <div className="pt-[4px] flex items-baseline gap-[2px]">
+                  <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] leading-[22.5px]">
+                    {alturaMetros}
+                  </span>
+                  <span className="font-medium text-[#64748b] text-[11px] leading-[20px]">m</span>
+                </div>
+                <span className="pt-[2px] font-medium text-[#94a3b8] text-[10px] leading-[10px] truncate w-full">
+                  Estável
+                </span>
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -1095,9 +1135,9 @@ export default function DashboardPage() {
         {/* SECTION 5: RECORDES RECENTES (PRS) */}
         <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
-            <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284]">
+            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
               Recordes Recentes (PRs)
-            </span>
+            </h3>
             <Link href="/strength" className="text-xs font-bold text-[#d3e156] hover:underline">
               Ver todos
             </Link>

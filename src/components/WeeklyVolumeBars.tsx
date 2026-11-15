@@ -127,9 +127,9 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#909284] block">
+          <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
             Volume Semanal de Séries
-          </span>
+          </h3>
           <span className="text-[11px] text-[#c7c7b8] block mt-0.5">
             Meta base: {baseTarget} séries/músculo
           </span>

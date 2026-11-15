@@ -566,9 +566,9 @@ export default function WeeklyInsightsCard({
             <div className="w-8 h-8 rounded-xl bg-[rgba(255,185,95,0.1)] border border-[rgba(255,185,95,0.2)] flex items-center justify-center text-[#ffb95f]">
               <Lightbulb className="h-4 w-4" />
             </div>
-            <h2 className="text-[13px] font-bold font-heading uppercase tracking-[0.33px] text-[#e3e3d6]">
+            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
               Análise Semanal
-            </h2>
+            </h3>
           </div>
 
           <span className="bg-[rgba(255,185,95,0.1)] text-[#ffb95f] px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider">
