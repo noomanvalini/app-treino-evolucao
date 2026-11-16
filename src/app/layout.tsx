@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Oswald, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
+import { PaletteProvider } from "@/context/PaletteContext";
 
 const oswald = Oswald({
   variable: "--font-heading",
@@ -47,11 +48,13 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${oswald.variable} ${inter.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground font-sans pb-20 select-none">
+      <body className="min-h-full flex flex-col bg-[#0e0f07] text-foreground font-sans pb-20 select-none">
         <AuthProvider>
-          <div className="flex-1 w-full max-w-md mx-auto px-4 py-6">
-            {children}
-          </div>
+          <PaletteProvider>
+            <div className="flex-1 w-full max-w-md mx-auto px-4 py-6">
+              {children}
+            </div>
+          </PaletteProvider>
         </AuthProvider>
       </body>
     </html>

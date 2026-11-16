@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { usePalette } from '@/context/PaletteContext';
 import { 
   Sparkles, RefreshCw, Loader2, Trophy, AlertTriangle, Lightbulb, 
   Flame, Scale, Layers, Activity, TrendingUp, CheckCircle2, ChevronRight,
@@ -110,6 +111,7 @@ export default function WeeklyInsightsCard({
   const [loadingCache, setLoadingCache] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { isContrast } = usePalette();
 
   const currentWeekKey = getWeekKey();
 
@@ -557,7 +559,11 @@ export default function WeeklyInsightsCard({
       : 'Registre seus treinos e medidas para receber sugestões personalizadas de volume, recuperação e progressão de carga.';
 
     return (
-      <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] relative overflow-hidden">
+      <div
+        className={`${
+          isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+        } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] relative overflow-hidden transition-colors`}
+      >
         <div className="absolute bg-[rgba(255,185,95,0.1)] blur-[40px] -left-[48px] -top-[48px] rounded-full w-[128px] h-[128px] pointer-events-none" />
 
         {/* Header */}

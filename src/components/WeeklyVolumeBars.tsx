@@ -2,6 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
+import { usePalette } from '@/context/PaletteContext';
 
 export interface VolumeLogItem {
   data: any;
@@ -25,6 +26,7 @@ interface WeeklyVolumeBarsProps {
 }
 
 export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVolumeBarsProps) {
+  const { isContrast } = usePalette();
   const categories = useMemo(() => {
     // Current week window (last 7 days inclusive)
     const now = new Date();
@@ -150,7 +152,11 @@ export default function WeeklyVolumeBars({ logs = [], weeklySetGoals }: WeeklyVo
   };
 
   return (
-    <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
+    <div
+      className={`${
+        isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+      } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-colors`}
+    >
       {/* Header (Figma Node 27:625 - No icon on the right) */}
       <div className="flex flex-col items-start w-full">
         <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">

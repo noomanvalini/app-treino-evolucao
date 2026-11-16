@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { usePalette } from '@/context/PaletteContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
@@ -75,6 +76,7 @@ interface SavedWorkoutItem {
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
+  const { isContrast } = usePalette();
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -762,16 +764,28 @@ export default function DashboardPage() {
 
   if (authLoading || loadingData) {
     return (
-      <div className="min-h-screen bg-[#0D1117] flex items-center justify-center">
+      <div
+        className={`min-h-screen ${
+          isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+        } flex items-center justify-center`}
+      >
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#d3e156]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-[#e3e3d6] pb-28">
+    <div
+      className={`min-h-screen ${
+        isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+      } text-[#e3e3d6] pb-28 transition-colors`}
+    >
       {/* Top App Bar (Untouched as requested) */}
-      <header className="sticky top-0 z-10 -mx-4 -mt-6 bg-obsidian/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
+      <header
+        className={`sticky top-0 z-10 -mx-4 -mt-6 ${
+          isContrast ? 'bg-[#0e0f07]/90' : 'bg-obsidian/90'
+        } backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between`}
+      >
         <div className="flex items-center gap-2">
           <Dumbbell className="h-6 w-6 text-lime-neon" />
           <span className="font-heading font-extrabold text-lg tracking-wider text-slate-100">
@@ -807,15 +821,29 @@ export default function DashboardPage() {
           {activeWorkoutBanner && (
             <Link
               href="/workout/active"
-              className="block w-full bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156] text-[#e3e3d6] rounded-[12px] p-3.5 shadow-lg transition-all active:scale-[0.98]"
+              className={`block w-full ${
+                isContrast
+                  ? 'bg-[#151413] hover:bg-[#1c1c13] border-2 border-[#ffb95f]'
+                  : 'bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156]'
+              } text-[#e3e3d6] rounded-[12px] p-3.5 shadow-lg transition-all active:scale-[0.98]`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="bg-[#d3e156]/20 p-2.5 rounded-xl text-[#d3e156] animate-pulse">
+                  <div
+                    className={`${
+                      isContrast
+                        ? 'bg-[#ffb95f]/20 text-[#ffb95f]'
+                        : 'bg-[#d3e156]/20 text-[#d3e156]'
+                    } p-2.5 rounded-xl animate-pulse`}
+                  >
                     <Flame className="h-5 w-5" />
                   </div>
                   <div className="text-left">
-                    <span className="block text-[10px] font-extrabold uppercase tracking-wider text-[#d3e156]">
+                    <span
+                      className={`block text-[10px] font-extrabold uppercase tracking-wider ${
+                        isContrast ? 'text-[#ffb95f]' : 'text-[#d3e156]'
+                      }`}
+                    >
                       Treino em Andamento • Retomar
                     </span>
                     <span className="block font-heading font-extrabold text-sm text-[#e3e3d6]">
@@ -827,7 +855,11 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 </div>
-                <div className="bg-[#d3e156] text-[#1a1c00] font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1">
+                <div
+                  className={`${
+                    isContrast ? 'bg-[#ffb95f] text-[#151413]' : 'bg-[#d3e156] text-[#1a1c00]'
+                  } font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1`}
+                >
                   <span>Continuar</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
@@ -835,17 +867,29 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {/* Hero Card: TREINO DE HOJE (Figma Node 27:399 + 27:436) */}
-          <div className="bg-[#2a2b21] rounded-[12px] p-[16px] shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] relative overflow-hidden">
-            {/* Ambient Glow Behind CTA (Figma Node 27:400) */}
+          {/* Hero Card: TREINO DE HOJE (Figma Node 59:176 / 27:399) */}
+          <div
+            className={`${
+              isContrast ? 'bg-[#f4f4f0]' : 'bg-[#2a2b21]'
+            } rounded-[12px] p-[16px] shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] relative overflow-hidden transition-colors`}
+          >
+            {/* Ambient Glow Behind CTA (Figma Node 59:177) */}
             <div className="absolute bg-[rgba(211,225,86,0.1)] blur-[64px] -bottom-[40px] -right-[40px] rounded-full w-[176px] h-[176px] pointer-events-none" />
 
-            {/* Top Info Row (Figma Node 27:402) */}
+            {/* Top Info Row (Figma Node 59:179) */}
             <div className="flex flex-col items-start relative z-10 w-full">
-              <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#d3e156] leading-[14px]">
+              <span
+                className={`text-[10px] font-bold uppercase tracking-[1px] leading-[14px] ${
+                  isContrast ? 'text-[#f97316]' : 'text-[#d3e156]'
+                }`}
+              >
                 TREINO DE HOJE
               </span>
-              <h2 className="font-heading font-semibold text-[18px] tracking-[-0.22px] uppercase text-[#f8fafc] leading-[27.5px] mt-[1px]">
+              <h2
+                className={`font-heading font-semibold text-[18px] tracking-[-0.22px] uppercase leading-[27.5px] mt-[1px] ${
+                  isContrast ? 'text-black' : 'text-[#f8fafc]'
+                }`}
+              >
                 {heroWorkoutMeta.displayTitle}
               </h2>
             </div>
@@ -867,14 +911,14 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Previous Workout Badge (Figma Node 27:429) */}
+            {/* Previous Workout Badge (Figma Node 59:204) */}
             <div className="flex items-center gap-[6px] pt-[12px] relative z-10">
               <svg
                 width="11"
                 height="11"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="#D3E156"
+                stroke={isContrast ? '#F97316' : '#D3E156'}
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -884,32 +928,58 @@ export default function DashboardPage() {
                 <path d="M3 3v5h5" />
                 <path d="M12 7v5l4 2" />
               </svg>
-              <p className="text-[12px] leading-[16px] text-[#64748b]">
+              <p
+                className={`text-[12px] leading-[16px] ${
+                  isContrast ? 'text-[rgba(13,17,23,0.8)]' : 'text-[#64748b]'
+                }`}
+              >
                 <span>Último feito: </span>
-                <strong className="font-bold text-[#f8fafc]">{heroWorkoutMeta.lastDaysText}</strong>
+                <strong
+                  className={`font-bold ${
+                    isContrast ? 'text-[#151413]' : 'text-[#f8fafc]'
+                  }`}
+                >
+                  {heroWorkoutMeta.lastDaysText}
+                </strong>
               </p>
               {heroWorkoutMeta.lastPrText && (
-                <span className="text-[11px] leading-[16px] text-[#d3e156]">
+                <span
+                  className={`text-[11px] leading-[16px] font-bold ${
+                    isContrast ? 'text-[#a3ab5a]' : 'text-[#d3e156]'
+                  }`}
+                >
                   {heroWorkoutMeta.lastPrText}
                 </span>
               )}
             </div>
 
-            {/* Bottom Action Buttons Container (Figma Node 27:436) */}
+            {/* Bottom Action Buttons Container (Figma Node 59:211) */}
             <div className="flex items-start gap-[8px] pt-[12px] relative z-10 w-full">
-              {/* Primary Pill Button: INICIAR TREINO (Figma Node 27:437) */}
+              {/* Primary Pill Button: INICIAR TREINO (Figma Node 59:212) */}
               <Link
                 href={
                   selectedWorkout
                     ? `/workout/active?templateId=${encodeURIComponent(selectedWorkout.id)}`
                     : '/workout/active'
                 }
-                className="bg-[#f8fafc] hover:bg-white flex-1 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full shadow-[0px_8px_20px_-4px_rgba(255,255,255,0.08)] flex items-center justify-between transition-transform active:scale-[0.98]"
+                className={`${
+                  isContrast
+                    ? 'bg-black hover:bg-[#151413]'
+                    : 'bg-[#f8fafc] hover:bg-white'
+                } flex-1 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full shadow-[0px_8px_20px_-4px_rgba(255,255,255,0.08)] flex items-center justify-between transition-transform active:scale-[0.98]`}
               >
-                <span className="font-heading font-semibold text-[#202017] text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap">
+                <span
+                  className={`font-heading font-semibold text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap ${
+                    isContrast ? 'text-[#f8fafc]' : 'text-[#202017]'
+                  }`}
+                >
                   INICIAR TREINO
                 </span>
-                <span className="bg-[#effe6f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                <span
+                  className={`${
+                    isContrast ? 'bg-[#ffb95f]' : 'bg-[#effe6f]'
+                  } rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center`}
+                >
                   <svg
                     width="12"
                     height="12"
@@ -925,13 +995,21 @@ export default function DashboardPage() {
                 </span>
               </Link>
 
-              {/* Secondary Pill Button: TROCAR (Figma Node 34:2357) */}
+              {/* Secondary Pill Button: TROCAR (Figma Node 59:219) */}
               <button
                 type="button"
                 onClick={handleCycleWorkout}
-                className="bg-transparent hover:bg-white/5 border border-[#f8fafc] min-w-[132px] min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between transition-transform active:scale-[0.98] shrink-0"
+                className={`bg-transparent ${
+                  isContrast
+                    ? 'hover:bg-black/5 border border-[#0d1117]'
+                    : 'hover:bg-white/5 border border-[#f8fafc]'
+                } min-w-[132px] min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between transition-transform active:scale-[0.98] shrink-0`}
               >
-                <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap">
+                <span
+                  className={`font-heading font-semibold text-[18px] tracking-[0.45px] uppercase leading-[24px] whitespace-nowrap ${
+                    isContrast ? 'text-[#0d1117]' : 'text-[#f8fafc]'
+                  }`}
+                >
                   TROCAR
                 </span>
                 <span className="bg-[#1e91b1] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
@@ -953,9 +1031,13 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* SECTION 2: Card RESUMO FÍSICO (Figma Node 27:445) */}
-        <section className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
-          {/* Header (Figma Node 27:447) */}
+        {/* SECTION 2: Card RESUMO FÍSICO (Figma Node 59:227 / 27:445) */}
+        <section
+          className={`${
+            isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+          } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-colors`}
+        >
+          {/* Header (Figma Node 59:229) */}
           <div className="flex items-center justify-between w-full">
             <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
               Resumo físico
@@ -973,9 +1055,13 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          {/* Primary Highlighted Metric: IMC (Figma Node 27:456) */}
+          {/* Primary Highlighted Metric: IMC (Figma Node 59:238) */}
           <div className="pt-[16px] w-full">
-            <div className="bg-[#0e0f07] rounded-[8px] p-[12px] w-full">
+            <div
+              className={`${
+                isContrast ? 'bg-black' : 'bg-[#0e0f07]'
+              } rounded-[8px] p-[12px] w-full transition-colors`}
+            >
               <div className="flex items-start justify-between gap-2 w-full">
                 <div className="flex flex-col gap-[4px] items-start pt-[4px]">
                   <span className="font-bold text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
@@ -991,7 +1077,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Smaller Status Badge (Figma Node 27:464) */}
+                {/* Smaller Status Badge (Figma Node 59:246) */}
                 <div
                   className={`${imcStatus.badgeBg} flex gap-[4px] items-center px-[8px] py-[2px] rounded-full shrink-0`}
                 >
@@ -1004,7 +1090,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* 3-Segment IMC Gauge Bar & Range Labels (Figma Nodes 45:19, 48:2, 48:15) */}
+              {/* 3-Segment IMC Gauge Bar & Range Labels */}
               <div className="pt-[12px] w-full">
                 <div className="bg-[rgba(255,255,255,0.08)] flex h-[6px] w-full rounded-full overflow-hidden">
                   <div
@@ -1053,13 +1139,17 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* 3-Column Grid Metrics: Peso, Idade, Altura (Figma Node 27:484) */}
+          {/* 3-Column Grid Metrics: Peso, Idade, Altura (Figma Node 59:290) */}
           <div className="pt-[16px] w-full">
             <div className="grid grid-cols-3 gap-[8px] w-full">
-              {/* Peso (Figma Node 27:485) */}
+              {/* Peso (Figma Node 59:291) */}
               <Link
                 href="/measures"
-                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+                className={`${
+                  isContrast
+                    ? 'bg-black hover:bg-[#1c1c13]'
+                    : 'bg-[#2a2b21] hover:bg-[#323328]'
+                } p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0`}
               >
                 <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
                   PESO
@@ -1077,10 +1167,14 @@ export default function DashboardPage() {
                 </span>
               </Link>
 
-              {/* Idade (Figma Node 27:496) */}
+              {/* Idade (Figma Node 59:302) */}
               <Link
                 href="/profile"
-                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+                className={`${
+                  isContrast
+                    ? 'bg-black hover:bg-[#1c1c13]'
+                    : 'bg-[#2a2b21] hover:bg-[#323328]'
+                } p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0`}
               >
                 <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
                   IDADE
@@ -1098,10 +1192,14 @@ export default function DashboardPage() {
                 </span>
               </Link>
 
-              {/* Altura (Figma Node 27:507) */}
+              {/* Altura (Figma Node 59:313) */}
               <Link
                 href="/profile"
-                className="bg-[#2a2b21] hover:bg-[#323328] p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0"
+                className={`${
+                  isContrast
+                    ? 'bg-black hover:bg-[#1c1c13]'
+                    : 'bg-[#2a2b21] hover:bg-[#323328]'
+                } p-[10px] rounded-[8px] flex flex-col items-start justify-between transition-colors min-w-0`}
               >
                 <span className="font-medium text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[20px]">
                   ALTURA
@@ -1133,7 +1231,7 @@ export default function DashboardPage() {
         {/* SECTION 4: VOLUME SEMANAL DE SÉRIES */}
         <WeeklyVolumeBars logs={strengthLogs} weeklySetGoals={profile?.weeklySetGoals} />
 
-        {/* SECTION 5: RECORDES RECENTES (PRS) (Figma Node 27:696) */}
+        {/* SECTION 5: RECORDES RECENTES (PRS) (Figma Node 59:531 / 27:696) */}
         <section className="space-y-2">
           <div className="flex items-center justify-between px-[2px]">
             <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
@@ -1141,7 +1239,11 @@ export default function DashboardPage() {
             </h3>
             <Link
               href="/strength"
-              className="font-normal text-[#64748b] hover:text-[#94a3b8] text-[12px] leading-[16px] transition-colors"
+              className={`font-normal text-[12px] leading-[16px] transition-colors ${
+                isContrast
+                  ? 'text-[#f59e0b] hover:opacity-80'
+                  : 'text-[#64748b] hover:text-[#94a3b8]'
+              }`}
             >
               Ver todos
             </Link>
@@ -1158,34 +1260,72 @@ export default function DashboardPage() {
                     onClick={() =>
                       router.push(`/strength?muscle=${encodeURIComponent(pr.muscleGroup)}`)
                     }
-                    className="min-w-[210px] w-[210px] shrink-0 bg-[#2a2b21] hover:bg-[#323328] rounded-[12px] p-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] text-left flex flex-col justify-between transition-all active:scale-[0.98]"
+                    className={`min-w-[210px] w-[210px] shrink-0 ${
+                      isContrast
+                        ? 'bg-[#f4f4f0] hover:bg-white'
+                        : 'bg-[#2a2b21] hover:bg-[#323328]'
+                    } rounded-[12px] p-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] text-left flex flex-col justify-between transition-all active:scale-[0.98]`}
                   >
                     {/* Top Row: Muscle Label + Circular Icon Badge */}
                     <div className="flex items-start justify-between w-full">
-                      <span className="font-semibold text-[#94a3b8] text-[11px] tracking-[0.55px] uppercase leading-[20px] truncate">
+                      <span
+                        className={`font-semibold text-[11px] tracking-[0.55px] uppercase leading-[20px] truncate ${
+                          isContrast ? 'text-[rgba(32,32,23,0.45)]' : 'text-[#94a3b8]'
+                        }`}
+                      >
                         {pr.muscleGroup}
                       </span>
                       {isPositiveRecord ? (
-                        <span className="bg-[rgba(238,152,0,0.2)] rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0">
-                          <Trophy className="w-[14px] h-[14px] text-[#f59e0b]" />
+                        <span
+                          className={`${
+                            isContrast ? 'bg-[#9e9660]' : 'bg-[rgba(238,152,0,0.2)]'
+                          } rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0`}
+                        >
+                          <Trophy
+                            className={`w-[14px] h-[14px] ${
+                              isContrast ? 'text-[#f8fafc]' : 'text-[#f59e0b]'
+                            }`}
+                          />
                         </span>
                       ) : (
-                        <span className="bg-[rgba(255,255,255,0.08)] rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0">
-                          <Dumbbell className="w-[14px] h-[14px] text-[#94a3b8]" />
+                        <span
+                          className={`${
+                            isContrast
+                              ? 'bg-[rgba(21,20,19,0.08)]'
+                              : 'bg-[rgba(255,255,255,0.08)]'
+                          } rounded-full w-[24px] h-[24px] flex items-center justify-center shrink-0`}
+                        >
+                          <Dumbbell
+                            className={`w-[14px] h-[14px] ${
+                              isContrast ? 'text-[#151413]' : 'text-[#94a3b8]'
+                            }`}
+                          />
                         </span>
                       )}
                     </div>
 
                     {/* Middle Row: Exercise Title + 1RM Value */}
                     <div className="pt-[12px] flex flex-col gap-[2px] items-start w-full">
-                      <span className="block font-bold text-[#f8fafc] text-[15px] leading-[20px] truncate w-full">
+                      <span
+                        className={`block font-bold text-[15px] leading-[20px] truncate w-full ${
+                          isContrast ? 'text-black' : 'text-[#f8fafc]'
+                        }`}
+                      >
                         {pr.exerciseName}
                       </span>
                       <div className="flex items-baseline gap-[4px]">
-                        <span className="font-heading font-semibold text-[#f8fafc] text-[22px] tracking-[-0.22px] leading-[28px]">
+                        <span
+                          className={`font-heading font-semibold text-[22px] tracking-[-0.22px] leading-[28px] ${
+                            isContrast ? 'text-black' : 'text-[#f8fafc]'
+                          }`}
+                        >
                           {pr.best1RM.toFixed(1)}
                         </span>
-                        <span className="font-medium text-[#64748b] text-[12px] leading-[16px]">
+                        <span
+                          className={`font-medium text-[12px] leading-[16px] ${
+                            isContrast ? 'text-[rgba(13,17,23,0.8)]' : 'text-[#64748b]'
+                          }`}
+                        >
                           kg 1RM
                         </span>
                       </div>
@@ -1194,7 +1334,13 @@ export default function DashboardPage() {
                     {/* Bottom Pill Badge */}
                     <div className="pt-[12px]">
                       {isPositiveRecord ? (
-                        <span className="inline-flex items-center gap-[4px] bg-[rgba(211,225,86,0.1)] text-[#d3e156] px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px]">
+                        <span
+                          className={`inline-flex items-center gap-[4px] px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px] ${
+                            isContrast
+                              ? 'bg-[rgba(158,150,96,0.4)] text-[#756e41]'
+                              : 'bg-[rgba(211,225,86,0.1)] text-[#d3e156]'
+                          }`}
+                        >
                           <svg
                             width="10"
                             height="6"
@@ -1205,7 +1351,7 @@ export default function DashboardPage() {
                           >
                             <path
                               d="M1 5L3.66667 2.33333L5.66667 4.33333L9 1M9 1H6.33333M9 1V3.66667"
-                              stroke="#D3E156"
+                              stroke={isContrast ? '#756E41' : '#D3E156'}
                               strokeWidth="1.3"
                               strokeLinecap="round"
                               strokeLinejoin="round"
@@ -1214,7 +1360,13 @@ export default function DashboardPage() {
                           <span>+{pr.deltaKg.toFixed(1)} kg recorde!</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center bg-[rgba(255,255,255,0.08)] text-[#94a3b8] px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px]">
+                        <span
+                          className={`inline-flex items-center px-[8px] py-[2px] rounded-full text-[11px] font-medium leading-[20px] ${
+                            isContrast
+                              ? 'bg-[rgba(21,20,19,0.08)] text-[#151413]'
+                              : 'bg-[rgba(255,255,255,0.08)] text-[#94a3b8]'
+                          }`}
+                        >
                           PR • 1RM Máximo
                         </span>
                       )}
@@ -1224,7 +1376,11 @@ export default function DashboardPage() {
               })}
             </div>
           ) : (
-            <div className="bg-[#202017] rounded-[12px] p-4 text-center">
+            <div
+              className={`${
+                isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+              } rounded-[12px] p-4 text-center`}
+            >
               <p className="text-xs text-[#94a3b8]">
                 Conclua seu primeiro treino para registrar seus recordes de 1RM (Brzycki) aqui.
               </p>

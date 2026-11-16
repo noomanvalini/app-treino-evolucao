@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { usePalette } from '@/context/PaletteContext';
 import {
   PREDEFINED_EXERCISES,
   MUSCLE_GROUPS,
@@ -95,6 +96,7 @@ const REST_PRESETS = [
 
 function ActiveWorkoutComponent() {
   const { user, loading: authLoading } = useAuth();
+  const { isContrast } = usePalette();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1198,9 +1200,17 @@ function ActiveWorkoutComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D1117] text-[#f8fafc] pb-48">
+    <div
+      className={`min-h-screen ${
+        isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+      } text-[#f8fafc] pb-48 transition-colors`}
+    >
       {/* TOP WORKOUT HUD (STICKY CONTEXT - Figma Node 30:1395, without minimize icon) */}
-      <header className="sticky top-0 z-30 -mx-4 -mt-6 backdrop-blur-[24px] bg-[rgba(13,17,23,0.95)] px-[16px] py-[12px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
+      <header
+        className={`sticky top-0 z-30 -mx-4 -mt-6 backdrop-blur-[24px] ${
+          isContrast ? 'bg-[rgba(14,15,7,0.95)]' : 'bg-[rgba(13,17,23,0.95)]'
+        } px-[16px] py-[12px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]`}
+      >
         <div className="max-w-md mx-auto flex flex-col gap-[10px]">
           <div className="flex items-center justify-between w-full gap-2">
             {/* Title + Edit Pencil + Live Monospace Timer */}
@@ -1216,7 +1226,11 @@ function ActiveWorkoutComponent() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') setIsEditingTitle(false);
                     }}
-                    className="bg-[#202017] text-[#f8fafc] font-bold text-[15px] leading-[20px] px-2 py-0.5 rounded-[6px] border border-[#d3e156]/50 focus:outline-none w-full max-w-[240px]"
+                    className={`${
+                      isContrast
+                        ? 'bg-[#151413] border-[#ffb95f]/50'
+                        : 'bg-[#202017] border-[#d3e156]/50'
+                    } text-[#f8fafc] font-bold text-[15px] leading-[20px] px-2 py-0.5 rounded-[6px] border focus:outline-none w-full max-w-[240px]`}
                     autoFocus
                   />
                 ) : (
@@ -1256,7 +1270,11 @@ function ActiveWorkoutComponent() {
                     }`}
                   />
                 </span>
-                <span className="font-mono font-bold text-[#effe6f] text-[12px] tracking-[0.6px] leading-[16px]">
+                <span
+                  className={`font-mono font-bold text-[12px] tracking-[0.6px] leading-[16px] ${
+                    isContrast ? 'text-[#ffb95f]' : 'text-[#effe6f]'
+                  }`}
+                >
                   {formatTimerHud(elapsedSeconds)}
                 </span>
                 {isWorkoutStarted && (
@@ -1282,7 +1300,11 @@ function ActiveWorkoutComponent() {
                 <button
                   type="button"
                   onClick={handleOpenSaveTemplateModal}
-                  className="bg-[#202017] hover:bg-[#2a2b21] px-[8px] py-[4px] rounded-[4px] font-semibold text-[#d3e156] text-[12px] leading-[16px] transition-colors flex items-center gap-1"
+                  className={`${
+                    isContrast
+                      ? 'bg-[#151413] hover:bg-[#1c1c13] text-[#ffb95f]'
+                      : 'bg-[#202017] hover:bg-[#2a2b21] text-[#d3e156]'
+                  } px-[8px] py-[4px] rounded-[4px] font-semibold text-[12px] leading-[16px] transition-colors flex items-center gap-1`}
                   title="Salvar esta ficha de treino"
                 >
                   <Bookmark className="w-3 h-3" />
@@ -1292,7 +1314,11 @@ function ActiveWorkoutComponent() {
               <button
                 type="button"
                 onClick={() => setIsDiscardConfirmOpen(true)}
-                className="bg-[#202017] hover:bg-[#2a2b21] px-[8px] py-[4px] rounded-[4px] font-semibold text-[#ff6e61] text-[12px] leading-[16px] transition-colors"
+                className={`${
+                  isContrast
+                    ? 'bg-[#151413] hover:bg-[#1c1c13]'
+                    : 'bg-[#202017] hover:bg-[#2a2b21]'
+                } px-[8px] py-[4px] rounded-[4px] font-semibold text-[#ff6e61] text-[12px] leading-[16px] transition-colors`}
               >
                 Descartar
               </button>
@@ -1305,13 +1331,23 @@ function ActiveWorkoutComponent() {
               <span className="font-bold text-[#64748b] text-[10px] tracking-[0.8px] uppercase leading-[14px]">
                 PROGRESSO DO VOLUME
               </span>
-              <span className="font-mono font-bold text-[#d3e156] text-[10px] tracking-[0.8px] uppercase leading-[14px]">
+              <span
+                className={`font-mono font-bold text-[10px] tracking-[0.8px] uppercase leading-[14px] ${
+                  isContrast ? 'text-[#f8fafc]' : 'text-[#d3e156]'
+                }`}
+              >
                 {completedSetsCount} DE {totalSetsCount} SÉRIES ({progressPercent}%)
               </span>
             </div>
-            <div className="bg-[#202017] h-[6px] w-full rounded-full overflow-hidden">
+            <div
+              className={`${
+                isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+              } h-[6px] w-full rounded-full overflow-hidden`}
+            >
               <div
-                className="bg-[#d3e156] h-full rounded-full shadow-[0px_0px_12px_0px_rgba(211,225,86,0.6)] transition-all duration-300"
+                className={`${
+                  isContrast ? 'bg-white' : 'bg-[#d3e156]'
+                } h-full rounded-full shadow-[0px_0px_12px_0px_rgba(211,225,86,0.6)] transition-all duration-300`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -1321,10 +1357,14 @@ function ActiveWorkoutComponent() {
 
       {/* MAIN WORKOUT CONTENT */}
       <main className="max-w-md mx-auto pt-[16px] space-y-[16px]">
-        {/* Section - Métricas da sessão (2 Cards without Volume in kg) */}
+        {/* Section - Métricas da sessão (2 Cards without Volume in kg - Figma Node 30:1190) */}
         <section className="grid grid-cols-2 gap-[8px] w-full">
           {/* Card 1: EXERCÍCIOS */}
-          <div className="bg-[rgba(32,32,23,0.7)] p-[10px] rounded-[12px] flex flex-col items-start justify-between">
+          <div
+            className={`${
+              isContrast ? 'bg-black' : 'bg-[rgba(32,32,23,0.7)]'
+            } p-[10px] rounded-[12px] flex flex-col items-start justify-between transition-colors`}
+          >
             <div className="flex items-center gap-[4px]">
               <Dumbbell className="w-[10px] h-[10px] text-[#64748b]" />
               <span className="font-bold text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
@@ -1332,7 +1372,11 @@ function ActiveWorkoutComponent() {
               </span>
             </div>
             <div className="pt-[4px] flex items-baseline gap-[3px]">
-              <span className="font-heading font-semibold text-[#d3e156] text-[18px] tracking-[-0.45px] leading-[24px]">
+              <span
+                className={`font-heading font-semibold text-[18px] tracking-[-0.45px] leading-[24px] ${
+                  isContrast ? 'text-[#ffb95f]' : 'text-[#d3e156]'
+                }`}
+              >
                 {completedExercisesCount}
               </span>
               <span className="font-heading font-semibold text-[#64748b] text-[13px] tracking-[-0.45px] leading-[24px]">
@@ -1342,7 +1386,11 @@ function ActiveWorkoutComponent() {
           </div>
 
           {/* Card 2: SÉRIES CONCLUÍDAS */}
-          <div className="bg-[rgba(32,32,23,0.7)] p-[10px] rounded-[12px] flex flex-col items-start justify-between">
+          <div
+            className={`${
+              isContrast ? 'bg-black' : 'bg-[rgba(32,32,23,0.7)]'
+            } p-[10px] rounded-[12px] flex flex-col items-start justify-between transition-colors`}
+          >
             <div className="flex items-center gap-[4px]">
               <Flame className="w-[10px] h-[10px] text-[#64748b]" />
               <span className="font-bold text-[#64748b] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
@@ -1362,8 +1410,18 @@ function ActiveWorkoutComponent() {
 
         {/* Empty State when starting a brand new workout from scratch */}
         {exercises.length === 0 && (
-          <div className="bg-[#202017] rounded-[16px] p-[24px] text-center space-y-[12px]">
-            <div className="w-[48px] h-[48px] rounded-[12px] bg-[rgba(211,225,86,0.1)] text-[#d3e156] flex items-center justify-center mx-auto">
+          <div
+            className={`${
+              isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+            } rounded-[16px] p-[24px] text-center space-y-[12px] transition-colors`}
+          >
+            <div
+              className={`w-[48px] h-[48px] rounded-[12px] ${
+                isContrast
+                  ? 'bg-[rgba(255,185,95,0.15)] text-[#ffb95f]'
+                  : 'bg-[rgba(211,225,86,0.1)] text-[#d3e156]'
+              } flex items-center justify-center mx-auto`}
+            >
               <Dumbbell className="w-[24px] h-[24px]" />
             </div>
             <div className="space-y-[4px]">
@@ -1378,7 +1436,11 @@ function ActiveWorkoutComponent() {
               <button
                 type="button"
                 onClick={() => setIsAddExerciseModalOpen(true)}
-                className="bg-[#d3e156] hover:bg-[#c2cf46] text-[#202017] font-heading font-semibold text-[16px] uppercase tracking-[0.4px] py-[12px] px-[16px] rounded-full flex items-center justify-center gap-[8px] transition-transform active:scale-[0.98]"
+                className={`${
+                  isContrast
+                    ? 'bg-[#ffb95f] hover:bg-[#f59e0b] text-[#151413]'
+                    : 'bg-[#d3e156] hover:bg-[#c2cf46] text-[#202017]'
+                } font-heading font-semibold text-[16px] uppercase tracking-[0.4px] py-[12px] px-[16px] rounded-full flex items-center justify-center gap-[8px] transition-transform active:scale-[0.98]`}
               >
                 <Plus className="w-[16px] h-[16px] stroke-[2.5]" />
                 <span>Adicionar Exercício</span>
@@ -1386,9 +1448,17 @@ function ActiveWorkoutComponent() {
               <button
                 type="button"
                 onClick={handleOpenLoadWorkoutModal}
-                className="bg-[#2a2b21] hover:bg-[#323328] text-[#f8fafc] font-medium text-[12px] py-[10px] px-[16px] rounded-full flex items-center justify-center gap-[6px] transition-colors"
+                className={`${
+                  isContrast
+                    ? 'bg-black hover:bg-[#1c1c13]'
+                    : 'bg-[#2a2b21] hover:bg-[#323328]'
+                } text-[#f8fafc] font-medium text-[12px] py-[10px] px-[16px] rounded-full flex items-center justify-center gap-[6px] transition-colors`}
               >
-                <FolderDown className="w-[14px] h-[14px] text-[#d3e156]" />
+                <FolderDown
+                  className={`w-[14px] h-[14px] ${
+                    isContrast ? 'text-[#ffb95f]' : 'text-[#d3e156]'
+                  }`}
+                />
                 <span>Carregar Ficha Salva</span>
               </button>
             </div>
@@ -1432,7 +1502,11 @@ function ActiveWorkoutComponent() {
                 <article
                   key={ex.id}
                   onClick={() => setActiveExerciseId(ex.id)}
-                  className="bg-[rgba(32,32,23,0.6)] hover:bg-[rgba(32,32,23,0.8)] rounded-[16px] p-[14px] flex flex-col gap-[10px] w-full cursor-pointer transition-colors"
+                  className={`${
+                    isContrast
+                      ? 'bg-[#151413] hover:bg-[#1c1c13]'
+                      : 'bg-[rgba(32,32,23,0.6)] hover:bg-[rgba(32,32,23,0.8)]'
+                  } rounded-[16px] p-[14px] flex flex-col gap-[10px] w-full cursor-pointer transition-colors`}
                 >
                   {/* Header without minimize chevron button */}
                   <div className="flex items-center justify-between w-full">
@@ -1459,7 +1533,11 @@ function ActiveWorkoutComponent() {
 
                   {/* PR Celebration Badge Box (Figma Node 30:1345) */}
                   {isNewPr && peakSet && (
-                    <div className="bg-[rgba(255,185,95,0.1)] rounded-[12px] px-[12px] pt-[8px] pb-[6px] flex items-center justify-between w-full">
+                    <div
+                      className={`${
+                        isContrast ? 'bg-black' : 'bg-[rgba(255,185,95,0.1)]'
+                      } rounded-[12px] px-[12px] pt-[8px] pb-[6px] flex items-center justify-between w-full`}
+                    >
                       <div className="flex items-center gap-[8px]">
                         <Trophy className="w-[16px] h-[16px] text-[#ffb95f] shrink-0" />
                         <span className="font-normal text-[#ffb95f] text-[12px] leading-[16px]">
@@ -1506,23 +1584,43 @@ function ActiveWorkoutComponent() {
               return (
                 <article
                   key={ex.id}
-                  className="bg-[#202017] rounded-[16px] p-[14px] shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col gap-[4px] w-full"
+                  className={`${
+                    isContrast ? 'bg-[#f4f4f0]' : 'bg-[#202017]'
+                  } rounded-[16px] p-[14px] shadow-[0px_10px_15px_-3px_rgba(0,0,0,0.1),0px_4px_6px_-4px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col gap-[4px] w-full transition-colors`}
                 >
-                  {/* Top Lime Glow Accent (Figma Node 30:1223) */}
-                  <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-transparent via-[#d3e156] to-transparent opacity-90" />
+                  {/* Top Glow Accent (Figma Node 30:1223) */}
+                  <div
+                    className={`absolute top-0 left-0 right-0 h-[4px] ${
+                      isContrast
+                        ? 'bg-gradient-to-r from-[rgba(255,185,95,0.5)] via-[#ffb95f] to-[rgba(255,185,95,0.5)]'
+                        : 'bg-gradient-to-r from-transparent via-[#d3e156] to-transparent'
+                    } opacity-90`}
+                  />
 
                   {/* Exercise Card Header (Figma Node 30:1224) */}
                   <div className="flex items-center justify-between pt-[4px] w-full gap-2">
                     <div className="flex flex-col gap-[2px] items-start min-w-0 flex-1">
-                      <h2 className="font-bold text-[#f8fafc] text-[15px] leading-[18.75px] truncate w-full">
+                      <h2
+                        className={`font-bold text-[15px] leading-[18.75px] truncate w-full ${
+                          isContrast ? 'text-black' : 'text-[#f8fafc]'
+                        }`}
+                      >
                         {ex.nomeExercicio}
                       </h2>
                       <div className="flex items-center gap-[8px]">
-                        <span className="font-bold text-[#effe6f] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
+                        <span
+                          className={`font-bold text-[10px] tracking-[0.5px] uppercase leading-[14px] ${
+                            isContrast ? 'text-[#f59e0b]' : 'text-[#effe6f]'
+                          }`}
+                        >
                           {ex.muscleGroup}
                         </span>
                         <span className="text-[#64748b] text-[10px]">•</span>
-                        <span className="font-normal text-[#94a3b8] text-[12px] leading-[16px]">
+                        <span
+                          className={`font-normal text-[12px] leading-[16px] ${
+                            isContrast ? 'text-[#151413]' : 'text-[#94a3b8]'
+                          }`}
+                        >
                           {completedSetsInEx} de {ex.sets.length} séries
                         </span>
                       </div>
@@ -1533,7 +1631,11 @@ function ActiveWorkoutComponent() {
                       <button
                         type="button"
                         onClick={() => handleOpenExerciseGuide(ex)}
-                        className="bg-[#393a2f] hover:bg-[#46483b] rounded-[8px] w-[32px] h-[32px] flex items-center justify-center text-[#d3e156] transition-colors"
+                        className={`${
+                          isContrast
+                            ? 'bg-black hover:bg-[#151413] text-[#d3e156]'
+                            : 'bg-[#393a2f] hover:bg-[#46483b] text-[#d3e156]'
+                        } rounded-[8px] w-[32px] h-[32px] flex items-center justify-center transition-colors`}
                         title="Assistir execução (GIF e instruções)"
                       >
                         <Play className="w-[11px] h-[11px] fill-current" />
@@ -1542,7 +1644,11 @@ function ActiveWorkoutComponent() {
                       <button
                         type="button"
                         onClick={() => handleRemoveExercise(ex.id)}
-                        className="bg-[#393a2f] hover:bg-[#46483b] rounded-[8px] w-[32px] h-[32px] flex items-center justify-center text-[#94a3b8] hover:text-[#ff6e61] transition-colors"
+                        className={`${
+                          isContrast
+                            ? 'bg-black hover:bg-[#151413] text-[#94a3b8] hover:text-[#ff6e61]'
+                            : 'bg-[#393a2f] hover:bg-[#46483b] text-[#94a3b8] hover:text-[#ff6e61]'
+                        } rounded-[8px] w-[32px] h-[32px] flex items-center justify-center transition-colors`}
                         title="Remover exercício da ficha"
                       >
                         <Trash2 className="w-[13px] h-[13px]" />
@@ -1551,7 +1657,11 @@ function ActiveWorkoutComponent() {
                   </div>
 
                   {/* Set Table Header (Figma Node 30:1248) */}
-                  <div className="grid grid-cols-12 gap-[6px] pt-[14px] pb-[4px] px-[8px] w-full text-[10px] font-bold uppercase tracking-[0.8px] text-[#64748b] leading-[14px]">
+                  <div
+                    className={`grid grid-cols-12 gap-[6px] pt-[14px] pb-[4px] px-[8px] w-full text-[10px] font-bold uppercase tracking-[0.8px] leading-[14px] ${
+                      isContrast ? 'text-[rgba(13,17,23,0.8)]' : 'text-[#64748b]'
+                    }`}
+                  >
                     <div className="col-span-2 text-left">SÉRIE</div>
                     <div className="col-span-3 text-left">ANTERIOR</div>
                     <div className="col-span-3 text-center">CARGA (KG)</div>
@@ -1572,6 +1682,8 @@ function ActiveWorkoutComponent() {
                               ? 'bg-[rgba(57,58,47,0.7)]'
                               : isCurrentTarget
                               ? 'bg-[#393a2f] shadow-[inset_0px_0px_0px_1px_rgba(211,225,86,0.4)]'
+                              : isContrast
+                              ? 'bg-[rgba(57,58,47,0.55)]'
                               : 'bg-[rgba(57,58,47,0.4)]'
                           }`}
                         >
@@ -1580,7 +1692,11 @@ function ActiveWorkoutComponent() {
                             <span
                               className={`w-[20px] h-[20px] rounded-full flex items-center justify-center font-mono font-bold text-[11px] leading-[20px] ${
                                 isCurrentTarget
-                                  ? 'bg-[#d3e156] text-[#2e3300] shadow-[0px_0px_3px_rgba(211,225,86,0.5)]'
+                                  ? isContrast
+                                    ? 'bg-[#f59e0b] text-[#49240a] shadow-[0px_0px_3px_rgba(255,185,95,0.8)]'
+                                    : 'bg-[#d3e156] text-[#2e3300] shadow-[0px_0px_3px_rgba(211,225,86,0.5)]'
+                                  : isContrast
+                                  ? 'bg-[#151413] text-[#94a3b8]'
                                   : 'bg-[#202017] text-[#94a3b8]'
                               }`}
                             >
@@ -1592,7 +1708,11 @@ function ActiveWorkoutComponent() {
                           <div className="col-span-3 flex items-center">
                             <span
                               className={`font-mono text-[12px] leading-[16px] truncate ${
-                                isCurrentTarget ? 'text-[#f8fafc]' : 'text-[#64748b]'
+                                isContrast
+                                  ? 'text-[#f8fafc]'
+                                  : isCurrentTarget
+                                  ? 'text-[#f8fafc]'
+                                  : 'text-[#64748b]'
                               }`}
                             >
                               {set.previousRef || '—'}
@@ -1612,12 +1732,18 @@ function ActiveWorkoutComponent() {
                               }
                               className={`w-full px-[6px] py-[4px] rounded-[8px] text-center font-mono font-bold text-[14px] leading-[20px] focus:outline-none ${
                                 isCurrentTarget
-                                  ? 'bg-[#090d16] text-[#effe6f] shadow-[inset_0px_1px_3px_0px_rgba(0,0,0,0.8)]'
+                                  ? isContrast
+                                    ? 'bg-[#090d16] text-[#f59e0b] shadow-[inset_0px_1px_3px_0px_rgba(0,0,0,0.8)]'
+                                    : 'bg-[#090d16] text-[#effe6f] shadow-[inset_0px_1px_3px_0px_rgba(0,0,0,0.8)]'
                                   : 'bg-[rgba(9,13,22,0.6)] text-[#f8fafc]'
                               }`}
                             />
                             {isCurrentTarget && (
-                              <span className="absolute -top-[3px] -right-[3px] w-[8px] h-[8px] rounded-full bg-[#effe6f]" />
+                              <span
+                                className={`absolute -top-[3px] -right-[3px] w-[8px] h-[8px] rounded-full ${
+                                  isContrast ? 'bg-[#ffb95f]' : 'bg-[#effe6f]'
+                                }`}
+                              />
                             )}
                           </div>
 
@@ -1647,7 +1773,9 @@ function ActiveWorkoutComponent() {
                               onClick={() => handleToggleSetComplete(ex.id, set.id)}
                               className={`w-[32px] h-[32px] rounded-[8px] flex items-center justify-center transition-all active:scale-90 ${
                                 set.completed
-                                  ? 'bg-[#d3e156] text-[#202017] shadow-[0px_0px_5px_rgba(211,225,86,0.35)]'
+                                  ? isContrast
+                                    ? 'bg-[#ffb95f] text-[#151413] shadow-[0px_0px_5px_rgba(255,185,95,0.4)]'
+                                    : 'bg-[#d3e156] text-[#202017] shadow-[0px_0px_5px_rgba(211,225,86,0.35)]'
                                   : 'bg-[#090d16] text-[#64748b] hover:text-[#f8fafc]'
                               }`}
                               title={set.completed ? 'Desmarcar série' : 'Concluir série'}
@@ -1665,7 +1793,11 @@ function ActiveWorkoutComponent() {
                     <button
                       type="button"
                       onClick={() => handleAddSet(ex.id)}
-                      className="flex-1 bg-[#393a2f] hover:bg-[#46483b] py-[8px] rounded-[12px] flex items-center justify-center gap-[6px] text-[#d3e156] text-[12px] leading-[16px] transition-colors"
+                      className={`flex-1 ${
+                        isContrast
+                          ? 'bg-[#090d16] hover:bg-[#151413] text-[#ffb95f]'
+                          : 'bg-[#393a2f] hover:bg-[#46483b] text-[#d3e156]'
+                      } py-[8px] rounded-[12px] flex items-center justify-center gap-[6px] text-[12px] leading-[16px] transition-colors`}
                     >
                       <Plus className="w-[12px] h-[12px] stroke-[2.5]" />
                       <span>Adicionar Série</span>
@@ -1675,7 +1807,11 @@ function ActiveWorkoutComponent() {
                       <button
                         type="button"
                         onClick={() => handleRemoveSet(ex.id, ex.sets[ex.sets.length - 1].id)}
-                        className="bg-[#2a2b21] hover:bg-[#393a2f] px-[10px] py-[8px] rounded-[12px] text-[#64748b] hover:text-[#ff6e61] text-[11px] leading-[16px] transition-colors shrink-0"
+                        className={`${
+                          isContrast
+                            ? 'bg-[#090d16] hover:bg-[#151413] text-[#94a3b8] hover:text-[#ff6e61]'
+                            : 'bg-[#2a2b21] hover:bg-[#393a2f] text-[#64748b] hover:text-[#ff6e61]'
+                        } px-[10px] py-[8px] rounded-[12px] text-[11px] leading-[16px] transition-colors shrink-0`}
                         title="Remover última série"
                       >
                         -1 série
@@ -1683,11 +1819,25 @@ function ActiveWorkoutComponent() {
                     )}
                   </div>
 
-                  {/* Active Rest Time Selector right below Adicionar Série (User Requirement) */}
-                  <div className="mt-[6px] bg-[rgba(9,13,22,0.55)] rounded-[12px] px-[10px] py-[8px] flex items-center justify-between gap-2 w-full">
+                  {/* Active Rest Time Selector right below Adicionar Série (Figma Node 56:153) */}
+                  <div
+                    className={`mt-[6px] ${
+                      isContrast
+                        ? 'bg-[rgba(30,145,177,0.14)] border border-[rgba(30,145,177,0.49)]'
+                        : 'bg-[rgba(9,13,22,0.55)]'
+                    } rounded-[12px] px-[10px] py-[8px] flex items-center justify-between gap-2 w-full`}
+                  >
                     <div className="flex items-center gap-[6px]">
-                      <Clock className="w-[13px] h-[13px] text-[#d3e156] shrink-0" />
-                      <span className="text-[11px] font-medium text-[#94a3b8]">
+                      <Clock
+                        className={`w-[13px] h-[13px] shrink-0 ${
+                          isContrast ? 'text-[#11667e]' : 'text-[#d3e156]'
+                        }`}
+                      />
+                      <span
+                        className={`text-[11px] font-medium ${
+                          isContrast ? 'text-[#11667e]' : 'text-[#94a3b8]'
+                        }`}
+                      >
                         Descanso ativo:
                       </span>
                     </div>
@@ -1702,7 +1852,11 @@ function ActiveWorkoutComponent() {
                             onClick={() => setRestDuration(preset.seconds)}
                             className={`px-[8px] py-[3px] rounded-[6px] font-mono text-[11px] transition-colors ${
                               isSelected
-                                ? 'bg-[#d3e156] text-[#202017] font-bold'
+                                ? isContrast
+                                  ? 'bg-[#1e91b1] text-white font-bold'
+                                  : 'bg-[#d3e156] text-[#202017] font-bold'
+                                : isContrast
+                                ? 'bg-white/70 text-[#11667e] hover:bg-white'
                                 : 'bg-[#202017] text-[#94a3b8] hover:text-[#f8fafc]'
                             }`}
                           >
@@ -1721,11 +1875,19 @@ function ActiveWorkoutComponent() {
               <article
                 key={ex.id}
                 onClick={() => setActiveExerciseId(ex.id)}
-                className="bg-[rgba(32,32,23,0.4)] hover:bg-[rgba(32,32,23,0.6)] rounded-[16px] p-[14px] flex flex-col gap-[10px] w-full cursor-pointer transition-colors"
+                className={`${
+                  isContrast
+                    ? 'bg-[#151413] hover:bg-[#1c1c13]'
+                    : 'bg-[rgba(32,32,23,0.4)] hover:bg-[rgba(32,32,23,0.6)]'
+                } rounded-[16px] p-[14px] flex flex-col gap-[10px] w-full cursor-pointer transition-colors`}
               >
                 <div className="flex items-center justify-between w-full gap-2">
                   <div className="flex flex-col gap-[2px] items-start min-w-0">
-                    <h2 className="font-bold text-[#94a3b8] text-[15px] leading-[20px] truncate">
+                    <h2
+                      className={`font-bold text-[15px] leading-[20px] truncate ${
+                        isContrast ? 'text-[#f8fafc]' : 'text-[#94a3b8]'
+                      }`}
+                    >
                       {ex.nomeExercicio}
                     </h2>
                     <div className="flex items-center gap-[8px]">
@@ -1745,14 +1907,22 @@ function ActiveWorkoutComponent() {
                       e.stopPropagation();
                       setActiveExerciseId(ex.id);
                     }}
-                    className="bg-[#202017] hover:bg-[#2a2b21] px-[12px] py-[4px] rounded-[8px] text-[#d3e156] text-[12px] leading-[16px] shrink-0 transition-colors"
+                    className={`${
+                      isContrast
+                        ? 'bg-[rgba(30,145,177,0.14)] hover:bg-[rgba(30,145,177,0.24)] text-[#6ecddd]'
+                        : 'bg-[#202017] hover:bg-[#2a2b21] text-[#d3e156]'
+                    } px-[12px] py-[4px] rounded-[8px] text-[12px] leading-[16px] shrink-0 transition-colors`}
                   >
                     Iniciar
                   </button>
                 </div>
 
                 {/* Last Workout Reference Bar (Figma Node 30:1383) */}
-                <div className="bg-[rgba(32,32,23,0.6)] px-[8px] py-[6px] rounded-[8px] flex items-center justify-between w-full">
+                <div
+                  className={`${
+                    isContrast ? 'bg-black' : 'bg-[rgba(32,32,23,0.6)]'
+                  } px-[8px] py-[6px] rounded-[8px] flex items-center justify-between w-full`}
+                >
                   <span className="font-normal text-[#64748b] text-[12px] leading-[16px]">
                     Último treino:
                   </span>
@@ -1770,9 +1940,17 @@ function ActiveWorkoutComponent() {
               <button
                 type="button"
                 onClick={() => setIsAddExerciseModalOpen(true)}
-                className="bg-[rgba(32,32,23,0.4)] hover:bg-[rgba(32,32,23,0.7)] py-[12px] rounded-[16px] flex items-center justify-center gap-[8px] w-full text-[#94a3b8] hover:text-[#f8fafc] text-[14px] font-medium leading-[20px] transition-colors"
+                className={`${
+                  isContrast
+                    ? 'bg-[rgba(255,185,95,0.15)] hover:bg-[rgba(255,185,95,0.25)] text-[#ffb95f]'
+                    : 'bg-[rgba(32,32,23,0.4)] hover:bg-[rgba(32,32,23,0.7)] text-[#94a3b8] hover:text-[#f8fafc]'
+                } py-[12px] rounded-[16px] flex items-center justify-center gap-[8px] w-full text-[14px] font-medium leading-[20px] transition-colors`}
               >
-                <span className="w-[16px] h-[16px] rounded-full border border-[#94a3b8] flex items-center justify-center">
+                <span
+                  className={`w-[16px] h-[16px] rounded-full border ${
+                    isContrast ? 'border-[#ffb95f]' : 'border-[#94a3b8]'
+                  } flex items-center justify-center`}
+                >
                   <Plus className="w-[10px] h-[10px]" />
                 </span>
                 <span>Adicionar Exercício à Ficha</span>
@@ -1784,11 +1962,21 @@ function ActiveWorkoutComponent() {
 
       {/* STICKY BOTTOM CONTROLS & REST DOCK (Figma Node 30:1427) */}
       {exercises.length > 0 && (
-        <footer className="fixed bottom-0 left-0 right-0 z-40 backdrop-blur-[12px] bg-gradient-to-t from-[#0d1117] via-[rgba(13,17,23,0.95)] to-transparent px-[16px] py-[12px]">
+        <footer
+          className={`fixed bottom-0 left-0 right-0 z-40 backdrop-blur-[12px] bg-gradient-to-t ${
+            isContrast
+              ? 'from-[#0e0f07] via-[rgba(14,15,7,0.95)]'
+              : 'from-[#0d1117] via-[rgba(13,17,23,0.95)]'
+          } to-transparent px-[16px] py-[12px]`}
+        >
           <div className="max-w-md mx-auto flex flex-col gap-[10px]">
             {/* Floating Rest Timer Pill (Figma Node 30:1428 - Inline instead of modal) */}
             {isRestActive && (
-              <div className="bg-[#202017] px-[12px] py-[8px] rounded-[12px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.2)] flex items-center justify-between w-full">
+              <div
+                className={`${
+                  isContrast ? 'bg-black' : 'bg-[#202017]'
+                } px-[12px] py-[8px] rounded-[12px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.2)] flex items-center justify-between w-full`}
+              >
                 <div className="flex items-center gap-[10px]">
                   {/* Circular mini progress indicator */}
                   <div className="relative w-[24px] h-[24px] flex items-center justify-center shrink-0">
@@ -1806,7 +1994,7 @@ function ActiveWorkoutComponent() {
                         cy="12"
                         r="9"
                         fill="none"
-                        stroke="#D3E156"
+                        stroke={isContrast ? '#6ECDDD' : '#D3E156'}
                         strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeDasharray={2 * Math.PI * 9}
@@ -1818,14 +2006,26 @@ function ActiveWorkoutComponent() {
                         }
                       />
                     </svg>
-                    <Clock className="w-[10px] h-[10px] text-[#d3e156] absolute" />
+                    <Clock
+                      className={`w-[10px] h-[10px] absolute ${
+                        isContrast ? 'text-[#6ecddd]' : 'text-[#d3e156]'
+                      }`}
+                    />
                   </div>
 
                   <div className="flex flex-col items-start">
-                    <span className="font-medium text-[#64748b] text-[9px] tracking-[0.45px] uppercase leading-[14px]">
+                    <span
+                      className={`font-medium text-[9px] tracking-[0.45px] uppercase leading-[14px] ${
+                        isContrast ? 'text-[#f8fafc]' : 'text-[#64748b]'
+                      }`}
+                    >
                       DESCANSO ATIVO
                     </span>
-                    <span className="font-mono font-bold text-[#effe6f] text-[12px] leading-[16px]">
+                    <span
+                      className={`font-mono font-bold text-[12px] leading-[16px] ${
+                        isContrast ? 'text-[#6ecddd]' : 'text-[#effe6f]'
+                      }`}
+                    >
                       {formatRestTime(restRemainingSecs)}
                     </span>
                   </div>
@@ -1835,14 +2035,22 @@ function ActiveWorkoutComponent() {
                   <button
                     type="button"
                     onClick={() => handleAddRestSeconds(30)}
-                    className="bg-[#393a2f] hover:bg-[#46483b] px-[8px] py-[4px] rounded-[4px] font-mono font-bold text-[#94a3b8] hover:text-[#f8fafc] text-[11px] leading-[20px] transition-colors"
+                    className={`${
+                      isContrast
+                        ? 'bg-[#f8fafc] hover:bg-white text-[#64748b]'
+                        : 'bg-[#393a2f] hover:bg-[#46483b] text-[#94a3b8] hover:text-[#f8fafc]'
+                    } px-[8px] py-[4px] rounded-[4px] font-mono font-bold text-[11px] leading-[20px] transition-colors`}
                   >
                     +30s
                   </button>
                   <button
                     type="button"
                     onClick={handleSkipRestTimer}
-                    className="bg-[#393a2f] hover:bg-[#46483b] w-[28px] h-[28px] rounded-[4px] flex items-center justify-center text-[#94a3b8] hover:text-[#f8fafc] transition-colors"
+                    className={`${
+                      isContrast
+                        ? 'bg-[#f8fafc] hover:bg-white text-[#f59e0b]'
+                        : 'bg-[#393a2f] hover:bg-[#46483b] text-[#94a3b8] hover:text-[#f8fafc]'
+                    } w-[28px] h-[28px] rounded-[4px] flex items-center justify-center transition-colors`}
                     title="Pular descanso"
                   >
                     <X className="w-[12px] h-[12px]" />
@@ -1862,7 +2070,11 @@ function ActiveWorkoutComponent() {
                 <span className="font-heading font-semibold text-[#202017] text-[18px] tracking-[0.45px] uppercase leading-[24px]">
                   INICIAR TREINO
                 </span>
-                <span className="bg-[#effe6f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                <span
+                  className={`${
+                    isContrast ? 'bg-[#ffb95f]' : 'bg-[#effe6f]'
+                  } rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center`}
+                >
                   <svg
                     width="12"
                     height="12"
@@ -1897,7 +2109,11 @@ function ActiveWorkoutComponent() {
                       </>
                     )}
                   </span>
-                  <span className="bg-[#effe6f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                  <span
+                    className={`${
+                      isContrast ? 'bg-[#ffb95f]' : 'bg-[#effe6f]'
+                    } rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center`}
+                  >
                     <svg
                       width="12"
                       height="12"

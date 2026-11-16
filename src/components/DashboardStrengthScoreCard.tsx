@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { BODY_MAP_PATHS } from '@/data/bodyMapPaths';
+import { usePalette } from '@/context/PaletteContext';
 
 export interface MuscleReadinessStat {
   muscleGroup: string;
@@ -58,6 +59,7 @@ export default function DashboardStrengthScoreCard({
   onSelectMuscle
 }: DashboardStrengthScoreCardProps) {
   const [hoveredMuscle, setHoveredMuscle] = useState<string | null>(null);
+  const { isContrast } = usePalette();
 
   const getRecoveryPct = (muscleGroup: string): number => {
     const stat = muscleStats[muscleGroup];
@@ -101,8 +103,12 @@ export default function DashboardStrengthScoreCard({
   const formattedTotalEvo = `${totalEvolutionPct >= 0 ? '+' : ''}${totalEvolutionPct.toFixed(1)}%`;
 
   return (
-    <div className="bg-[#202017] rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)]">
-      {/* Header with Metric (Figma Node 27:521) */}
+    <div
+      className={`${
+        isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+      } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-colors`}
+    >
+      {/* Header with Metric (Figma Node 27:521 / 59:327) */}
       <div className="flex flex-col items-start w-full">
         <div className="flex items-center gap-[8px] w-full">
           <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
@@ -139,16 +145,24 @@ export default function DashboardStrengthScoreCard({
             >
               {totalEvolutionPct >= 0 ? '▲' : '▼'} {formattedTotalEvo}
             </span>
-            <span className="font-normal text-[#94a3b8] text-[11px] leading-[20px]">
+            <span
+              className={`font-normal text-[11px] leading-[20px] ${
+                isContrast ? 'text-[#f8fafc]' : 'text-[#94a3b8]'
+              }`}
+            >
               este mês
             </span>
           </div>
         </div>
       </div>
 
-      {/* Visual Anatomical Muscle Silhouette & Status (Figma Node 27:537) */}
+      {/* Visual Anatomical Muscle Silhouette & Status (Figma Node 27:537 / 59:343) */}
       <div className="pt-[16px] w-full">
-        <div className="bg-[#0e0f07] rounded-[8px] p-[12px] flex flex-col items-center w-full">
+        <div
+          className={`${
+            isContrast ? 'bg-black' : 'bg-[#0e0f07]'
+          } rounded-[8px] p-[12px] flex flex-col items-center w-full transition-colors`}
+        >
           {/* Larger Dual Body Map View (Front & Back) */}
           <div className="grid grid-cols-2 gap-3 py-[8px] w-full items-center">
             {/* Vista Anterior (Front - Figma Node 27:539) */}
