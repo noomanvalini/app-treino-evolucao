@@ -9,13 +9,13 @@ interface ClipzBodyBadgeProps {
 }
 
 export default function ClipzBodyBadge({
-  className = 'h-7 w-auto object-contain',
-  width = 140,
-  height = 32,
+  className = 'h-7 w-auto',
+  width = 110,
+  height = 34,
   priority = false,
 }: ClipzBodyBadgeProps) {
   return (
-    <div className={`relative flex items-center shrink-0 ${className}`}>
+    <div className={`relative inline-flex items-center shrink-0 rounded-md overflow-hidden ${className}`}>
       <Image
         src="/LOGO CLIPZBODY BADGET.svg"
         alt="ClipzBody"
