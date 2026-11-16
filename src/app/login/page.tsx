@@ -7,6 +7,7 @@ import { auth } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { Dumbbell, Eye, EyeOff, Loader2, Sparkles } from 'lucide-react';
 import ClipzBodyIcon from '@/components/ClipzBodyIcon';
+import ClipzBodyBadge from '@/components/ClipzBodyBadge';
 
 export default function Login() {
   const { user, profile, isOnboarding, updateProfile, enterPreviewMode, loading: authLoading } = useAuth();
@@ -330,10 +331,7 @@ export default function Login() {
     return (
       <div className="flex min-h-[80vh] flex-col justify-center py-6">
         <div className="flex flex-col items-center mb-8">
-          <div className="rounded-full bg-lime-neon/10 p-4 text-lime-neon mb-3">
-            <ClipzBodyIcon className="h-10 w-10 text-lime-neon" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-wider text-slate-100">ClipzBody</h1>
+          <ClipzBodyBadge className="h-10 w-auto mb-2" priority />
           <p className="text-xs text-slate-400 mt-1">Evolua sua força e medidas corporais</p>
         </div>
 
@@ -405,10 +403,7 @@ export default function Login() {
   return (
     <div className="flex min-h-[80vh] flex-col justify-center py-6">
       <div className="flex flex-col items-center mb-8">
-        <div className="rounded-full bg-lime-neon/10 p-4 text-lime-neon mb-3">
-          <ClipzBodyIcon className="h-10 w-10 text-lime-neon" />
-        </div>
-        <h1 className="text-3xl font-extrabold tracking-wider text-slate-100">ClipzBody</h1>
+        <ClipzBodyBadge className="h-10 w-auto mb-2" priority />
         <p className="text-xs text-slate-400 mt-1">Evolua sua força e medidas corporais</p>
       </div>
 

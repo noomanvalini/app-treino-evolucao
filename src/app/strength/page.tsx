@@ -17,6 +17,7 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
+import ClipzBodyBadge from '@/components/ClipzBodyBadge';
 import {
   Dumbbell,
   Plus,
@@ -1552,11 +1553,8 @@ function StrengthContent() {
     <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
       {/* Top App Bar (Consistent with Dashboard) */}
       <header className="sticky top-0 z-20 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="h-6 w-6 text-lime-neon" />
-          <span className="font-heading font-extrabold text-lg tracking-wider text-slate-100">
-            CLIPZ<span className="text-lime-neon">BODY</span>
-          </span>
+        <div className="flex items-center">
+          <ClipzBodyBadge className="h-7 w-auto" priority />
         </div>
         <Link href="/profile" className="flex items-center gap-3 group">
           <div className="h-9 w-9 rounded-full bg-slate-card border border-border flex items-center justify-center text-lime-neon font-bold text-sm group-hover:border-lime-neon transition-colors">

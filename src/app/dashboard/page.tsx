@@ -10,6 +10,7 @@ import { usePalette } from '@/context/PaletteContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
+import ClipzBodyBadge from '@/components/ClipzBodyBadge';
 import DashboardStrengthScoreCard, { MuscleReadinessStat } from '@/components/DashboardStrengthScoreCard';
 import { MUSCLE_GROUPS, PREDEFINED_EXERCISES, getExerciseGuide } from '@/data/exercises';
 import { fetchAndEnsureSavedWorkouts } from '@/data/defaultWorkouts';
@@ -786,11 +787,8 @@ export default function DashboardPage() {
           isContrast ? 'bg-[#0e0f07]/90' : 'bg-obsidian/90'
         } backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between`}
       >
-        <div className="flex items-center gap-2">
-          <Dumbbell className="h-6 w-6 text-lime-neon" />
-          <span className="font-heading font-extrabold text-lg tracking-wider text-slate-100">
-            CLIPZ<span className="text-lime-neon">BODY</span>
-          </span>
+        <div className="flex items-center">
+          <ClipzBodyBadge className="h-7 w-auto" priority />
         </div>
         <Link href="/profile" className="flex items-center gap-3 group">
           <div className="text-right">

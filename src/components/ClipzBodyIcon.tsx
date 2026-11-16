@@ -1,25 +1,34 @@
 import React from 'react';
+import Image from 'next/image';
 
-interface ClipzBodyIconProps extends React.SVGProps<SVGSVGElement> {
+interface ClipzBodyIconProps {
   className?: string;
-  fill?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  priority?: boolean;
 }
 
 export default function ClipzBodyIcon({ 
-  className = "w-10 h-10 text-lime-neon", 
-  fill = "currentColor",
-  ...props 
+  className = "w-8 h-8", 
+  size = 32,
+  width,
+  height,
+  priority = false,
 }: ClipzBodyIconProps) {
+  const w = width || size;
+  const h = height || size;
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 220.08 189.92"
-      className={className}
-      fill={fill}
-      aria-label="ClipzBody"
-      {...props}
-    >
-      <path d="M217.77,18.83c-3.27-6.99-10.63-11.88-22.08-14.66-11.45-2.78-27.55-4.17-48.3-4.17-13.69,0-25.84.05-36.46.13-10.62.09-20.39.27-29.29.54-8.91.27-18.22.76-27.91,1.48L0,187.76c10.22.54,20.19.98,29.91,1.34,9.72.36,20.47.58,32.25.67,11.78.09,25.51.13,41.19.13,18.76,0,34.45-1.39,47.07-4.17,12.61-2.78,22.75-7.67,30.4-14.66,7.65-6.99,13.32-16.85,17.01-29.59,4.31-14.88,4.08-26.5-.68-34.84-4.76-8.34-16.01-13.13-33.75-14.39l.47-1.61c15.1-1.08,26.8-5.06,35.09-11.97,8.29-6.9,14.35-16.99,18.2-30.26,3.69-12.73,3.89-22.6.62-29.59ZM164.58,107.12c2.41.41,3.3,2.8,1.55,4.18l-82.94,65.12h0c-2.32,1.82-6.15-.11-5.1-2.58l20.63-48.23c.6-1.4-.48-2.91-2.3-3.22l-54.62-9.32c-2.41-.41-3.3-2.79-1.56-4.17L148.12,19.32c2.39-1.89,6.33.23,5.04,2.72l-50.54,71.53c-.74,1.43.33,3.05,2.23,3.37l59.74,10.19Z" />
-    </svg>
+    <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
+      <Image
+        src="/CLIPZBODY ISOLADO.svg"
+        alt="ClipzBody Icon"
+        width={w}
+        height={h}
+        className="h-full w-full object-contain select-none"
+        priority={priority}
+      />
+    </div>
   );
 }
