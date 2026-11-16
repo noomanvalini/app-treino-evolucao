@@ -521,6 +521,7 @@ export default function MeasuresPage() {
 
   // Modal State (Figma Node 62:702 - NOVA AVALIAÇÃO)
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeModalMeasureKey, setActiveModalMeasureKey] = useState<keyof Medidas | null>(null);
   const [modalNavTab, setModalNavTab] = useState<'basico' | 'circunferencias' | 'comparativo'>(
     'basico'
   );
@@ -2263,79 +2264,55 @@ export default function MeasuresPage() {
                   </span>
                 </div>
 
-                {/* 2-Column Grid with Stepper (- / +) Cards */}
+                {/* 2-Column Grid with Stepper (- / +) Cards (Active/Hover state when selected) */}
                 <div className="grid grid-cols-2 gap-[10px] w-full">
                   {CIRCUMFERENCE_ITEMS.map((item) => {
                     const prevVal = modalRefPrevMeasure?.medidas[item.key];
+                    const isSelectedCard = activeModalMeasureKey === item.key;
 
-                    // Special Highlighted Card for Cintura Abdominal (Figma Node 62:934)
-                    if (item.isFocus) {
-                      return (
-                        <div
-                          key={item.key}
-                          className="bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)] rounded-[12px] p-[10px] flex flex-col gap-[6px]"
-                        >
-                          <div className="flex items-center justify-between w-full">
-                            <div className="flex items-center gap-[4px] min-w-0">
-                              <span className="bg-[#f59e0b] rounded-full w-[6px] h-[6px] shrink-0" />
-                              <span className="font-semibold text-[#f59e0b] text-[11px] leading-[16.5px] truncate">
-                                {item.shortLabel}
-                              </span>
-                            </div>
-                            <span className="font-normal text-[#f8fafc] text-[10px] leading-[15px] shrink-0">
-                              {prevVal !== undefined ? `Ant: ${prevVal.toFixed(1)}` : 'Ant: —'}
-                            </span>
-                          </div>
-
-                          <div className="bg-[rgba(245,158,11,0.9)] rounded-[8px] p-[4px] flex items-center gap-[4px] w-full">
-                            <button
-                              type="button"
-                              onClick={() => handleStepCircumference(item.key, -0.5)}
-                              className="bg-black rounded-[4px] w-[20px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[12px] shrink-0"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              step="0.1"
-                              placeholder="--"
-                              value={medidasInput[item.key] || ''}
-                              onChange={(e) =>
-                                setMedidasInput({ ...medidasInput, [item.key]: e.target.value })
-                              }
-                              className="w-full bg-transparent font-heading font-bold text-[#f8fafc] text-[18px] text-center tracking-[-0.18px] leading-[24px] focus:outline-none"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleStepCircumference(item.key, 0.5)}
-                              className="bg-black rounded-[4px] w-[20px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[12px] shrink-0"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // Standard Circumference Card (Figma Node 62:844)
                     return (
                       <div
                         key={item.key}
-                        className="bg-[rgba(57,58,47,0.75)] rounded-[12px] p-[10px] flex flex-col gap-[6px]"
+                        onClick={() => setActiveModalMeasureKey(item.key)}
+                        onMouseEnter={() => setActiveModalMeasureKey(item.key)}
+                        className={`${
+                          isSelectedCard
+                            ? 'bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)]'
+                            : 'bg-[rgba(57,58,47,0.75)] hover:bg-black'
+                        } rounded-[12px] p-[10px] flex flex-col gap-[6px] transition-all cursor-pointer`}
                       >
                         <div className="flex items-center justify-between w-full gap-1">
-                          <span className="font-medium text-[#f8fafc] text-[11px] leading-[16.5px] truncate">
-                            {item.shortLabel}
-                          </span>
+                          <div className="flex items-center gap-[4px] min-w-0">
+                            {isSelectedCard && (
+                              <span className="bg-[#f59e0b] rounded-full w-[6px] h-[6px] shrink-0" />
+                            )}
+                            <span
+                              className={`${
+                                isSelectedCard
+                                  ? 'font-semibold text-[#f59e0b]'
+                                  : 'font-medium text-[#f8fafc]'
+                              } text-[11px] leading-[16.5px] truncate transition-colors`}
+                            >
+                              {item.shortLabel}
+                            </span>
+                          </div>
                           <span className="font-normal text-[#f8fafc] text-[10px] leading-[15px] shrink-0">
                             {prevVal !== undefined ? `Ant: ${prevVal.toFixed(1)}` : 'Ant: —'}
                           </span>
                         </div>
 
-                        <div className="bg-[#2a2b21] rounded-[8px] p-[4px] flex items-center gap-[4px] w-full">
+                        <div
+                          className={`${
+                            isSelectedCard ? 'bg-[rgba(245,158,11,0.9)]' : 'bg-[#2a2b21]'
+                          } rounded-[8px] p-[4px] flex items-center gap-[4px] w-full transition-colors`}
+                        >
                           <button
                             type="button"
-                            onClick={() => handleStepCircumference(item.key, -0.5)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveModalMeasureKey(item.key);
+                              handleStepCircumference(item.key, -0.5);
+                            }}
                             className="bg-black rounded-[4px] w-[20px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[12px] shrink-0"
                           >
                             -
@@ -2345,14 +2322,21 @@ export default function MeasuresPage() {
                             step="0.1"
                             placeholder="--"
                             value={medidasInput[item.key] || ''}
+                            onFocus={() => setActiveModalMeasureKey(item.key)}
                             onChange={(e) =>
                               setMedidasInput({ ...medidasInput, [item.key]: e.target.value })
                             }
-                            className="w-full bg-transparent font-heading font-semibold text-[#f8fafc] text-[18px] text-center tracking-[-0.18px] leading-[24px] focus:outline-none"
+                            className={`w-full bg-transparent font-heading ${
+                              isSelectedCard ? 'font-bold' : 'font-semibold'
+                            } text-[#f8fafc] text-[18px] text-center tracking-[-0.18px] leading-[24px] focus:outline-none`}
                           />
                           <button
                             type="button"
-                            onClick={() => handleStepCircumference(item.key, 0.5)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveModalMeasureKey(item.key);
+                              handleStepCircumference(item.key, 0.5);
+                            }}
                             className="bg-black rounded-[4px] w-[20px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[12px] shrink-0"
                           >
                             +
