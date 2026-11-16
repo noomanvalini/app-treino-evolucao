@@ -823,7 +823,7 @@ export default function DashboardPage() {
               href="/workout/active"
               className={`block w-full ${
                 isContrast
-                  ? 'bg-[#151413] hover:bg-[#1c1c13] border-2 border-[#ffb95f]'
+                  ? 'bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] hover:bg-[#1c1c13] border-2 border-[#ffb95f]'
                   : 'bg-[#202017] hover:bg-[#2a2b21] border-2 border-[#d3e156]'
               } text-[#e3e3d6] rounded-[12px] p-3.5 shadow-lg transition-all active:scale-[0.98]`}
             >
@@ -1034,7 +1034,9 @@ export default function DashboardPage() {
         {/* SECTION 2: Card RESUMO FÍSICO (Figma Node 59:227 / 27:445) */}
         <section
           className={`${
-            isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+            isContrast
+              ? 'bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))]'
+              : 'bg-[#202017]'
           } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-colors`}
         >
           {/* Header (Figma Node 59:229) */}
@@ -1378,7 +1380,9 @@ export default function DashboardPage() {
           ) : (
             <div
               className={`${
-                isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+                isContrast
+                  ? 'bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))]'
+                  : 'bg-[#202017]'
               } rounded-[12px] p-4 text-center`}
             >
               <p className="text-xs text-[#94a3b8]">

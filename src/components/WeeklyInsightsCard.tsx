@@ -561,7 +561,9 @@ export default function WeeklyInsightsCard({
     return (
       <div
         className={`${
-          isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+          isContrast
+            ? 'bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))]'
+            : 'bg-[#202017]'
         } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] relative overflow-hidden transition-colors`}
       >
         <div className="absolute bg-[rgba(255,185,95,0.1)] blur-[40px] -left-[48px] -top-[48px] rounded-full w-[128px] h-[128px] pointer-events-none" />

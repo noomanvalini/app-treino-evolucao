@@ -105,7 +105,9 @@ export default function DashboardStrengthScoreCard({
   return (
     <div
       className={`${
-        isContrast ? 'bg-[#151413]' : 'bg-[#202017]'
+        isContrast
+          ? 'bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))]'
+          : 'bg-[#202017]'
       } rounded-[12px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-colors`}
     >
       {/* Header with Metric (Figma Node 27:521 / 59:327) */}
