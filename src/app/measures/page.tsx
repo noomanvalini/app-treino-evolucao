@@ -1202,6 +1202,15 @@ export default function MeasuresPage() {
     });
   };
 
+  const formatDateShort = (raw: any) => {
+    const d = raw?.seconds ? new Date(raw.seconds * 1000) : new Date(raw);
+    if (isNaN(d.getTime())) return '--/--/--';
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}/${month}/${year}`;
+  };
+
   const activeFotos = activeMeasurement?.fotos || {};
   const registeredPhotosCount = [
     activeFotos.frente,
@@ -1235,8 +1244,8 @@ export default function MeasuresPage() {
         {/* 1. TOP HEADER & FAST ACTION (Figma Node 30:1501) */}
         <section className="flex items-start justify-between pt-[4px] w-full">
           <div className="flex flex-col items-start pr-[8px]">
-            <h1 className="font-bold text-[#f8fafc] text-[22px] tracking-[-0.55px] leading-[28px]">
-              Medidas Corporais
+            <h1 className="font-heading font-bold text-[#f8fafc] text-[24px] tracking-[-0.7px] uppercase leading-[32px]">
+              MEDIDAS CORPORAIS
             </h1>
             <span className="pt-[2px] font-medium text-[#ffb95f] text-[11px] leading-[16.5px]">
               {daysSinceLatest !== null
@@ -1262,12 +1271,12 @@ export default function MeasuresPage() {
         {/* 2. HERO CARD: COMPOSIÇÃO ATUAL (Figma Node 30:1521 - Opção A) */}
         <section className="bg-[#f8fafc] rounded-[16px] p-[16px] shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] relative overflow-hidden w-full">
           <div className="flex items-center justify-between pb-[12px] w-full">
-            <h2 className="font-bold text-black text-[15px] leading-[20px]">
+            <h2 className="font-heading font-semibold text-black text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
               Composição Atual
             </h2>
             {activeMeasurement && (
               <span className="text-[11px] font-medium text-[#64748b]">
-                {formatDateDisplay(activeMeasurement.data)}
+                {formatDateShort(activeMeasurement.data)}
               </span>
             )}
           </div>
@@ -1411,9 +1420,9 @@ export default function MeasuresPage() {
         <section className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[16px] p-[16px] flex flex-col gap-[12px] w-full">
           <div className="flex items-center justify-between w-full">
             <div className="flex flex-col items-start">
-              <h2 className="font-bold text-[#f8fafc] text-[15px] leading-[20px]">
+              <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
                 Evolução de Peso
-              </h2>
+              </h3>
               <span className="font-normal text-[#64748b] text-[10px] leading-[15px]">
                 Histórico temporal de registros
               </span>
@@ -1442,66 +1451,45 @@ export default function MeasuresPage() {
           <FigmaEvolutionChart points={weightChartPoints} unit="kg" theme="dark" />
         </section>
 
-        {/* 4. ORGANIZAÇÃO POR DATAS DE AFERIÇÃO + CIRCUNFERÊNCIAS CORPORAIS (Decision #2 & #4) */}
+        {/* 4. ORGANIZAÇÃO POR DATAS DE AFERIÇÃO + CIRCUNFERÊNCIAS (Decision #2 & #4) */}
         <section className="space-y-[12px] pt-[4px]">
-          {/* Date Selector Bar (Allows switching between assessment dates or editing/deleting any date) */}
+          {/* Date Selector Bar (Summary date dot weight dot IMC with Expand button) */}
           {measurements.length > 0 && (
             <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[14px] p-[12px] space-y-[10px]">
-              <div className="flex items-center justify-between w-full">
+              <div
+                onClick={() => setIsDateListExpanded(!isDateListExpanded)}
+                className="flex items-center justify-between w-full cursor-pointer select-none"
+              >
                 <div className="flex items-center gap-[8px]">
                   <div className="bg-[#f59e0b]/15 text-[#f59e0b] w-[28px] h-[28px] rounded-[8px] flex items-center justify-center shrink-0">
                     <Calendar className="w-[14px] h-[14px]" />
                   </div>
-                  <div>
-                    <span className="block text-[10px] font-bold uppercase tracking-[0.6px] text-[#64748b]">
-                      Data Selecionada ({selectedMeasurementIndex + 1} de {measurements.length})
+                  <div className="flex items-center gap-2 font-bold text-[#f8fafc] text-[13px] sm:text-[14px] leading-[18px] flex-wrap">
+                    <span>{activeMeasurement ? formatDateShort(activeMeasurement.data) : '—'}</span>
+                    <span className="text-[#64748b] text-[10px]">•</span>
+                    <span className="text-[#ffb95f]">
+                      {activeMeasurement ? `${activeMeasurement.pesoKg.toFixed(1)} kg` : '—'}
                     </span>
-                    <span className="font-bold text-[#f8fafc] text-[14px] leading-[18px]">
-                      {activeMeasurement ? formatDateDisplay(activeMeasurement.data) : '—'} •{' '}
-                      <span className="text-[#ffb95f]">
-                        {activeMeasurement?.pesoKg.toFixed(1)} kg
-                      </span>
+                    <span className="text-[#64748b] text-[10px]">•</span>
+                    <span className="text-[#94a3b8]">
+                      {activeMeasurement ? `${activeMeasurement.imcCalculado} IMC` : '—'}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-[4px]">
-                  {activeMeasurement && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEditModal(activeMeasurement)}
-                        className="bg-black hover:bg-[#1c1c13] w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[#94a3b8] hover:text-[#ffb95f] transition-colors"
-                        title="Editar esta avaliação"
-                      >
-                        <Pencil className="w-[13px] h-[13px]" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmId(activeMeasurement.id)}
-                        className="bg-black hover:bg-[#1c1c13] w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-[#94a3b8] hover:text-[#ff6e61] transition-colors"
-                        title="Excluir esta avaliação"
-                      >
-                        <Trash2 className="w-[13px] h-[13px]" />
-                      </button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setIsDateListExpanded(!isDateListExpanded)}
-                    className="bg-black hover:bg-[#1c1c13] px-[8px] h-[30px] rounded-[8px] flex items-center gap-1 text-[11px] font-semibold text-[#f8fafc]"
-                  >
+                <div className="flex items-center gap-[4px] shrink-0">
+                  <div className="bg-black hover:bg-[#1c1c13] px-[8px] h-[30px] rounded-[8px] flex items-center gap-1 text-[11px] font-semibold text-[#f8fafc]">
                     <span>Datas</span>
                     {isDateListExpanded ? (
-                      <ChevronUp className="w-[13px] h-[13px]" />
+                      <ChevronUp className="w-[13px] h-[13px] text-[#ffb95f]" />
                     ) : (
-                      <ChevronDown className="w-[13px] h-[13px]" />
+                      <ChevronDown className="w-[13px] h-[13px] text-[#ffb95f]" />
                     )}
-                  </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Horizontal Date Chips or Expanded Date List */}
+              {/* Expanded Assessment Dates List (Abbreviated dd/mm/aa) */}
               {isDateListExpanded && (
                 <div className="pt-[4px] border-t border-white/10 space-y-[6px]">
                   {measurements.map((m, idx) => {
@@ -1523,8 +1511,8 @@ export default function MeasuresPage() {
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-[12px] font-bold">
-                            {formatDateDisplay(m.data)}
+                          <span className="text-[12px] font-bold font-mono">
+                            {formatDateShort(m.data)}
                           </span>
                           {idx === 0 && (
                             <span
@@ -1563,6 +1551,31 @@ export default function MeasuresPage() {
                           >
                             IMC {m.imcCalculado}
                           </span>
+                          <div
+                            className="flex items-center gap-1 pl-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(m)}
+                              className={`p-1 rounded hover:bg-white/20 transition-colors ${
+                                isSelected ? 'text-black' : 'text-[#94a3b8] hover:text-[#ffb95f]'
+                              }`}
+                              title="Editar aferição"
+                            >
+                              <Pencil className="w-[11px] h-[11px]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(m.id)}
+                              className={`p-1 rounded hover:bg-white/20 transition-colors ${
+                                isSelected ? 'text-black' : 'text-[#94a3b8] hover:text-[#ff6e61]'
+                              }`}
+                              title="Excluir aferição"
+                            >
+                              <Trash2 className="w-[11px] h-[11px]" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -1619,14 +1632,11 @@ export default function MeasuresPage() {
             </div>
           </div>
 
-          {/* Section Title: Circunferências Corporais (Figma Node 30:1640) */}
+          {/* Section Title: Circunferências (Dashboard Style) */}
           <div className="flex items-center justify-between px-[4px] pt-[4px] w-full">
-            <h2 className="font-bold text-[#f8fafc] text-[15px] leading-[20px]">
-              Circunferências Corporais
-            </h2>
-            <span className="font-normal text-[#f59e0b] text-[10px] leading-[16.5px]">
-              Comparativo vs. Aferição Anterior
-            </span>
+            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
+              Circunferências
+            </h3>
           </div>
 
           {/* Circumference Items List with Expandable White Chart Cards (Figma Node 30:1646) */}
@@ -1803,17 +1813,14 @@ export default function MeasuresPage() {
           </div>
         </section>
 
-        {/* 5. FOTOS DE EVOLUÇÃO CORPORAL (Figma Node 63:1508 - Decision #3) */}
+        {/* 5. EVOLUÇÃO CORPORAL (Dashboard Style) */}
         <section className="pt-[8px] space-y-[10px] w-full">
           <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-[6px]">
-              <Camera className="w-[12px] h-[12px] text-[#f59e0b]" />
-              <h3 className="font-bold text-[#f8fafc] text-[10px] tracking-[0.5px] uppercase leading-[14px]">
-                FOTOS DE EVOLUÇÃO CORPORAL
-              </h3>
-            </div>
+            <h3 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[-0.18px] uppercase leading-[24px]">
+              Evolução corporal
+            </h3>
             <span className="bg-[#35352b] text-[#d3e156] font-bold text-[9px] uppercase leading-[13.5px] px-[6px] py-[2px] rounded-[4px]">
-              {registeredPhotosCount}/3 REGISTRADA
+              {registeredPhotosCount}/3 REGISTRADA{registeredPhotosCount !== 1 ? 'S' : ''}
             </span>
           </div>
 
