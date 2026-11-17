@@ -1224,16 +1224,11 @@ export default function MeasuresPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
-      {/* Top App Header (Consistent with Dashboard) */}
-      <header className="sticky top-0 z-20 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
+      {/* Top App Header (Fixed at top without redundant profile avatar) */}
+      <header className="sticky top-0 z-30 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <ClipzBodyBadge className="h-7 w-auto" priority />
         </div>
-        <Link href="/profile" className="flex items-center gap-3 group">
-          <div className="h-9 w-9 rounded-full bg-slate-card border border-border flex items-center justify-center text-lime-neon font-bold text-sm group-hover:border-lime-neon transition-colors">
-            {profile?.nome?.charAt(0).toUpperCase() || 'L'}
-          </div>
-        </Link>
       </header>
 
       <main className="py-4 max-w-md mx-auto space-y-[16px]">

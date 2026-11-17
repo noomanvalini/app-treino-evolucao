@@ -418,20 +418,21 @@ function StrengthContent() {
   // UNIFIED OFF-WHITE MODAL (Figma Node 62:702 pattern - Decision #1)
   // =========================================================================
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-  const [registerModalTab, setRegisterModalTab] = useState<'carga' | 'exercicio'>('carga');
-  const [activeInputCard, setActiveInputCard] = useState<'carga' | 'reps' | null>('carga');
+  const [isCreatingCustomExercise, setIsCreatingCustomExercise] = useState(false);
+  const [activeInputCard, setActiveInputCard] = useState<string | null>('carga_0');
 
-  // Register Load State
+  // Register Load State (Multiple Sets)
   const [selectedExerciseForLog, setSelectedExerciseForLog] = useState<Exercise | null>(null);
   const [logMuscleFilter, setLogMuscleFilter] = useState<string>('Peito');
-  const [carga, setCarga] = useState('80');
-  const [reps, setReps] = useState('8');
+  const [logSets, setLogSets] = useState<Array<{ setNumber: number; cargaKg: number; reps: number }>>([
+    { setNumber: 1, cargaKg: 80, reps: 8 }
+  ]);
   const [logDate, setLogDate] = useState(new Date().toISOString().split('T')[0]);
   const [logTime, setLogTime] = useState('18:00');
   const [submittingLog, setSubmittingLog] = useState(false);
   const [logError, setLogError] = useState('');
 
-  // Create Exercise State (inside Unified Modal)
+  // Create Exercise State (inline inside Unified Modal)
   const [newExerciseName, setNewExerciseName] = useState('');
   const [newExerciseMuscle, setNewExerciseMuscle] = useState<string>('Peito');
   const [submittingExercise, setSubmittingExercise] = useState(false);
@@ -1104,38 +1105,21 @@ function StrengthContent() {
   };
 
   // Filtered Exercises for current muscle tab ('Todos' or specific muscle)
-  // Exercises with logs appear first (sorted by most recent activity), followed by exercises without logs
+  // ONLY exercises with at least one logged load are displayed
   const displayedExercises = useMemo(() => {
     const baseList =
       selectedMuscle === 'Todos'
         ? allExercises
         : allExercises.filter((ex) => ex.muscleGroup === selectedMuscle);
 
-    const withMetrics = baseList.map((ex) => ({
-      exercise: ex,
-      metrics: getExerciseMetrics(ex.id, ex.aliasIds)
-    }));
+    const withMetrics = baseList
+      .map((ex) => ({
+        exercise: ex,
+        metrics: getExerciseMetrics(ex.id, ex.aliasIds)
+      }))
+      .filter((item) => item.metrics.latest !== null);
 
-    // In 'Todos' tab, prioritize exercises that have logs (plus top predefined ones if none have logs)
-    if (selectedMuscle === 'Todos') {
-      const loggedOnes = withMetrics.filter((item) => item.metrics.latest !== null);
-      if (loggedOnes.length > 0) {
-        loggedOnes.sort((a, b) => b.metrics.lastTimestampMs - a.metrics.lastTimestampMs);
-        const unloggedOnes = withMetrics
-          .filter((item) => item.metrics.latest === null)
-          .sort((a, b) => a.exercise.nomeExercicio.localeCompare(b.exercise.nomeExercicio));
-        return [...loggedOnes, ...unloggedOnes];
-      }
-    }
-
-    withMetrics.sort((a, b) => {
-      const aHas = a.metrics.latest !== null ? 1 : 0;
-      const bHas = b.metrics.latest !== null ? 1 : 0;
-      if (bHas !== aHas) return bHas - aHas;
-      if (aHas && bHas) return b.metrics.lastTimestampMs - a.metrics.lastTimestampMs;
-      return a.exercise.nomeExercicio.localeCompare(b.exercise.nomeExercicio);
-    });
-
+    withMetrics.sort((a, b) => b.metrics.lastTimestampMs - a.metrics.lastTimestampMs);
     return withMetrics;
   }, [allExercises, periodFilteredLogs, selectedMuscle]);
 
@@ -1157,16 +1141,26 @@ function StrengthContent() {
   const handleOpenRegisterModalForExercise = (ex: Exercise) => {
     setSelectedExerciseForLog(ex);
     setLogMuscleFilter(ex.muscleGroup);
+    setIsCreatingCustomExercise(false);
     const metrics = getExerciseMetrics(ex.id, ex.aliasIds);
     if (metrics.latest) {
-      setCarga(metrics.latest.cargaKg.toString());
-      setReps(metrics.latest.reps.toString());
+      setLogSets([
+        {
+          setNumber: 1,
+          cargaKg: metrics.latest.cargaKg,
+          reps: metrics.latest.reps
+        }
+      ]);
     } else {
-      setCarga('40');
-      setReps('10');
+      setLogSets([
+        {
+          setNumber: 1,
+          cargaKg: 40,
+          reps: 10
+        }
+      ]);
     }
-    setRegisterModalTab('carga');
-    setActiveInputCard('carga');
+    setActiveInputCard('carga_0');
     setLogError('');
     setIsRegisterModalOpen(true);
   };
@@ -1175,10 +1169,13 @@ function StrengthContent() {
     const defaultMuscle = selectedMuscle === 'Todos' ? 'Peito' : selectedMuscle;
     setLogMuscleFilter(defaultMuscle);
     setNewExerciseMuscle(defaultMuscle);
+    setIsCreatingCustomExercise(false);
 
     const activeEx =
       displayedExercises.find((d) => d.exercise.id === expandedExerciseId)?.exercise ||
       displayedExercises[0]?.exercise ||
+      allExercises.find((ex) => ex.muscleGroup === defaultMuscle) ||
+      allExercises[0] ||
       null;
 
     if (activeEx) {
@@ -1186,19 +1183,78 @@ function StrengthContent() {
       setLogMuscleFilter(activeEx.muscleGroup);
       const metrics = getExerciseMetrics(activeEx.id, activeEx.aliasIds);
       if (metrics.latest) {
-        setCarga(metrics.latest.cargaKg.toString());
-        setReps(metrics.latest.reps.toString());
+        setLogSets([
+          {
+            setNumber: 1,
+            cargaKg: metrics.latest.cargaKg,
+            reps: metrics.latest.reps
+          }
+        ]);
       } else {
-        setCarga('40');
-        setReps('10');
+        setLogSets([
+          {
+            setNumber: 1,
+            cargaKg: 40,
+            reps: 10
+          }
+        ]);
       }
+    } else {
+      setLogSets([
+        {
+          setNumber: 1,
+          cargaKg: 40,
+          reps: 10
+        }
+      ]);
     }
 
-    setRegisterModalTab('carga');
-    setActiveInputCard('carga');
+    setActiveInputCard('carga_0');
     setLogError('');
     setExerciseError('');
     setIsRegisterModalOpen(true);
+  };
+
+  const updateSetCarga = (index: number, newCarga: number) => {
+    setLogSets((prev) => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], cargaKg: Math.max(0, newCarga) };
+      }
+      return updated;
+    });
+  };
+
+  const updateSetReps = (index: number, newReps: number) => {
+    setLogSets((prev) => {
+      const updated = [...prev];
+      if (updated[index]) {
+        updated[index] = { ...updated[index], reps: Math.max(1, newReps) };
+      }
+      return updated;
+    });
+  };
+
+  const handleAddSet = () => {
+    setLogSets((prev) => {
+      const last = prev[prev.length - 1];
+      return [
+        ...prev,
+        {
+          setNumber: prev.length + 1,
+          cargaKg: last ? last.cargaKg : 40,
+          reps: last ? last.reps : 10
+        }
+      ];
+    });
+  };
+
+  const handleRemoveSet = (index: number) => {
+    setLogSets((prev) => {
+      if (prev.length <= 1) return prev;
+      const filtered = prev.filter((_, idx) => idx !== index);
+      return filtered.map((s, idx) => ({ ...s, setNumber: idx + 1 }));
+    });
   };
 
   // --- CRUD HANDLERS ---
@@ -1209,33 +1265,57 @@ function StrengthContent() {
       return;
     }
 
-    const cargaNum = parseFloat(carga);
-    const repsNum = parseInt(reps);
-
-    if (isNaN(cargaNum) || cargaNum <= 0) {
-      setLogError('Informe uma carga válida maior que zero.');
+    if (logSets.length === 0) {
+      setLogError('Adicione pelo menos uma série.');
       return;
     }
-    if (isNaN(repsNum) || repsNum <= 0) {
-      setLogError('Informe um número de repetições maior que zero.');
-      return;
+
+    for (let i = 0; i < logSets.length; i++) {
+      const s = logSets[i];
+      if (isNaN(s.cargaKg) || s.cargaKg <= 0) {
+        setLogError(`Informe uma carga válida na Série ${s.setNumber}.`);
+        return;
+      }
+      if (isNaN(s.reps) || s.reps <= 0) {
+        setLogError(`Informe um número de repetições maior que zero na Série ${s.setNumber}.`);
+        return;
+      }
     }
 
     setSubmittingLog(true);
     setLogError('');
 
     try {
-      const oneRm = calculate1RM(cargaNum, repsNum);
+      let peakSet = logSets[0];
+      let peak1RM = calculate1RM(logSets[0].cargaKg, logSets[0].reps);
+      for (let i = 1; i < logSets.length; i++) {
+        const r = calculate1RM(logSets[i].cargaKg, logSets[i].reps);
+        if (r > peak1RM) {
+          peak1RM = r;
+          peakSet = logSets[i];
+        }
+      }
+
       const parsedDate = new Date(`${logDate}T${logTime || '12:00'}:00`);
+
+      const details: LogSetDetail[] = logSets.map((s) => ({
+        setNumber: s.setNumber,
+        cargaKg: s.cargaKg,
+        reps: s.reps,
+        oneRmCalculado: calculate1RM(s.cargaKg, s.reps),
+        isPeak: s.setNumber === peakSet.setNumber
+      }));
 
       if (user.uid === 'preview_user_uid') {
         const newLog: StrengthLog = {
           id: `log_${Date.now()}`,
           exerciseId: selectedExerciseForLog.id,
           muscleGroup: selectedExerciseForLog.muscleGroup,
-          cargaKg: cargaNum,
-          reps: repsNum,
-          oneRmCalculado: oneRm,
+          cargaKg: peakSet.cargaKg,
+          reps: peakSet.reps,
+          oneRmCalculado: peak1RM,
+          totalSetsCompleted: logSets.length,
+          allSets: details,
           data: parsedDate
         };
         setAllLogs((prev) => [...prev, newLog]);
@@ -1249,9 +1329,11 @@ function StrengthContent() {
         userId: user.uid,
         exerciseId: selectedExerciseForLog.id,
         muscleGroup: selectedExerciseForLog.muscleGroup,
-        cargaKg: cargaNum,
-        reps: repsNum,
-        oneRmCalculado: oneRm,
+        cargaKg: peakSet.cargaKg,
+        reps: peakSet.reps,
+        oneRmCalculado: peak1RM,
+        totalSetsCompleted: logSets.length,
+        allSets: details,
         data: parsedDate
       });
 
@@ -1259,9 +1341,11 @@ function StrengthContent() {
         id: docRef.id,
         exerciseId: selectedExerciseForLog.id,
         muscleGroup: selectedExerciseForLog.muscleGroup,
-        cargaKg: cargaNum,
-        reps: repsNum,
-        oneRmCalculado: oneRm,
+        cargaKg: peakSet.cargaKg,
+        reps: peakSet.reps,
+        oneRmCalculado: peak1RM,
+        totalSetsCompleted: logSets.length,
+        allSets: details,
         data: Timestamp.fromDate(parsedDate)
       };
 
@@ -1276,29 +1360,38 @@ function StrengthContent() {
     }
   };
 
-  const handleAddExercise = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newExerciseName.trim() || !user) {
-      setExerciseError('Digite o nome do exercício.');
+  const handleAddExerciseInline = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newExerciseName.trim()) {
+      setExerciseError('Informe o nome do exercício.');
       return;
     }
-    setExerciseError('');
+
+    if (!user) {
+      setExerciseError('Usuário não autenticado.');
+      return;
+    }
+
     setSubmittingExercise(true);
+    setExerciseError('');
 
     try {
+      const trimmedName = newExerciseName.trim();
+      const newExId = `custom_${Date.now()}`;
+
       if (user.uid === 'preview_user_uid') {
-        const newEx: Exercise = {
-          id: `custom_${Date.now()}`,
-          nomeExercicio: newExerciseName.trim(),
+        const createdEx: Exercise = {
+          id: newExId,
+          nomeExercicio: trimmedName,
           muscleGroup: newExerciseMuscle,
           dataCriacao: new Date(),
           isPredefined: false
         };
-        setAllExercises((prev) => [...prev, newEx]);
-        setSelectedExerciseForLog(newEx);
-        setExpandedExerciseId(newEx.id);
+        setAllExercises((prev) => [...prev, createdEx]);
+        setSelectedExerciseForLog(createdEx);
+        setLogMuscleFilter(newExerciseMuscle);
         setNewExerciseName('');
-        setRegisterModalTab('carga');
+        setIsCreatingCustomExercise(false);
         setSubmittingExercise(false);
         return;
       }
@@ -1306,29 +1399,34 @@ function StrengthContent() {
       const docRef = await addDoc(collection(db, 'exercises'), {
         userId: user.uid,
         muscleGroup: newExerciseMuscle,
-        nomeExercicio: newExerciseName.trim(),
+        nomeExercicio: trimmedName,
         dataCriacao: new Date()
       });
 
-      const newEx: Exercise = {
+      const createdEx: Exercise = {
         id: docRef.id,
-        nomeExercicio: newExerciseName.trim(),
+        nomeExercicio: trimmedName,
         muscleGroup: newExerciseMuscle,
         dataCriacao: new Date(),
         isPredefined: false
       };
 
-      setAllExercises((prev) => [...prev, newEx]);
-      setSelectedExerciseForLog(newEx);
-      setExpandedExerciseId(newEx.id);
+      setAllExercises((prev) => [...prev, createdEx]);
+      setSelectedExerciseForLog(createdEx);
+      setLogMuscleFilter(newExerciseMuscle);
       setNewExerciseName('');
-      setRegisterModalTab('carga');
+      setIsCreatingCustomExercise(false);
     } catch (err) {
-      console.error('Error creating exercise:', err);
-      setExerciseError('Erro ao criar exercício. Tente novamente.');
+      console.error('Error adding exercise:', err);
+      setExerciseError('Erro ao cadastrar exercício.');
     } finally {
       setSubmittingExercise(false);
     }
+  };
+
+  const handleAddExercise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    return handleAddExerciseInline(e);
   };
 
   const handleOpenEditExerciseModal = (exercise: Exercise, e?: React.MouseEvent) => {
@@ -1533,13 +1631,20 @@ function StrengthContent() {
     }
   };
 
-  // Live 1RM & Delta inside Register Modal
-  const liveModalCarga = parseFloat(carga) || 0;
-  const liveModalReps = parseInt(reps) || 0;
-  const liveModal1RM =
-    liveModalCarga > 0 && liveModalReps > 0
-      ? calculate1RM(liveModalCarga, liveModalReps)
-      : 0;
+  // Live 1RM & Delta inside Register Modal (Peak across all sets)
+  const liveModal1RM = useMemo(() => {
+    let peak = 0;
+    logSets.forEach((s) => {
+      const c = Number(s.cargaKg) || 0;
+      const r = Number(s.reps) || 0;
+      if (c > 0 && r > 0) {
+        const val = calculate1RM(c, r);
+        if (val > peak) peak = val;
+      }
+    });
+    return peak;
+  }, [logSets]);
+
   const selectedExPrevMetrics = selectedExerciseForLog
     ? getExerciseMetrics(selectedExerciseForLog.id, selectedExerciseForLog.aliasIds)
     : null;
@@ -1551,16 +1656,11 @@ function StrengthContent() {
 
   return (
     <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
-      {/* Top App Bar (Consistent with Dashboard) */}
-      <header className="sticky top-0 z-20 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
+      {/* Top App Bar (Fixed without redundant profile avatar) */}
+      <header className="sticky top-0 z-30 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
         <div className="flex items-center">
           <ClipzBodyBadge className="h-7 w-auto" priority />
         </div>
-        <Link href="/profile" className="flex items-center gap-3 group">
-          <div className="h-9 w-9 rounded-full bg-slate-card border border-border flex items-center justify-center text-lime-neon font-bold text-sm group-hover:border-lime-neon transition-colors">
-            {profile?.nome?.charAt(0).toUpperCase() || 'L'}
-          </div>
-        </Link>
       </header>
 
       <main className="py-4 max-w-md mx-auto space-y-[16px]">
@@ -1694,18 +1794,14 @@ function StrengthContent() {
           <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[12px] p-8 text-center space-y-3">
             <Dumbbell className="h-8 w-8 text-[#64748b] mx-auto" />
             <p className="text-xs text-[#94a3b8]">
-              Nenhum exercício encontrado para este grupo muscular.
+              Nenhum exercício com carga registrada {selectedMuscle === 'Todos' ? 'ainda' : `para ${selectedMuscle}`}.
             </p>
             <button
               type="button"
-              onClick={() => {
-                setNewExerciseMuscle(selectedMuscle === 'Todos' ? 'Peito' : selectedMuscle);
-                setRegisterModalTab('exercicio');
-                setIsRegisterModalOpen(true);
-              }}
-              className="bg-[#f59e0b] text-white text-xs font-bold px-4 py-2 rounded-full"
+              onClick={handleOpenBottomRegisterModal}
+              className="bg-[#f59e0b] hover:bg-[#d97706] text-white text-xs font-bold px-5 py-2.5 rounded-full transition-colors inline-flex items-center gap-1.5 shadow-sm"
             >
-              + Cadastrar Exercício
+              <Plus className="w-4 h-4" /> Registrar 1ª Carga
             </button>
           </div>
         ) : (
@@ -2081,7 +2177,7 @@ function StrengthContent() {
                   </div>
                   <div className="flex flex-col items-start">
                     <h2 className="font-heading font-semibold text-black text-[18px] tracking-[-0.45px] uppercase leading-[24px]">
-                      {registerModalTab === 'carga' ? 'REGISTRAR CARGA' : 'NOVO EXERCÍCIO'}
+                      REGISTRAR CARGA
                     </h2>
                     <span className="font-normal text-[#151413] text-[12px] leading-[16px]">
                       Carga, repetições e cálculo de 1RM (Brzycki).
@@ -2117,387 +2213,446 @@ function StrengthContent() {
                   />
                 </div>
               </div>
-
-              {/* Mode Navigation Pills */}
-              <div className="flex items-center gap-[8px] pt-[2px]">
-                <button
-                  type="button"
-                  onClick={() => setRegisterModalTab('carga')}
-                  className={`px-[12px] py-[6px] rounded-full text-[12px] leading-[16px] transition-colors ${
-                    registerModalTab === 'carga'
-                      ? 'bg-[#f59e0b] text-[#f8fafc] font-bold'
-                      : 'bg-black text-[#f8fafc] font-medium'
-                  }`}
-                >
-                  Lançar Carga &amp; 1RM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRegisterModalTab('exercicio')}
-                  className={`px-[12px] py-[6px] rounded-full text-[12px] leading-[16px] transition-colors ${
-                    registerModalTab === 'exercicio'
-                      ? 'bg-[#f59e0b] text-[#f8fafc] font-bold'
-                      : 'bg-black text-[#f8fafc] font-medium'
-                  }`}
-                >
-                  + Cadastrar Exercício
-                </button>
-              </div>
             </div>
 
-            {/* TAB 1: LANÇAR CARGA & 1RM */}
-            {registerModalTab === 'carga' ? (
-              <form
-                onSubmit={handleAddLog}
-                className="flex-1 overflow-y-auto px-[16px] pb-[16px] space-y-[14px]"
-              >
-                {logError && (
-                  <div className="bg-[#ff6e61]/15 border border-[#ff6e61] text-[#b91c1c] text-xs font-semibold p-2.5 rounded-[10px]">
-                    {logError}
-                  </div>
-                )}
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto px-[16px] pb-[16px] space-y-[14px]">
+              {logError && (
+                <div className="bg-[#ff6e61]/15 border border-[#ff6e61] text-[#b91c1c] text-xs font-semibold p-2.5 rounded-[10px]">
+                  {logError}
+                </div>
+              )}
 
-                {/* Exercise Selector */}
-                <div className="space-y-[8px]">
-                  <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
-                    EXERCÍCIO SELECIONADO
-                  </span>
+              {/* Exercise Selector */}
+              <div className="space-y-[8px]">
+                <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
+                  EXERCÍCIO SELECIONADO
+                </span>
 
-                  {/* Muscle filter pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                    {MUSCLE_GROUPS.map((mg) => (
-                      <button
-                        key={mg}
-                        type="button"
-                        onClick={() => {
-                          setLogMuscleFilter(mg);
-                          const firstInMuscle = allExercises.find((e) => e.muscleGroup === mg);
-                          if (firstInMuscle) {
-                            setSelectedExerciseForLog(firstInMuscle);
-                            const m = getExerciseMetrics(
-                              firstInMuscle.id,
-                              firstInMuscle.aliasIds
-                            );
-                            if (m.latest) {
-                              setCarga(m.latest.cargaKg.toString());
-                              setReps(m.latest.reps.toString());
-                            }
+                {/* Muscle filter pills (bleeding to edges with -mx-[16px] px-[16px] to prevent clipping) */}
+                <div className="-mx-[16px] px-[16px] flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                  {MUSCLE_GROUPS.map((mg) => (
+                    <button
+                      key={mg}
+                      type="button"
+                      onClick={() => {
+                        setLogMuscleFilter(mg);
+                        setIsCreatingCustomExercise(false);
+                        const firstInMuscle = allExercises.find((e) => e.muscleGroup === mg);
+                        if (firstInMuscle) {
+                          setSelectedExerciseForLog(firstInMuscle);
+                          const m = getExerciseMetrics(
+                            firstInMuscle.id,
+                            firstInMuscle.aliasIds
+                          );
+                          if (m.latest) {
+                            setLogSets([
+                              {
+                                setNumber: 1,
+                                cargaKg: m.latest.cargaKg,
+                                reps: m.latest.reps
+                              }
+                            ]);
+                          } else {
+                            setLogSets([
+                              {
+                                setNumber: 1,
+                                cargaKg: 40,
+                                reps: 10
+                              }
+                            ]);
                           }
-                        }}
-                        className={`px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap shrink-0 transition-colors ${
-                          logMuscleFilter === mg
-                            ? 'bg-[#f59e0b] text-white font-bold'
-                            : 'bg-black/80 text-[#94a3b8] hover:text-white'
-                        }`}
-                      >
-                        {mg}
-                      </button>
-                    ))}
-                  </div>
+                        }
+                      }}
+                      className={`px-3 py-1 rounded-full text-[11px] whitespace-nowrap shrink-0 transition-colors ${
+                        logMuscleFilter === mg
+                          ? 'bg-[#f59e0b] text-white font-bold'
+                          : 'bg-black/80 text-[#94a3b8] hover:text-white'
+                      }`}
+                    >
+                      {mg}
+                    </button>
+                  ))}
+                  <div className="w-2 shrink-0" />
+                </div>
 
-                  {/* Exercise Dropdown Card */}
-                  <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[12px] p-[10px]">
-                    <select
-                      value={selectedExerciseForLog?.id || ''}
-                      onChange={(e) => {
+                {/* Exercise Dropdown Card with "+ Cadastrar Novo Exercício" in last place */}
+                <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[12px] p-[10px]">
+                  <select
+                    value={isCreatingCustomExercise ? '__NEW_EXERCISE__' : selectedExerciseForLog?.id || ''}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW_EXERCISE__') {
+                        setIsCreatingCustomExercise(true);
+                        setNewExerciseMuscle(logMuscleFilter);
+                        setNewExerciseName('');
+                      } else {
+                        setIsCreatingCustomExercise(false);
                         const found = allExercises.find((ex) => ex.id === e.target.value);
                         if (found) {
                           setSelectedExerciseForLog(found);
                           const m = getExerciseMetrics(found.id, found.aliasIds);
                           if (m.latest) {
-                            setCarga(m.latest.cargaKg.toString());
-                            setReps(m.latest.reps.toString());
+                            setLogSets([
+                              {
+                                setNumber: 1,
+                                cargaKg: m.latest.cargaKg,
+                                reps: m.latest.reps
+                              }
+                            ]);
                           }
                         }
-                      }}
-                      className="w-full bg-black text-[#f8fafc] font-bold text-[14px] rounded-[8px] px-[10px] py-[8px] focus:outline-none"
-                    >
-                      {allExercises
-                        .filter((ex) => ex.muscleGroup === logMuscleFilter)
-                        .map((ex) => (
-                          <option key={ex.id} value={ex.id}>
-                            {ex.nomeExercicio}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                      }
+                    }}
+                    className="w-full bg-black text-[#f8fafc] font-bold text-[14px] rounded-[8px] px-[10px] py-[8px] focus:outline-none cursor-pointer"
+                  >
+                    {allExercises
+                      .filter((ex) => ex.muscleGroup === logMuscleFilter)
+                      .map((ex) => (
+                        <option key={ex.id} value={ex.id}>
+                          {ex.nomeExercicio}
+                        </option>
+                      ))}
+                    <option disabled value="">──────────────</option>
+                    <option value="__NEW_EXERCISE__" className="text-[#f59e0b] font-bold">
+                      + Cadastrar Novo Exercício
+                    </option>
+                  </select>
                 </div>
+              </div>
 
-                {/* Interactive Stepper Cards for CARGA (KG) and REPETIÇÕES (Active/Hover Black+Orange state) */}
-                <div className="space-y-[8px]">
-                  <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
-                    PARÂMETROS DA SÉRIE MÁXIMA
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-[10px] w-full">
-                    {/* Card 1: Carga (kg) */}
-                    {(() => {
-                      const isSelected = activeInputCard === 'carga';
-                      const prevCarga = selectedExPrevMetrics?.latest?.cargaKg;
-                      return (
-                        <div
-                          onClick={() => setActiveInputCard('carga')}
-                          onMouseEnter={() => setActiveInputCard('carga')}
-                          className={`${
-                            isSelected
-                              ? 'bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)]'
-                              : 'bg-[rgba(57,58,47,0.75)] hover:bg-black'
-                          } rounded-[12px] p-[10px] flex flex-col gap-[6px] transition-all cursor-pointer`}
-                        >
-                          <div className="flex items-center justify-between w-full gap-1">
-                            <div className="flex items-center gap-[4px]">
-                              {isSelected && (
-                                <span className="bg-[#f59e0b] rounded-full w-[6px] h-[6px] shrink-0" />
-                              )}
-                              <span
-                                className={`${
-                                  isSelected
-                                    ? 'font-semibold text-[#f59e0b]'
-                                    : 'font-medium text-[#f8fafc]'
-                                } text-[11px] leading-[16.5px]`}
-                              >
-                                Carga (kg)
-                              </span>
-                            </div>
-                            <span className="font-normal text-[#f8fafc] text-[10px] leading-[15px]">
-                              {prevCarga ? `Ant: ${prevCarga}` : 'KG'}
-                            </span>
-                          </div>
-
-                          <div
-                            className={`${
-                              isSelected ? 'bg-[rgba(245,158,11,0.9)]' : 'bg-[#2a2b21]'
-                            } rounded-[8px] p-[4px] flex items-center gap-[4px] w-full transition-colors`}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveInputCard('carga');
-                                const v = Math.max(1, (parseFloat(carga) || 0) - 2.5);
-                                setCarga(v.toString());
-                              }}
-                              className="bg-black rounded-[4px] w-[22px] h-[26px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              step="0.5"
-                              value={carga}
-                              onFocus={() => setActiveInputCard('carga')}
-                              onChange={(e) => setCarga(e.target.value)}
-                              className="w-full bg-transparent font-heading font-bold text-[#f8fafc] text-[20px] text-center leading-[24px] focus:outline-none"
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveInputCard('carga');
-                                const v = (parseFloat(carga) || 0) + 2.5;
-                                setCarga(v.toString());
-                              }}
-                              className="bg-black rounded-[4px] w-[22px] h-[26px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Card 2: Repetições (reps) */}
-                    {(() => {
-                      const isSelected = activeInputCard === 'reps';
-                      const prevReps = selectedExPrevMetrics?.latest?.reps;
-                      return (
-                        <div
-                          onClick={() => setActiveInputCard('reps')}
-                          onMouseEnter={() => setActiveInputCard('reps')}
-                          className={`${
-                            isSelected
-                              ? 'bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)]'
-                              : 'bg-[rgba(57,58,47,0.75)] hover:bg-black'
-                          } rounded-[12px] p-[10px] flex flex-col gap-[6px] transition-all cursor-pointer`}
-                        >
-                          <div className="flex items-center justify-between w-full gap-1">
-                            <div className="flex items-center gap-[4px]">
-                              {isSelected && (
-                                <span className="bg-[#f59e0b] rounded-full w-[6px] h-[6px] shrink-0" />
-                              )}
-                              <span
-                                className={`${
-                                  isSelected
-                                    ? 'font-semibold text-[#f59e0b]'
-                                    : 'font-medium text-[#f8fafc]'
-                                } text-[11px] leading-[16.5px]`}
-                              >
-                                Repetições
-                              </span>
-                            </div>
-                            <span className="font-normal text-[#f8fafc] text-[10px] leading-[15px]">
-                              {prevReps ? `Ant: ${prevReps}` : 'REPS'}
-                            </span>
-                          </div>
-
-                          <div
-                            className={`${
-                              isSelected ? 'bg-[rgba(245,158,11,0.9)]' : 'bg-[#2a2b21]'
-                            } rounded-[8px] p-[4px] flex items-center gap-[4px] w-full transition-colors`}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveInputCard('reps');
-                                const v = Math.max(1, (parseInt(reps) || 0) - 1);
-                                setReps(v.toString());
-                              }}
-                              className="bg-black rounded-[4px] w-[22px] h-[26px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              step="1"
-                              value={reps}
-                              onFocus={() => setActiveInputCard('reps')}
-                              onChange={(e) => setReps(e.target.value)}
-                              className="w-full bg-transparent font-heading font-bold text-[#f8fafc] text-[20px] text-center leading-[24px] focus:outline-none"
-                              required
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveInputCard('reps');
-                                const v = (parseInt(reps) || 0) + 1;
-                                setReps(v.toString());
-                              }}
-                              className="bg-black rounded-[4px] w-[22px] h-[26px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Live 1RM Summary Card */}
-                <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[16px] p-[12px] flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-[#94a3b8] text-[10px] uppercase tracking-[0.6px] block">
-                      1RM ESTIMADO (BRZYCKI)
+              {/* INLINE EXERCISE CREATION FORM */}
+              {isCreatingCustomExercise ? (
+                <div className="bg-[#151413] rounded-[14px] p-4 space-y-3 border border-[#f59e0b]/40 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#f59e0b] text-[12px] uppercase tracking-wider">
+                      Cadastrar Novo Exercício
                     </span>
-                    <div className="flex items-baseline gap-[6px] pt-[2px]">
-                      <span className="font-heading font-bold text-[#f59e0b] text-[28px] leading-[30px]">
-                        {liveModal1RM > 0 ? liveModal1RM.toFixed(1) : '--'}
-                      </span>
-                      <span className="text-[#94a3b8] text-[12px]">kg</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingCustomExercise(false)}
+                      className="text-xs text-[#94a3b8] hover:text-white"
+                    >
+                      Cancelar
+                    </button>
                   </div>
 
-                  {liveModalDeltaPct !== null && (
-                    <div className="text-right">
-                      <span className="text-[10px] text-[#64748b] block">vs. Último Treino</span>
-                      <span
-                        className={`font-bold text-[12px] ${
-                          liveModalDeltaPct >= 0 ? 'text-[#d3e156]' : 'text-[#ff6e61]'
-                        }`}
-                      >
-                        {liveModalDeltaPct >= 0
-                          ? `▲ +${liveModalDeltaPct}%`
-                          : `▼ ${liveModalDeltaPct}%`}
-                      </span>
+                  {exerciseError && (
+                    <div className="bg-[#ff6e61]/15 border border-[#ff6e61] text-[#ff6e61] text-xs font-semibold p-2 rounded-lg">
+                      {exerciseError}
                     </div>
                   )}
-                </div>
 
-                {/* Submit Pill Button */}
-                <div className="pt-[4px]">
-                  <button
-                    type="submit"
-                    disabled={submittingLog}
-                    className="bg-black hover:bg-[#151413] disabled:opacity-50 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between w-full transition-transform active:scale-[0.98]"
-                  >
-                    <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.45px] uppercase leading-[24px]">
-                      {submittingLog ? 'SALVANDO...' : 'SALVAR REGISTRO DE FORÇA'}
-                    </span>
-                    <span className="bg-[#ffb95f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
-                      <Check className="w-[15px] h-[15px] text-[#151413] stroke-[2.8]" />
-                    </span>
-                  </button>
-                </div>
-              </form>
-            ) : (
-              /* TAB 2: + CADASTRAR NOVO EXERCÍCIO */
-              <form
-                onSubmit={handleAddExercise}
-                className="flex-1 overflow-y-auto px-[16px] pb-[16px] space-y-[14px]"
-              >
-                {exerciseError && (
-                  <div className="bg-[#ff6e61]/15 border border-[#ff6e61] text-[#b91c1c] text-xs font-semibold p-2.5 rounded-[10px]">
-                    {exerciseError}
-                  </div>
-                )}
-
-                <div className="space-y-[6px]">
-                  <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
-                    GRUPO MUSCULAR
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MUSCLE_GROUPS.map((mg) => (
-                      <button
-                        key={mg}
-                        type="button"
-                        onClick={() => setNewExerciseMuscle(mg)}
-                        className={`px-3 py-1.5 rounded-full text-[11px] transition-colors ${
-                          newExerciseMuscle === mg
-                            ? 'bg-[#f59e0b] text-white font-bold'
-                            : 'bg-black text-[#94a3b8] hover:text-white'
-                        }`}
-                      >
-                        {mg}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-[6px]">
-                  <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
-                    NOME DO EXERCÍCIO PERSONALIZADO
-                  </span>
-                  <div className="bg-[#151413] rounded-[14px] p-[10px]">
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[#94a3b8] font-bold uppercase block">
+                      Nome do Exercício
+                    </label>
                     <input
                       type="text"
-                      placeholder="Ex: Supino Inclinado Articulado"
                       value={newExerciseName}
                       onChange={(e) => setNewExerciseName(e.target.value)}
-                      className="w-full bg-black text-[#f8fafc] text-sm rounded-[10px] px-3 py-2.5 focus:outline-none"
-                      required
+                      placeholder="Ex: Supino Inclinado com Halteres"
+                      className="w-full bg-black text-[#f8fafc] font-medium text-[13px] rounded-[8px] px-3 py-2 border border-border focus:outline-none focus:border-[#f59e0b]"
                     />
                   </div>
-                </div>
 
-                <div className="pt-[4px]">
-                  <button
-                    type="submit"
-                    disabled={submittingExercise}
-                    className="bg-black hover:bg-[#151413] disabled:opacity-50 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between w-full transition-transform active:scale-[0.98]"
-                  >
-                    <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.45px] uppercase leading-[24px]">
-                      {submittingExercise ? 'CRIANDO...' : 'CRIAR EXERCÍCIO'}
-                    </span>
-                    <span className="bg-[#ffb95f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
-                      <Plus className="w-[15px] h-[15px] text-[#151413] stroke-[2.8]" />
-                    </span>
-                  </button>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-[#94a3b8] font-bold uppercase block">
+                      Grupo Muscular
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {MUSCLE_GROUPS.map((mg) => (
+                        <button
+                          key={mg}
+                          type="button"
+                          onClick={() => setNewExerciseMuscle(mg)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] transition-colors ${
+                            newExerciseMuscle === mg
+                              ? 'bg-[#f59e0b] text-white font-bold'
+                              : 'bg-black text-[#94a3b8] hover:text-white'
+                          }`}
+                        >
+                          {mg}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingCustomExercise(false)}
+                      className="px-3 py-1.5 rounded-full text-xs text-[#94a3b8] hover:text-white"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submittingExercise}
+                      onClick={handleAddExerciseInline}
+                      className="bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-50 text-white font-bold text-xs px-4 py-1.5 rounded-full transition-colors flex items-center gap-1.5 shadow-sm"
+                    >
+                      {submittingExercise ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                      <span>Salvar &amp; Continuar</span>
+                    </button>
+                  </div>
                 </div>
-              </form>
-            )}
+              ) : (
+                /* SETS & LOAD ENTRY FORM */
+                <form onSubmit={handleAddLog} className="space-y-[14px]">
+                  <div className="space-y-[8px]">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-black text-[10px] tracking-[0.5px] uppercase leading-[14px] block">
+                        PARÂMETROS DAS SÉRIES ({logSets.length})
+                      </span>
+                      <span className="text-[10px] text-[#64748b]">
+                        A maior série definirá o 1RM recorde
+                      </span>
+                    </div>
+
+                    {/* Sets List */}
+                    <div className="space-y-2">
+                      {logSets.map((s, idx) => {
+                        const isCargaActive = activeInputCard === `carga_${idx}`;
+                        const isRepsActive = activeInputCard === `reps_${idx}`;
+                        const prevMetrics = selectedExPrevMetrics?.latest;
+
+                        return (
+                          <div
+                            key={s.setNumber}
+                            className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[14px] p-[10px] space-y-[8px] border border-[rgba(255,255,255,0.04)]"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-[6px]">
+                                <span className="font-heading font-bold text-[#f59e0b] text-[13px] tracking-[0.5px] uppercase">
+                                  Série {s.setNumber}
+                                </span>
+                                {idx === 0 && (
+                                  <span className="text-[10px] text-[#94a3b8] font-medium bg-black/60 px-2 py-0.5 rounded-full">
+                                    Principal
+                                  </span>
+                                )}
+                              </div>
+                              {logSets.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSet(idx)}
+                                  className="text-[#94a3b8] hover:text-[#ff6e61] p-1 rounded-md transition-colors"
+                                  title="Remover série"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-[8px] w-full">
+                              {/* Card Carga (kg) */}
+                              <div
+                                onClick={() => setActiveInputCard(`carga_${idx}`)}
+                                className={`${
+                                  isCargaActive
+                                    ? 'bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)]'
+                                    : 'bg-[rgba(57,58,47,0.75)] hover:bg-black'
+                                } rounded-[12px] p-[8px] flex flex-col gap-[4px] transition-all cursor-pointer`}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-[4px]">
+                                    {isCargaActive && (
+                                      <span className="bg-[#f59e0b] rounded-full w-[5px] h-[5px] shrink-0" />
+                                    )}
+                                    <span
+                                      className={`${
+                                        isCargaActive
+                                          ? 'font-semibold text-[#f59e0b]'
+                                          : 'font-medium text-[#f8fafc]'
+                                      } text-[11px] leading-[14px]`}
+                                    >
+                                      Carga (kg)
+                                    </span>
+                                  </div>
+                                  <span className="font-normal text-[#94a3b8] text-[10px]">
+                                    {prevMetrics?.cargaKg ? `Ant: ${prevMetrics.cargaKg}` : 'KG'}
+                                  </span>
+                                </div>
+
+                                <div
+                                  className={`${
+                                    isCargaActive ? 'bg-[rgba(245,158,11,0.9)]' : 'bg-[#2a2b21]'
+                                  } rounded-[8px] p-[3px] flex items-center gap-[4px] w-full transition-colors`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveInputCard(`carga_${idx}`);
+                                      updateSetCarga(idx, Math.max(1, (s.cargaKg || 0) - 2.5));
+                                    }}
+                                    className="bg-black rounded-[4px] w-[22px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    value={s.cargaKg || ''}
+                                    onFocus={() => setActiveInputCard(`carga_${idx}`)}
+                                    onChange={(e) =>
+                                      updateSetCarga(idx, parseFloat(e.target.value) || 0)
+                                    }
+                                    className="w-full bg-transparent font-heading font-bold text-[#f8fafc] text-[18px] text-center leading-[22px] focus:outline-none"
+                                    required
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveInputCard(`carga_${idx}`);
+                                      updateSetCarga(idx, (s.cargaKg || 0) + 2.5);
+                                    }}
+                                    className="bg-black rounded-[4px] w-[22px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Card Repetições (reps) */}
+                              <div
+                                onClick={() => setActiveInputCard(`reps_${idx}`)}
+                                className={`${
+                                  isRepsActive
+                                    ? 'bg-black bg-[linear-gradient(180deg,rgba(211,225,86,0.1)_0%,rgba(211,225,86,0)_100%)]'
+                                    : 'bg-[rgba(57,58,47,0.75)] hover:bg-black'
+                                } rounded-[12px] p-[8px] flex flex-col gap-[4px] transition-all cursor-pointer`}
+                              >
+                                <div className="flex items-center justify-between w-full">
+                                  <div className="flex items-center gap-[4px]">
+                                    {isRepsActive && (
+                                      <span className="bg-[#f59e0b] rounded-full w-[5px] h-[5px] shrink-0" />
+                                    )}
+                                    <span
+                                      className={`${
+                                        isRepsActive
+                                          ? 'font-semibold text-[#f59e0b]'
+                                          : 'font-medium text-[#f8fafc]'
+                                      } text-[11px] leading-[14px]`}
+                                    >
+                                      Repetições
+                                    </span>
+                                  </div>
+                                  <span className="font-normal text-[#94a3b8] text-[10px]">
+                                    {prevMetrics?.reps ? `Ant: ${prevMetrics.reps}` : 'REPS'}
+                                  </span>
+                                </div>
+
+                                <div
+                                  className={`${
+                                    isRepsActive ? 'bg-[rgba(245,158,11,0.9)]' : 'bg-[#2a2b21]'
+                                  } rounded-[8px] p-[3px] flex items-center gap-[4px] w-full transition-colors`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveInputCard(`reps_${idx}`);
+                                      updateSetReps(idx, Math.max(1, (s.reps || 0) - 1));
+                                    }}
+                                    className="bg-black rounded-[4px] w-[22px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
+                                  >
+                                    -
+                                  </button>
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    value={s.reps || ''}
+                                    onFocus={() => setActiveInputCard(`reps_${idx}`)}
+                                    onChange={(e) =>
+                                      updateSetReps(idx, parseInt(e.target.value) || 0)
+                                    }
+                                    className="w-full bg-transparent font-heading font-bold text-[#f8fafc] text-[18px] text-center leading-[22px] focus:outline-none"
+                                    required
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveInputCard(`reps_${idx}`);
+                                      updateSetReps(idx, (s.reps || 0) + 1);
+                                    }}
+                                    className="bg-black rounded-[4px] w-[22px] h-[24px] flex items-center justify-center font-bold text-[#94a3b8] hover:text-white text-[13px] shrink-0"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Button to Add More Sets */}
+                    <button
+                      type="button"
+                      onClick={handleAddSet}
+                      className="w-full py-2.5 px-3 rounded-[12px] border border-dashed border-[#f59e0b]/50 hover:border-[#f59e0b] bg-[#f59e0b]/10 hover:bg-[#f59e0b]/20 text-[#f59e0b] font-semibold text-[13px] flex items-center justify-center gap-2 transition-colors active:scale-[0.99]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar Série {logSets.length + 1}
+                    </button>
+                  </div>
+
+                  {/* Live Peak 1RM Summary Card */}
+                  <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] rounded-[16px] p-[12px] flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-[#94a3b8] text-[10px] uppercase tracking-[0.6px] block">
+                        1RM ESTIMADO PICO (BRZYCKI)
+                      </span>
+                      <div className="flex items-baseline gap-[6px] pt-[2px]">
+                        <span className="font-heading font-bold text-[#f59e0b] text-[28px] leading-[30px]">
+                          {liveModal1RM > 0 ? liveModal1RM.toFixed(1) : '--'}
+                        </span>
+                        <span className="text-[#94a3b8] text-[12px]">kg</span>
+                      </div>
+                    </div>
+
+                    {liveModalDeltaPct !== null && (
+                      <div className="text-right">
+                        <span className="text-[10px] text-[#64748b] block">vs. Último Treino</span>
+                        <span
+                          className={`font-bold text-[12px] ${
+                            liveModalDeltaPct >= 0 ? 'text-[#d3e156]' : 'text-[#ff6e61]'
+                          }`}
+                        >
+                          {liveModalDeltaPct >= 0
+                            ? `▲ +${liveModalDeltaPct}%`
+                            : `▼ ${liveModalDeltaPct}%`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="pt-[4px]">
+                    <button
+                      type="submit"
+                      disabled={submittingLog}
+                      className="bg-black hover:bg-[#151413] disabled:opacity-50 min-h-[48px] pl-[16px] pr-[8px] py-[8px] rounded-full flex items-center justify-between w-full transition-transform active:scale-[0.98]"
+                    >
+                      <span className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.45px] uppercase leading-[24px]">
+                        {submittingLog ? 'SALVANDO...' : 'SALVAR REGISTRO DE FORÇA'}
+                      </span>
+                      <span className="bg-[#ffb95f] rounded-full w-[32px] h-[32px] shrink-0 flex items-center justify-center">
+                        <Check className="w-[15px] h-[15px] text-[#151413] stroke-[2.8]" />
+                      </span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}

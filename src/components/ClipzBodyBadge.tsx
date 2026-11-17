@@ -15,7 +15,7 @@ export default function ClipzBodyBadge({
   priority = false,
 }: ClipzBodyBadgeProps) {
   return (
-    <div className={`relative inline-flex items-center shrink-0 rounded-md overflow-hidden ${className}`}>
+    <div className={`relative inline-flex items-center shrink-0 ${className}`}>
       <Image
         src="/LOGO CLIPZBODY BADGET.svg"
         alt="ClipzBody"

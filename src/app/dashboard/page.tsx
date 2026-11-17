@@ -783,26 +783,13 @@ export default function DashboardPage() {
     >
       {/* Top App Bar (Untouched as requested) */}
       <header
-        className={`sticky top-0 z-10 -mx-4 -mt-6 ${
+        className={`sticky top-0 z-30 -mx-4 -mt-6 ${
           isContrast ? 'bg-[#0e0f07]/90' : 'bg-obsidian/90'
         } backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between`}
       >
         <div className="flex items-center">
           <ClipzBodyBadge className="h-7 w-auto" priority />
         </div>
-        <Link href="/profile" className="flex items-center gap-3 group">
-          <div className="text-right">
-            <span className="text-xs text-slate-400 block group-hover:text-lime-neon transition-colors">
-              Olá,
-            </span>
-            <span className="text-sm font-semibold text-slate-100 leading-tight block">
-              {firstName}
-            </span>
-          </div>
-          <div className="h-9 w-9 rounded-full bg-slate-card border border-border flex items-center justify-center text-lime-neon font-bold text-sm group-hover:border-lime-neon transition-colors">
-            {profile?.nome?.charAt(0).toUpperCase() || 'U'}
-          </div>
-        </Link>
       </header>
 
       {/* Main Content Container */}
