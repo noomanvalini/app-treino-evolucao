@@ -185,10 +185,10 @@ export default function Login() {
           <ClipzBodyBadge className="h-[38px] w-auto" priority />
 
           <div className="space-y-[8px]">
-            <h1 className="font-heading font-bold text-[36px] leading-[36px] tracking-[-0.9px] uppercase text-white">
+            <h1 className="font-heading font-bold text-[26px] leading-[30px] tracking-[-0.6px] uppercase text-white">
               EVOLUÇÃO, SEM ACHISMO.
             </h1>
-            <p className="text-[17px] leading-[23px] text-[#f8fafc] max-w-[340px]">
+            <p className="text-[14px] leading-[20px] text-[#f8fafc] max-w-[340px]">
               Registre seus treinos, supere suas cargas e acompanhe cada centímetro da sua evolução.
             </p>
           </div>

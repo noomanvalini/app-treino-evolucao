@@ -485,10 +485,10 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
               <div className="space-y-[24px]">
                 {/* Headline */}
                 <div className="space-y-[8px]">
-                  <h1 className="font-heading font-bold text-[36px] leading-[36px] tracking-[-0.9px] uppercase text-white">
+                  <h1 className="font-heading font-bold text-[26px] leading-[30px] tracking-[-0.6px] uppercase text-white">
                     SETUP DE TREINO
                   </h1>
-                  <p className="text-[16px] leading-[22px] text-[#f8fafc]/95 max-w-[340px]">
+                  <p className="text-[14px] leading-[20px] text-[#f8fafc]/95 max-w-[340px]">
                     Leva apenas 2 minutos para calibrar o seu plano de treino e o seu mapa muscular.
                   </p>
                 </div>
@@ -584,10 +584,10 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
             <div className="flex-1 flex flex-col justify-between pt-[22px] animate-in fade-in duration-300">
               <div className="space-y-[18px]">
                 <div className="space-y-[6px]">
-                  <h1 className="font-heading font-bold text-[34px] leading-[36px] tracking-[-0.9px] uppercase text-white">
+                  <h1 className="font-heading font-bold text-[26px] leading-[30px] tracking-[-0.6px] uppercase text-white">
                     ONDE VOCÊ QUER CHEGAR?
                   </h1>
-                  <p className="text-[16px] leading-[22px] text-[#f8fafc]/95">
+                  <p className="text-[14px] leading-[20px] text-[#f8fafc]/95">
                     Seja secar, ganhar massa ou aumentar força, seu ponto de chegada define a nossa rota.
                   </p>
                 </div>
@@ -685,10 +685,10 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
             <div className="flex-1 flex flex-col justify-between pt-[20px] animate-in fade-in duration-300">
               <div className="space-y-[16px]">
                 <div className="space-y-[6px]">
-                  <h1 className="font-heading font-bold text-[34px] leading-[36px] tracking-[-0.9px] uppercase text-white">
+                  <h1 className="font-heading font-bold text-[26px] leading-[30px] tracking-[-0.6px] uppercase text-white">
                     SEU FOCO MUSCULAR
                   </h1>
-                  <p className="text-[15px] leading-[21px] text-[#f8fafc]/95">
+                  <p className="text-[14px] leading-[20px] text-[#f8fafc]/95">
                     Defina o seu volume de treino e os grupos que você quer priorizar nesta fase.
                   </p>
                 </div>
@@ -973,10 +973,10 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
             >
               <div className="space-y-[16px]">
                 <div className="space-y-[6px]">
-                  <h1 className="font-heading font-bold text-[34px] leading-[36px] tracking-[-0.9px] uppercase text-white">
+                  <h1 className="font-heading font-bold text-[26px] leading-[30px] tracking-[-0.6px] uppercase text-white">
                     SUAS MEDIDAS ATUAIS.
                   </h1>
-                  <p className="text-[15px] leading-[21px] text-[#f8fafc]/95">
+                  <p className="text-[14px] leading-[20px] text-[#f8fafc]/95">
                     Preencha suas medidas iniciais para destravar seus gráficos de evolução corporal.
                   </p>
                 </div>
