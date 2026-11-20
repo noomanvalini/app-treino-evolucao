@@ -5,7 +5,7 @@ import { User, onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
-interface UserProfile {
+export interface UserProfile {
   nome: string;
   email: string;
   idade: number;
@@ -13,6 +13,12 @@ interface UserProfile {
   sexo: string;
   pesoAtual: number; // in kg
   dataCriacao: any;
+  objetivo?: 'hipertrofia' | 'forca' | 'definicao' | 'condicionamento';
+  frequenciaSemanal?: '2-3' | '4-5' | '6' | 'flexivel';
+  diasAtivos?: string[];
+  focoMuscularGrupo?: 'corpo_inteiro' | 'superiores' | 'inferiores';
+  focoMuscularLista?: string[];
+  onboardingCompleted?: boolean;
 }
 
 interface AuthContextType {

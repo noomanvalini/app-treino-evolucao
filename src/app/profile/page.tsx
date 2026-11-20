@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import { 
-  User, Mail, Calendar, Ruler, LogOut, Save, Loader2, CheckCircle
+  User, Mail, Calendar, Ruler, LogOut, Save, Loader2, CheckCircle, SlidersHorizontal
 } from 'lucide-react';
 
 export default function Profile() {
@@ -203,8 +203,16 @@ export default function Profile() {
         </form>
       </div>
 
-      {/* Settings / Logout */}
-      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg">
+      {/* Settings / Setup & Logout */}
+      <div className="bg-slate-card border border-border rounded-2xl p-5 shadow-lg space-y-3">
+        <button
+          type="button"
+          onClick={() => router.push('/onboarding')}
+          className="w-full bg-[#f59e0b]/15 hover:bg-[#f59e0b]/25 text-[#ffb95f] font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 border border-[#f59e0b]/30"
+        >
+          <SlidersHorizontal className="h-4 w-4" /> Refazer Setup de Treino (Onboarding)
+        </button>
+
         <button
           onClick={handleLogout}
           className="w-full bg-danger/10 hover:bg-danger/25 text-danger font-bold py-3 rounded-xl text-xs transition-colors flex items-center justify-center gap-2 border border-danger/25"
