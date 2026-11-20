@@ -170,18 +170,16 @@ export default function Login() {
   // =========================================================================
   return (
     <div className="fixed inset-0 z-50 bg-[#0d1117] overflow-y-auto">
-      <div className="relative min-h-full w-full max-w-[448px] mx-auto flex flex-col justify-between">
-        {/* Background Photo + Moody Gradient Overlay */}
-        <div className="fixed inset-0 max-w-[448px] mx-auto pointer-events-none overflow-hidden">
-          <img
-            src="/images/BACKGROUND-ONBOARDING-TELA-INICIAL.jpg"
-            alt=""
-            className="w-full h-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[rgba(13,17,23,0.68)] via-[rgba(13,17,23,0.22)] to-[rgba(13,17,23,0.92)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[rgba(13,17,23,0.45)] to-transparent" />
-        </div>
+      {/* Full-bleed Background Photo in Cover Mode + Lighter Overlay */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('/images/BACKGROUND-ONBOARDING-TELA-INICIAL.jpg')` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(13,17,23,0.45)] via-[rgba(13,17,23,0.18)] to-[rgba(13,17,23,0.75)]" />
+      </div>
 
+      <div className="relative min-h-full w-full max-w-[448px] mx-auto flex flex-col justify-between">
         {/* Top Header + Hero Headline */}
         <div className="relative z-10 px-[20px] pt-[36px] space-y-[24px]">
           <ClipzBodyBadge className="h-[38px] w-auto" priority />

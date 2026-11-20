@@ -412,36 +412,20 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
     }
   };
 
-  const renderGoalIcon = (icon: 'dumbbell' | 'zap' | 'flame' | 'clock', isSelected: boolean) => {
-    const colorClass = isSelected ? 'text-[#100b02]' : 'text-[#f8fafc]';
-    switch (icon) {
-      case 'dumbbell':
-        return <Dumbbell className={`w-6 h-6 ${colorClass}`} />;
-      case 'zap':
-        return <Zap className={`w-6 h-6 ${colorClass}`} />;
-      case 'flame':
-        return <Flame className={`w-6 h-6 ${colorClass}`} />;
-      case 'clock':
-        return <Clock className={`w-6 h-6 ${colorClass}`} />;
-    }
-  };
-
   const currentStepNumber = step === 'objetivos' ? 1 : step === 'foco' ? 2 : step === 'medidas' ? 3 : 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-[#0d1117] overflow-y-auto">
-      <div className="relative min-h-full w-full max-w-[448px] mx-auto flex flex-col">
-        {/* Background Photo + Moody Gradient Overlay (Fixed to viewport inside mobile container) */}
-        <div className="fixed inset-0 max-w-[448px] mx-auto pointer-events-none overflow-hidden">
-          <img
-            src={STEP_BACKGROUNDS[step]}
-            alt=""
-            className="w-full h-full object-cover object-center transition-all duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-[rgba(13,17,23,0.72)] via-[rgba(13,17,23,0.38)] to-[rgba(13,17,23,0.92)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d1117] via-[rgba(13,17,23,0.45)] to-transparent" />
-        </div>
+      {/* Full-bleed Background Photo in Cover Mode + Lighter Overlay */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none bg-cover bg-center bg-no-repeat transition-all duration-500"
+        style={{ backgroundImage: `url('${STEP_BACKGROUNDS[step]}')` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(13,17,23,0.45)] via-[rgba(13,17,23,0.18)] to-[rgba(13,17,23,0.75)]" />
+      </div>
 
+      <div className="relative min-h-full w-full max-w-[448px] mx-auto flex flex-col">
         {/* Content Layer */}
         <div className="relative z-10 flex-1 flex flex-col px-[20px] pt-[20px] pb-[36px]">
           {/* TOP BAR: Step Progress Bars (Steps 1-3) + Brand Logo + Step Pill */}
@@ -608,7 +592,7 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
                   </p>
                 </div>
 
-                {/* 4 Selectable Goal Cards */}
+                {/* 4 Selectable Goal Cards (Clean layout without icons) */}
                 <div className="space-y-[10px]">
                   {GOAL_OPTIONS.map((option) => {
                     const isSelected = objetivo === option.id;
@@ -617,7 +601,7 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
                         key={option.id}
                         type="button"
                         onClick={() => setObjetivo(option.id)}
-                        className={`w-full text-left rounded-[12px] p-[14px] flex items-start gap-[14px] transition-all relative overflow-hidden ${
+                        className={`w-full text-left rounded-[12px] p-[16px] flex items-start justify-between gap-[14px] transition-all relative overflow-hidden ${
                           isSelected
                             ? 'bg-[#100b02]/95 border border-[#f59e0b] shadow-[0px_0px_24px_-6px_rgba(245,158,11,0.35)]'
                             : 'bg-[#100b02]/90 border border-white/10 hover:border-white/25'
@@ -630,15 +614,7 @@ export default function OnboardingFlow({ initialName = '', onComplete }: Onboard
                           />
                         )}
 
-                        <div
-                          className={`relative z-10 w-[46px] h-[46px] rounded-[8px] flex items-center justify-center shrink-0 transition-colors ${
-                            isSelected ? 'bg-[#f59e0b]' : 'bg-white/10'
-                          }`}
-                        >
-                          {renderGoalIcon(option.icon, isSelected)}
-                        </div>
-
-                        <div className="relative z-10 flex-1 min-w-0 space-y-[3px]">
+                        <div className="relative z-10 flex-1 min-w-0 space-y-[4px]">
                           <span
                             className={`inline-block text-[10px] font-bold tracking-[0.5px] uppercase px-[8px] py-[2px] rounded-[4px] ${
                               isSelected
