@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { useIsEmbeddedView } from '@/context/EmbeddedViewContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import AppHeader from '@/components/AppHeader';
 import {
@@ -489,6 +490,7 @@ function FigmaEvolutionChart({
 
 export default function MeasuresPage() {
   const { user, profile, loading: authLoading, updateProfile } = useAuth();
+  const isEmbedded = useIsEmbeddedView();
   const router = useRouter();
 
   // Data States
@@ -1232,9 +1234,9 @@ export default function MeasuresPage() {
       : 'Acima do Ideal';
 
   return (
-    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28">
-      {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
-      <AppHeader />
+    <div className={isEmbedded ? 'bg-[#100F0F] text-[#f8fafc]' : 'min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28'}>
+      {/* Global 3-Element Top App Bar (omitted when embedded inside /evolution) */}
+      {!isEmbedded && <AppHeader />}
 
       <main className="py-4 max-w-md mx-auto space-y-[16px]">
         {/* 1. TOP HEADER & FAST ACTION (Figma Node 30:1501) */}
@@ -2551,7 +2553,7 @@ export default function MeasuresPage() {
         </div>
       )}
 
-      <BottomNavigation />
+      {!isEmbedded && <BottomNavigation />}
     </div>
   );
 }

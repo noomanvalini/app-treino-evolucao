@@ -1,0 +1,791 @@
+{
+  "regrasObjetivo": {
+    "hipertrofia": {
+      "reps": "8-12",
+      "descansoSegundos": 90,
+      "seriesBase": 3
+    },
+    "forca": {
+      "reps": "4-6",
+      "descansoSegundos": 150,
+      "seriesBase": 4
+    },
+    "definicao": {
+      "reps": "12-15",
+      "descansoSegundos": 60,
+      "seriesBase": 3
+    },
+    "condicionamento": {
+      "reps": "15-20",
+      "descansoSegundos": 45,
+      "seriesBase": 3
+    }
+  },
+  "divisoesPorFrequencia": {
+    "6": [
+      {
+        "codigo": "A",
+        "nome": "Push 1 (Peito, Ombro e Tríceps)",
+        "exercicios": [
+          {
+            "nome": "Supino Reto com Barra",
+            "muscleGroup": "Peito",
+            "series": 4
+          },
+          {
+            "nome": "Supino Inclinado com Halteres",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Voador Máquina Peck Deck",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Desenvolvimento Militar com Barra",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral com Halteres",
+            "muscleGroup": "Ombro",
+            "series": 4
+          },
+          {
+            "nome": "Tríceps Testa com Barra",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Corda na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "B",
+        "nome": "Pull 1 (Costas, Bíceps e Antebraço)",
+        "exercicios": [
+          {
+            "nome": "Puxada Alta na Polia",
+            "muscleGroup": "Costas",
+            "series": 4
+          },
+          {
+            "nome": "Remada Curvada com Barra",
+            "muscleGroup": "Costas",
+            "series": 4
+          },
+          {
+            "nome": "Remada Sentada Fechada",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Voador Invertido na Máquina",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Direta Barra W",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Martelo",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Inversa",
+            "muscleGroup": "Antebraço",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "C",
+        "nome": "Legs 1 (Foco Quadríceps)",
+        "exercicios": [
+          {
+            "nome": "Agachamento Livre",
+            "muscleGroup": "Quadríceps",
+            "series": 4
+          },
+          {
+            "nome": "Leg Press 45º",
+            "muscleGroup": "Quadríceps",
+            "series": 4
+          },
+          {
+            "nome": "Cadeira Extensora",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Mesa Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Adutora",
+            "muscleGroup": "Quadril",
+            "series": 3
+          },
+          {
+            "nome": "Gêmeos em Pé",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 4
+          },
+          {
+            "nome": "Abdominal Infra",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "D",
+        "nome": "Push 2 (Peito, Ombro e Tríceps)",
+        "exercicios": [
+          {
+            "nome": "Supino Inclinado com Barra",
+            "muscleGroup": "Peito",
+            "series": 4
+          },
+          {
+            "nome": "Supino com Alavanca",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Crucifixo com Halteres Inclinado",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral na Máquina",
+            "muscleGroup": "Ombro",
+            "series": 4
+          },
+          {
+            "nome": "Elevação Frontal com Halter",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Francês com Halter Bilateral",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Coice na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "E",
+        "nome": "Pull 2 (Costas, Bíceps e Antebraço)",
+        "exercicios": [
+          {
+            "nome": "Levantamento Terra",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta com Triângulo",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta Unilateral",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Remada no Banco Inclinado",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Scott com Alavanca",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Rosca no Cabo",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Flexão de Punho",
+            "muscleGroup": "Antebraço",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "F",
+        "nome": "Legs 2 (Foco Posterior e Glúteos)",
+        "exercicios": [
+          {
+            "nome": "Stiff com Barra",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 4
+          },
+          {
+            "nome": "Elevação Pélvica",
+            "muscleGroup": "Glúteos",
+            "series": 4
+          },
+          {
+            "nome": "Cadeira Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Avanço na Máquina Smith",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Abdutora",
+            "muscleGroup": "Quadril",
+            "series": 3
+          },
+          {
+            "nome": "Elevação de Panturrilha Sentado",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 4
+          },
+          {
+            "nome": "Prancha Isométrica",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      }
+    ],
+    "2-3": [
+      {
+        "codigo": "A",
+        "nome": "Full Body A",
+        "exercicios": [
+          {
+            "nome": "Agachamento Livre",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Supino Reto com Barra",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta na Polia",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Desenvolvimento Militar com Barra",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Mesa Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Corda na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 2
+          },
+          {
+            "nome": "Rosca Direta Barra W",
+            "muscleGroup": "Bíceps",
+            "series": 2
+          },
+          {
+            "nome": "Prancha Isométrica",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "B",
+        "nome": "Full Body B",
+        "exercicios": [
+          {
+            "nome": "Levantamento Terra",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Supino Inclinado com Halteres",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Leg Press 45º",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Remada Sentada Fechada",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral com Halteres",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Pélvica",
+            "muscleGroup": "Glúteos",
+            "series": 3
+          },
+          {
+            "nome": "Gêmeos em Pé",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 3
+          },
+          {
+            "nome": "Abdominal Infra",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "C",
+        "nome": "Full Body C",
+        "exercicios": [
+          {
+            "nome": "Avanço na Máquina Smith",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Stiff com Barra",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Supino com Alavanca",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta com Triângulo",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Voador Invertido na Máquina",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Martelo",
+            "muscleGroup": "Bíceps",
+            "series": 2
+          },
+          {
+            "nome": "Tríceps Testa com Barra",
+            "muscleGroup": "Tríceps",
+            "series": 2
+          },
+          {
+            "nome": "Prancha Isométrica",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      }
+    ],
+    "4-5": [
+      {
+        "codigo": "A",
+        "nome": "Superiores 1 (Foco Empurrar)",
+        "exercicios": [
+          {
+            "nome": "Supino Reto com Barra",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Supino Inclinado com Halteres",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta na Polia",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Desenvolvimento Militar com Barra",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral com Halteres",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Barra na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Direta com Barra",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "B",
+        "nome": "Inferiores 1 (Foco Quadríceps)",
+        "exercicios": [
+          {
+            "nome": "Agachamento Livre",
+            "muscleGroup": "Quadríceps",
+            "series": 4
+          },
+          {
+            "nome": "Leg Press 45º",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Extensora",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Mesa Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Adutora",
+            "muscleGroup": "Quadril",
+            "series": 3
+          },
+          {
+            "nome": "Gêmeos em Pé",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 4
+          },
+          {
+            "nome": "Abdominal Infra",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "C",
+        "nome": "Superiores 2 (Foco Puxar)",
+        "exercicios": [
+          {
+            "nome": "Remada Curvada com Barra",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta com Triângulo",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Voador Máquina Peck Deck",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Voador Invertido na Máquina",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Alternada",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Francês com Halter Bilateral",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Inversa",
+            "muscleGroup": "Antebraço",
+            "series": 2
+          }
+        ]
+      },
+      {
+        "codigo": "D",
+        "nome": "Inferiores 2 (Foco Posterior e Glúteos)",
+        "exercicios": [
+          {
+            "nome": "Stiff com Barra",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 4
+          },
+          {
+            "nome": "Elevação Pélvica",
+            "muscleGroup": "Glúteos",
+            "series": 4
+          },
+          {
+            "nome": "Cadeira Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Avanço na Máquina Smith",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Abdutora",
+            "muscleGroup": "Quadril",
+            "series": 3
+          },
+          {
+            "nome": "Elevação de Panturrilha Sentado",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 4
+          },
+          {
+            "nome": "Prancha Isométrica",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "E",
+        "nome": "Full Body Complementar (5º Dia)",
+        "exercicios": [
+          {
+            "nome": "Supino Inclinado na Alavanca",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Remada Fechada na Máquina",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral na Máquina",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Leg Press Unilateral",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Coice na Polia",
+            "muscleGroup": "Glúteos",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Scott Barra W",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Corda na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          }
+        ]
+      }
+    ],
+    "flexivel": [
+      {
+        "codigo": "A",
+        "nome": "Superiores Completo",
+        "exercicios": [
+          {
+            "nome": "Supino Reto com Barra",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Puxada Alta na Polia",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Supino Inclinado com Halteres",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Remada Fechada na Máquina",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Lateral com Halteres",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Direta Barra W",
+            "muscleGroup": "Bíceps",
+            "series": 3
+          },
+          {
+            "nome": "Tríceps Barra na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "B",
+        "nome": "Inferiores Completo",
+        "exercicios": [
+          {
+            "nome": "Agachamento Livre",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Stiff com Halter",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Leg Press 45º",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Mesa Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Elevação Pélvica",
+            "muscleGroup": "Glúteos",
+            "series": 3
+          },
+          {
+            "nome": "Gêmeos em Pé",
+            "muscleGroup": "Panturrilha/Canela",
+            "series": 3
+          },
+          {
+            "nome": "Abdominal Infra",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      },
+      {
+        "codigo": "C",
+        "nome": "Full Body Dinâmico",
+        "exercicios": [
+          {
+            "nome": "Avanço na Máquina Smith",
+            "muscleGroup": "Quadríceps",
+            "series": 3
+          },
+          {
+            "nome": "Supino com Alavanca",
+            "muscleGroup": "Peito",
+            "series": 3
+          },
+          {
+            "nome": "Remada Sentada Fechada",
+            "muscleGroup": "Costas",
+            "series": 3
+          },
+          {
+            "nome": "Desenvolvimento Militar com Barra",
+            "muscleGroup": "Ombro",
+            "series": 3
+          },
+          {
+            "nome": "Cadeira Flexora",
+            "muscleGroup": "Posterior de Coxa",
+            "series": 3
+          },
+          {
+            "nome": "Rosca Alternada",
+            "muscleGroup": "Bíceps",
+            "series": 2
+          },
+          {
+            "nome": "Tríceps Corda na Polia",
+            "muscleGroup": "Tríceps",
+            "series": 2
+          },
+          {
+            "nome": "Prancha Isométrica",
+            "muscleGroup": "Abdômen",
+            "series": 3
+          }
+        ]
+      }
+    ]
+  },
+  "bonusFocoMuscular": {
+    "corpo_inteiro": [
+      {
+        "nome": "Prancha Isométrica",
+        "seriesExtras": 2
+      },
+      {
+        "nome": "Abdominal Infra",
+        "seriesExtras": 2
+      }
+    ],
+    "superiores": [
+      {
+        "nome": "Voador Máquina Peck Deck",
+        "seriesExtras": 2
+      },
+      {
+        "nome": "Remada Fechada na Máquina",
+        "seriesExtras": 2
+      },
+      {
+        "nome": "Elevação Lateral com Halteres",
+        "seriesExtras": 2
+      }
+    ],
+    "inferiores": [
+      {
+        "nome": "Cadeira Extensora",
+        "seriesExtras": 2
+      },
+      {
+        "nome": "Stiff com Barra",
+        "seriesExtras": 2
+      },
+      {
+        "nome": "Elevação Pélvica",
+        "seriesExtras": 2
+      }
+    ]
+  }
+}

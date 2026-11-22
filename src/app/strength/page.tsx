@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { useIsEmbeddedView } from '@/context/EmbeddedViewContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import AppHeader from '@/components/AppHeader';
 import {
@@ -396,6 +397,7 @@ function FeaturedStrengthChart({
 
 function StrengthContent() {
   const { user, profile, loading: authLoading } = useAuth();
+  const isEmbedded = useIsEmbeddedView();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -1655,9 +1657,9 @@ function StrengthContent() {
       : null;
 
   return (
-    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28">
-      {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
-      <AppHeader />
+    <div className={isEmbedded ? 'bg-[#100F0F] text-[#f8fafc]' : 'min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28'}>
+      {/* Global 3-Element Top App Bar (omitted when embedded inside /evolution) */}
+      {!isEmbedded && <AppHeader />}
 
       <main className="py-4 max-w-md mx-auto space-y-[16px]">
         {/* SECTION 1: HEADER DA PÁGINA + QUICK FILTER PILL (Figma Node 29:836) */}
@@ -3095,7 +3097,7 @@ function StrengthContent() {
         </div>
       )}
 
-      <BottomNavigation />
+      {!isEmbedded && <BottomNavigation />}
     </div>
   );
 }
