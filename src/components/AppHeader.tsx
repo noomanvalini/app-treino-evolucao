@@ -174,16 +174,16 @@ export default function AppHeader() {
 
         {/* Right Controls: Streak Badge + User Profile Avatar */}
         <div className="flex items-center gap-[10px]">
-          {/* 2. Active Days / Streak Badge (Duolingo-style) */}
+          {/* 2. Active Days / Streak Badge (Check + "X dias") */}
           <button
             type="button"
             onClick={() => setIsStreakModalOpen(true)}
-            className="flex items-center gap-[5px] bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.08] px-[10px] py-[5px] rounded-full transition-colors active:scale-95"
-            title="Ver ofensiva semanal e calendário"
+            className="flex items-center gap-[5px] bg-[#151413] hover:bg-white/[0.12] border border-white/[0.08] px-[10px] py-[5px] rounded-full transition-colors active:scale-95"
+            title="Ver sequência ativa semanal e calendário"
           >
-            <Flame className="w-[15px] h-[15px] text-[#f59e0b] fill-[#f59e0b]" />
-            <span className="font-heading font-bold text-[#ffddb8] text-[13px] leading-none">
-              {activeDaysThisWeek}
+            <Check className="w-[13px] h-[13px] text-[#f59e0b] stroke-[2.8]" />
+            <span className="font-semibold text-[#f8fafc] text-[12px] leading-none">
+              {activeDaysThisWeek} {activeDaysThisWeek === 1 ? 'dia' : 'dias'}
             </span>
           </button>
 

@@ -65,7 +65,8 @@ interface WorkoutSession {
   exercises: SessionExercise[];
 }
 
-const WEEK_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+const CALENDAR_WEEK_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
+const SEQ_WEEK_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
 const MONTH_NAMES = [
   'Janeiro',
   'Fevereiro',
@@ -623,24 +624,40 @@ export default function HistoryPage() {
     const month = calMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const startOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    const startOffset = firstDay.getDay(); // Sunday-first (DOM=0 .. SÁB=6)
     const todayKey = toDayKey(new Date());
 
     const cells: Array<{
-      empty?: boolean;
-      day?: number;
-      key?: string;
-      hasWorkout?: boolean;
-      hasPr?: boolean;
-      isToday?: boolean;
+      outside?: boolean;
+      day: number;
+      key: string;
+      hasWorkout: boolean;
+      hasPr: boolean;
+      isToday: boolean;
     }> = [];
 
-    for (let i = 0; i < startOffset; i++) cells.push({ empty: true });
+    // Trailing days from previous month
+    for (let i = startOffset - 1; i >= 0; i--) {
+      const d = new Date(year, month - 1, prevMonthLastDay - i);
+      const key = toDayKey(d);
+      cells.push({
+        outside: true,
+        day: prevMonthLastDay - i,
+        key,
+        hasWorkout: false,
+        hasPr: false,
+        isToday: key === todayKey,
+      });
+    }
+
+    // Days in current month
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(year, month, day);
       const key = toDayKey(d);
       const daySess = sessionsByDayKey[key] || [];
       cells.push({
+        outside: false,
         day,
         key,
         hasWorkout: daySess.length > 0,
@@ -648,8 +665,49 @@ export default function HistoryPage() {
         isToday: key === todayKey,
       });
     }
+
+    // Leading days from next month to fill last week row
+    const remainder = cells.length % 7;
+    if (remainder > 0) {
+      const needed = 7 - remainder;
+      for (let i = 1; i <= needed; i++) {
+        const d = new Date(year, month + 1, i);
+        const key = toDayKey(d);
+        cells.push({
+          outside: true,
+          day: i,
+          key,
+          hasWorkout: false,
+          hasPr: false,
+          isToday: key === todayKey,
+        });
+      }
+    }
+
     return cells;
   }, [calMonth, sessionsByDayKey]);
+
+  // Active sequence for current week (SEG..DOM)
+  const weeklySequence = useMemo(() => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMon);
+
+    return SEQ_WEEK_LABELS.map((label, idx) => {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + idx);
+      const key = toDayKey(d);
+      return {
+        label,
+        key,
+        trained: (sessionsByDayKey[key] || []).length > 0,
+      };
+    });
+  }, [sessionsByDayKey]);
+
+  const activeWeekDaysCount = weeklySequence.filter((w) => w.trained).length;
 
   const selectedDaySessions = sessionsByDayKey[selectedCalDayKey] || [];
 
@@ -684,12 +742,12 @@ export default function HistoryPage() {
           </div>
 
           {session.prCount > 0 ? (
-            <span className="bg-[#d3e156] text-[#0e0f07] px-[8px] py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[0.4px] flex items-center gap-1 shrink-0 shadow-sm">
+            <span className="bg-[#ffb95f] text-[#0e0f07] px-[9px] py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[0.4px] flex items-center gap-1 shrink-0 shadow-sm">
               <Trophy className="w-[11px] h-[11px]" />
               {session.prCount} {session.prCount === 1 ? 'Novo PR' : 'PRs'}
             </span>
           ) : (
-            <span className="bg-black text-[#d3e156] border border-[#d3e156]/25 px-[8px] py-[3px] rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0">
+            <span className="bg-black text-[#ffb95f] border border-[#ffb95f]/25 px-[8px] py-[3px] rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0">
               <CheckCircle2 className="w-[11px] h-[11px]" />
               100%
             </span>
@@ -758,26 +816,26 @@ export default function HistoryPage() {
         </div>
 
         {/* Quick Actions Row */}
-        <div className="flex items-center justify-between pt-[2px]">
+        <div className="flex items-center justify-end gap-[8px] pt-[2px]">
           <button
             type="button"
-            onClick={() => router.push('/workout/active')}
-            className="h-[34px] px-[12px] rounded-[8px] bg-white/[0.06] hover:bg-[#f59e0b] text-[#ffb95f] hover:text-[#0e0f07] text-[12px] font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
+            onClick={() => router.push('/strength')}
+            className="h-[34px] px-[12px] rounded-[8px] bg-black hover:bg-[#1c1c13] border border-white/[0.06] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
           >
-            <Copy className="w-[13px] h-[13px]" />
-            <span>Repetir Treino</span>
+            <span>Comparar</span>
+            <TrendingUp className="w-[13px] h-[13px] text-[#06b6d4]" />
           </button>
 
           <button
             type="button"
             onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
-            className="h-[34px] px-[12px] rounded-[8px] bg-black hover:bg-[#1c1c13] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1 transition-colors"
+            className="h-[34px] px-[12px] rounded-[8px] bg-black hover:bg-[#1c1c13] border border-white/[0.06] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1 transition-colors"
           >
             <span>{isExpanded ? 'Recolher' : 'Detalhes'}</span>
             {isExpanded ? (
-              <ChevronUp className="w-[14px] h-[14px] text-[#ffb95f]" />
+              <ChevronUp className="w-[14px] h-[14px] text-[#f8fafc]" />
             ) : (
-              <ArrowRight className="w-[14px] h-[14px] text-[#ffb95f]" />
+              <ArrowRight className="w-[14px] h-[14px] text-[#f8fafc]" />
             )}
           </button>
         </div>
@@ -821,12 +879,12 @@ export default function HistoryPage() {
           </button>
         </section>
 
-        {/* VIEW TOGGLE TABS: Timeline / Lista vs Calendário */}
-        <div className="grid grid-cols-2 p-[4px] rounded-[12px] bg-[#151413] border border-white/[0.06]">
+        {/* VIEW TOGGLE TABS: Timeline / Lista vs Calendário (Pill Style) */}
+        <div className="grid grid-cols-2 p-[4px] rounded-full bg-[#151413] border border-white/[0.06]">
           <button
             type="button"
             onClick={() => setViewMode('timeline')}
-            className={`flex items-center justify-center gap-1.5 py-[8px] px-3 rounded-[8px] text-[12px] font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-[8px] px-3 rounded-full text-[12px] font-bold transition-all ${
               viewMode === 'timeline'
                 ? 'bg-[#f59e0b] text-[#0e0f07] shadow-sm'
                 : 'text-[#94a3b8] hover:text-white'
@@ -838,7 +896,7 @@ export default function HistoryPage() {
           <button
             type="button"
             onClick={() => setViewMode('calendar')}
-            className={`flex items-center justify-center gap-1.5 py-[8px] px-3 rounded-[8px] text-[12px] font-bold transition-all ${
+            className={`flex items-center justify-center gap-1.5 py-[8px] px-3 rounded-full text-[12px] font-bold transition-all ${
               viewMode === 'calendar'
                 ? 'bg-[#f59e0b] text-[#0e0f07] shadow-sm'
                 : 'text-[#94a3b8] hover:text-white'
@@ -851,13 +909,8 @@ export default function HistoryPage() {
 
         {/* MONTHLY SUMMARY METRIC BANNER */}
         <section className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] border border-white/[0.06] rounded-[14px] p-[14px] relative overflow-hidden">
-          <div
-            aria-hidden
-            className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-[#f59e0b]/10 blur-2xl pointer-events-none"
-          />
           <div className="flex items-center justify-between mb-[10px]">
-            <span className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#ffb95f] flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#f8fafc]">
               VOLUME DO MÊS • {monthlySummary.monthLabel}
             </span>
             <span className="text-[11px] text-[#64748b] font-medium">Meta: 20 treinos</span>
@@ -873,19 +926,22 @@ export default function HistoryPage() {
               </span>
             </div>
             <div>
-              <span className="font-heading font-bold text-[#f8fafc] text-[22px] leading-none block">
-                {monthlySummary.tonnage}
-              </span>
+              <div className="flex items-center gap-1">
+                <span className="font-heading font-bold text-[#f8fafc] text-[22px] leading-none">
+                  {Math.min(monthlySummary.prs, 1)}
+                </span>
+                <Trophy className="w-3.5 h-3.5 text-[#ffb95f]" />
+              </div>
               <span className="text-[10px] text-[#94a3b8] uppercase font-semibold mt-1 block">
-                Movimentados
+                Novo Recorde
               </span>
             </div>
             <div>
               <div className="flex items-center gap-1">
-                <span className="font-heading font-bold text-[#d3e156] text-[22px] leading-none">
+                <span className="font-heading font-bold text-[#f8fafc] text-[22px] leading-none">
                   {monthlySummary.prs}
                 </span>
-                <Star className="w-3.5 h-3.5 text-[#d3e156] fill-[#d3e156]" />
+                <Star className="w-3.5 h-3.5 text-[#f59e0b] fill-[#f59e0b]" />
               </div>
               <span className="text-[10px] text-[#94a3b8] uppercase font-semibold mt-1 block">
                 Novos PRs
@@ -1013,18 +1069,22 @@ export default function HistoryPage() {
               </div>
             )}
 
-            {/* Bottom Manual Registration CTA */}
-            <div className="pt-2 space-y-2 text-center">
+            {/* Bottom Manual Registration CTA (High-Voltage White Pill) */}
+            <div className="pt-2 space-y-2.5 text-center">
               <button
                 type="button"
                 onClick={() => router.push('/strength')}
-                className="w-full py-3 px-4 rounded-[12px] bg-[#151413] hover:bg-[#1c1c13] border border-dashed border-[#f59e0b]/40 text-[#ffb95f] text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors"
+                className="w-full bg-[#f8fafc] hover:bg-white min-h-[48px] pl-[18px] pr-[8px] py-[8px] rounded-full flex items-center justify-between shadow-lg transition-transform active:scale-[0.98]"
               >
-                <Plus className="w-4 h-4" />
-                Registrar Treino Passado Manualmente
+                <span className="font-heading font-semibold text-[#202017] text-[16px] tracking-[0.4px] uppercase">
+                  REGISTRAR TREINO MANUALMENTE
+                </span>
+                <span className="w-[32px] h-[32px] rounded-full bg-[#ffb95f] flex items-center justify-center shrink-0">
+                  <ArrowRight className="w-[15px] h-[15px] text-[#202017] stroke-[2.5]" />
+                </span>
               </button>
-              <p className="text-[11px] text-[#64748b]">
-                Esqueceu de registrar ontem? Insira séries, cargas e datas a qualquer momento.
+              <p className="text-[11px] text-[#64748b] max-w-[280px] mx-auto leading-snug">
+                Esqueceu de registrar ontem? Insira séries, cargas e notas a qualquer momento.
               </p>
             </div>
           </div>
@@ -1062,9 +1122,9 @@ export default function HistoryPage() {
                 </div>
               </div>
 
-              {/* Week Headers */}
+              {/* Week Headers (DOM..SÁB matching Figma) */}
               <div className="grid grid-cols-7 gap-1.5 text-center">
-                {WEEK_LABELS.map((w) => (
+                {CALENDAR_WEEK_LABELS.map((w) => (
                   <span key={w} className="text-[10px] font-bold text-[#64748b] py-1">
                     {w}
                   </span>
@@ -1073,50 +1133,77 @@ export default function HistoryPage() {
 
               {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1.5 text-center">
-                {calendarCells.map((cell, idx) =>
-                  cell.empty ? (
-                    <div key={`e_${idx}`} className="h-[40px]" />
-                  ) : (
-                    <button
-                      key={cell.key}
-                      type="button"
-                      onClick={() => cell.key && setSelectedCalDayKey(cell.key)}
-                      className={`h-[40px] rounded-[10px] flex flex-col items-center justify-center text-[13px] font-semibold relative transition-all ${
-                        selectedCalDayKey === cell.key
-                          ? 'bg-[#f59e0b] text-[#0e0f07] font-bold shadow-[0_0_12px_rgba(245,158,11,0.45)]'
-                          : cell.hasWorkout
-                          ? 'bg-[#f59e0b]/15 border border-[#f59e0b]/45 text-[#ffb95f] hover:bg-[#f59e0b]/25'
-                          : cell.isToday
-                          ? 'bg-white/10 border border-white/30 text-white'
-                          : 'bg-black/50 text-[#94a3b8] hover:bg-white/5'
-                      }`}
-                    >
-                      <span>{cell.day}</span>
-                      {cell.hasWorkout && (
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full absolute bottom-1 ${
-                            selectedCalDayKey === cell.key
-                              ? 'bg-[#0e0f07]'
-                              : cell.hasPr
-                              ? 'bg-[#d3e156]'
-                              : 'bg-[#f59e0b]'
-                          }`}
-                        />
-                      )}
-                    </button>
-                  )
-                )}
+                {calendarCells.map((cell) => (
+                  <button
+                    key={cell.key}
+                    type="button"
+                    disabled={cell.outside}
+                    onClick={() => !cell.outside && setSelectedCalDayKey(cell.key)}
+                    className={`h-[42px] rounded-[10px] flex flex-col items-center justify-center relative transition-all ${
+                      cell.outside
+                        ? 'text-[#334155] cursor-default'
+                        : cell.isToday
+                        ? 'bg-[#f59e0b] text-[#0e0f07] font-bold shadow-[0_0_12px_rgba(245,158,11,0.45)]'
+                        : selectedCalDayKey === cell.key
+                        ? 'bg-white/15 border border-[#f59e0b] text-white font-bold'
+                        : cell.hasWorkout
+                        ? 'text-[#f8fafc] font-bold hover:bg-white/5'
+                        : 'text-[#94a3b8] hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="text-[13px] leading-none">
+                      {String(cell.day).padStart(2, '0')}
+                    </span>
+                    {cell.isToday ? (
+                      <span className="text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">
+                        HOJE
+                      </span>
+                    ) : (
+                      cell.hasWorkout &&
+                      !cell.outside && (
+                        <span className="w-[5px] h-[5px] rounded-full bg-[#d3e156] mt-1" />
+                      )
+                    )}
+                  </button>
+                ))}
               </div>
 
               {/* Legend */}
-              <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px] text-[#94a3b8]">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#f59e0b]" />
-                  <span>Dia Treinado</span>
+              <div className="pt-2 flex items-center gap-1.5 text-[10px] text-[#94a3b8]">
+                <span className="w-[6px] h-[6px] rounded-full bg-[#d3e156]" />
+                <span>Treino Registrado</span>
+              </div>
+
+              {/* Sequência Ativa Strip (matching Figma) */}
+              <div className="pt-3 border-t border-white/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#94a3b8]">
+                    SEQUÊNCIA ATIVA
+                  </span>
+                  <span className="text-[11px] font-bold text-[#f59e0b]">
+                    {activeWeekDaysCount} {activeWeekDaysCount === 1 ? 'dia' : 'dias'}/semana
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#d3e156]" />
-                  <span>Dia com Novo PR</span>
+
+                <div className="grid grid-cols-7 gap-1.5 text-center">
+                  {weeklySequence.map((day) => (
+                    <div key={day.key} className="flex flex-col items-center gap-1.5">
+                      <span className="text-[9px] font-bold text-[#64748b]">{day.label}</span>
+                      <div
+                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center ${
+                          day.trained
+                            ? 'bg-[#f59e0b] text-[#0e0f07]'
+                            : 'bg-black/70 text-[#64748b]'
+                        }`}
+                      >
+                        {day.trained ? (
+                          <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+                        ) : (
+                          <span className="text-[11px] font-bold">-</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </section>
