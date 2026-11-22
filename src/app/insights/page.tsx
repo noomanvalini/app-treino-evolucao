@@ -29,6 +29,9 @@ import {
   Lightbulb,
   Flame,
   FileDown,
+  X,
+  Brain,
+  ListChecks,
 } from 'lucide-react';
 
 type PeriodKey = '7d' | '30d' | '90d';
@@ -89,7 +92,7 @@ function formatDateShort(raw: any): string {
 }
 
 export default function InsightsPage() {
-  const { user, profile, isPreviewMode, loading: authLoading } = useAuth();
+  const { user, profile, isPreviewMode, updateProfile, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [period, setPeriod] = useState<PeriodKey>('7d');
@@ -102,6 +105,15 @@ export default function InsightsPage() {
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [expandedWeekKey, setExpandedWeekKey] = useState<string | null>(null);
+
+  // AI Goals Modal State (from Stitch screen 246b222e100f4d668e4bc44f83788880)
+  const [isAiGoalsModalOpen, setIsAiGoalsModalOpen] = useState(false);
+  const [cycleFocus, setCycleFocus] = useState<'hipertrofia' | 'forca' | 'recomposicao'>('hipertrofia');
+  const [deficitTargetSets, setDeficitTargetSets] = useState<number>(10);
+  const [enableOverloadBoost, setEnableOverloadBoost] = useState<boolean>(true);
+  const [enableRestTimer90s, setEnableRestTimer90s] = useState<boolean>(true);
+  const [savingGoals, setSavingGoals] = useState<boolean>(false);
+  const [goalsAppliedToast, setGoalsAppliedToast] = useState<boolean>(false);
 
   const currentWeekKey = getWeekKey();
 
@@ -487,6 +499,100 @@ export default function InsightsPage() {
   const handleExportPdf = () => {
     if (typeof window !== 'undefined') {
       window.print();
+    }
+  };
+
+  // Dynamic AI Goals Modal Computations
+  const weakestGroup = useMemo(() => {
+    if (volumeStats.length === 0) {
+      return { key: 'posterior', label: 'Posterior de Coxa', done: 6, target: 12 };
+    }
+    const sorted = [...volumeStats].sort((a, b) => a.pct - b.pct);
+    return sorted[0];
+  }, [volumeStats]);
+
+  const topProjectedExercise = useMemo(() => {
+    const first = overloadStats.exercises[0];
+    if (!first) {
+      return { name: 'Supino Reto', currKg: 84.5, targetKg: 90.0, deltaKg: 5.5 };
+    }
+    const targetKg = Number((first.currKg * 1.075).toFixed(1));
+    const deltaKg = Number((targetKg - first.currKg).toFixed(1));
+    return { name: first.name, currKg: first.currKg, targetKg, deltaKg };
+  }, [overloadStats]);
+
+  const anthroTargets = useMemo(() => {
+    const baseWeight = measurements[0]?.pesoKg || profile?.pesoAtual || 78.4;
+    const baseWaist = measurements[0]?.medidas?.cintura || 79.0;
+    const weightDelta = cycleFocus === 'hipertrofia' ? 0.8 : cycleFocus === 'forca' ? 0.5 : -0.9;
+    const bfDelta = cycleFocus === 'recomposicao' ? -0.8 : cycleFocus === 'hipertrofia' ? -0.2 : 0.0;
+    const waistDelta = cycleFocus === 'recomposicao' ? -1.0 : -0.5;
+    return {
+      targetWeight: Number((baseWeight + weightDelta).toFixed(1)),
+      weightDeltaText: weightDelta >= 0 ? `+${weightDelta.toFixed(1)} kg` : `${weightDelta.toFixed(1)} kg`,
+      targetBf: Number(Math.max(8, 13.8 + bfDelta).toFixed(1)),
+      bfDeltaText: bfDelta >= 0 ? `+${bfDelta.toFixed(1)}%` : `${bfDelta.toFixed(1)}%`,
+      targetWaist: Number((baseWaist + waistDelta).toFixed(1)),
+      waistDeltaText: `${waistDelta.toFixed(1)} cm`,
+    };
+  }, [measurements, profile?.pesoAtual, cycleFocus]);
+
+  const estimatedSuccessRate = useMemo(() => {
+    const base = Math.round(78 + (consistencyStats.goalPct / 100) * 16);
+    return Math.min(98, Math.max(72, base));
+  }, [consistencyStats.goalPct]);
+
+  const handleOpenAiGoalsModal = () => {
+    const suggested = Math.min(20, Math.max(weakestGroup.done + 4, weakestGroup.target));
+    setDeficitTargetSets(suggested);
+    setCycleFocus(
+      profile?.objetivo === 'forca'
+        ? 'forca'
+        : profile?.objetivo === 'definicao'
+        ? 'recomposicao'
+        : 'hipertrofia'
+    );
+    setIsAiGoalsModalOpen(true);
+  };
+
+  const handleApplyAiGoals = async () => {
+    setSavingGoals(true);
+    try {
+      const mappedObjetivo =
+        cycleFocus === 'forca'
+          ? 'forca'
+          : cycleFocus === 'recomposicao'
+          ? 'definicao'
+          : 'hipertrofia';
+
+      if (user) {
+        await updateProfile({
+          objetivo: mappedObjetivo,
+          focoMuscularLista: [weakestGroup.label],
+        });
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(
+            `clipzbody_goal_${user.uid}`,
+            JSON.stringify({
+              targetWeightKg: anthroTargets.targetWeight,
+              targetBfPct: anthroTargets.targetBf,
+              deficitTargetSets,
+              enableOverloadBoost,
+              enableRestTimer90s,
+              updatedAt: new Date().toISOString(),
+            })
+          );
+        }
+      }
+
+      setIsAiGoalsModalOpen(false);
+      setGoalsAppliedToast(true);
+      setTimeout(() => setGoalsAppliedToast(false), 3500);
+    } catch (err) {
+      console.error('Error applying AI goals:', err);
+    } finally {
+      setSavingGoals(false);
     }
   };
 
@@ -946,7 +1052,7 @@ export default function InsightsPage() {
           {/* Primary White Pill: AJUSTAR METAS COM IA */}
           <button
             type="button"
-            onClick={() => router.push('/onboarding')}
+            onClick={handleOpenAiGoalsModal}
             className="w-full bg-[#f8fafc] hover:bg-white min-h-[48px] pl-[18px] pr-[8px] py-[8px] rounded-full flex items-center justify-between transition-transform active:scale-[0.98]"
           >
             <span className="font-heading font-semibold text-[#202017] text-[16px] tracking-[0.4px] uppercase leading-[22px]">
@@ -956,6 +1062,13 @@ export default function InsightsPage() {
               <ArrowRight className="w-[15px] h-[15px] text-[#202017] stroke-[2.5]" />
             </span>
           </button>
+
+          {goalsAppliedToast && (
+            <div className="bg-[#d3e156]/15 border border-[#d3e156]/40 text-[#d3e156] text-xs font-semibold px-3 py-2 rounded-[10px] flex items-center gap-2 animate-in fade-in duration-200">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Novas metas aplicadas ao seu próximo ciclo de 4 semanas!</span>
+            </div>
+          )}
 
           {/* Secondary Dark Outline Pill: EXPORTAR RELATÓRIO EM PDF */}
           <button
@@ -1097,6 +1210,326 @@ export default function InsightsPage() {
           )}
         </section>
       </main>
+
+      {/* =====================================================================
+          MODAL BOTTOM-SHEET: AJUSTAR METAS COM IA (Stitch 246b222e100f4d668e4bc44f83788880)
+         ===================================================================== */}
+      {isAiGoalsModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-md p-0 sm:p-4 animate-in fade-in duration-200 print:hidden"
+          onClick={() => setIsAiGoalsModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[448px] bg-[#0e0f07] border-t sm:border border-white/10 rounded-t-[24px] sm:rounded-[24px] shadow-[0_-8px_32px_rgba(0,0,0,0.85)] max-h-[92vh] flex flex-col overflow-hidden"
+          >
+            {/* Mobile Drag Handle */}
+            <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 sm:hidden shrink-0" />
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-[12px] bg-[#f59e0b]/15 border border-[#f59e0b]/30 flex items-center justify-center text-[#ffb95f] shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-heading font-semibold text-[#f8fafc] text-[18px] tracking-[0.2px] uppercase leading-[22px]">
+                    AJUSTAR METAS COM IA
+                  </h2>
+                  <p className="text-[11px] text-[#94a3b8] leading-tight mt-0.5">
+                    Otimização Preditiva para o Próximo Ciclo (4 Semanas)
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAiGoalsModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#94a3b8] hover:text-white flex items-center justify-center transition-colors shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Modal Body */}
+            <div className="overflow-y-auto p-5 space-y-4 scrollbar-none flex-1">
+              {/* Success Rate Callout */}
+              <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#d3e156]/10 border border-[#d3e156]/25">
+                <Brain className="w-5 h-5 text-[#d3e156] shrink-0" />
+                <p className="text-[12px] text-[#f8fafc] leading-snug">
+                  <strong className="text-[#d3e156] font-semibold">
+                    Taxa de Sucesso Estimada: {estimatedSuccessRate}%
+                  </strong>{' '}
+                  baseada na sua consistência de {consistencyStats.sessionsDone}/
+                  {consistencyStats.sessionsGoal} treinos semanais no ciclo atual.
+                </p>
+              </div>
+
+              {/* FOCO ESTRATÉGICO DO CICLO */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-[0.8px] block">
+                  FOCO ESTRATÉGICO DO CICLO
+                </span>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: 'hipertrofia' as const,
+                      recommended: true,
+                      title: 'Hipertrofia & Volume',
+                      desc: 'Volume adaptativo e foco em pontos fracos',
+                    },
+                    {
+                      id: 'forca' as const,
+                      recommended: false,
+                      title: 'Força Máxima (1RM)',
+                      desc: 'Sobrecarga de 85%+ em compostos',
+                    },
+                    {
+                      id: 'recomposicao' as const,
+                      recommended: false,
+                      title: 'Recomposição',
+                      desc: 'Déficit calórico com densidade alta',
+                    },
+                  ].map((opt) => {
+                    const selected = cycleFocus === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setCycleFocus(opt.id)}
+                        className={`text-left flex flex-col p-2.5 rounded-[12px] transition-all ${
+                          selected
+                            ? 'bg-[#f59e0b]/12 border-2 border-[#f59e0b] shadow-[0_0_16px_rgba(245,158,11,0.2)]'
+                            : 'bg-[#151413] border border-white/10 opacity-75 hover:opacity-100'
+                        }`}
+                      >
+                        {opt.recommended ? (
+                          <span className="inline-block px-1.5 py-0.5 rounded bg-[#f59e0b] text-[#0e0f07] font-bold text-[8px] uppercase tracking-wider mb-1 w-max">
+                            Recomendado
+                          </span>
+                        ) : (
+                          <span className="h-[18px] block" />
+                        )}
+                        <span className="font-heading font-semibold text-[13px] leading-tight text-[#f8fafc]">
+                          {opt.title}
+                        </span>
+                        <span className="text-[10px] text-[#94a3b8] mt-1 leading-snug">
+                          {opt.desc}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* AJUSTES RECOMENDADOS PELA IA */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-[0.8px]">
+                    AJUSTES RECOMENDADOS PELA IA
+                  </span>
+                  <span className="text-[10px] font-semibold text-[#d3e156]">
+                    4 Ações Preditivas
+                  </span>
+                </div>
+
+                {/* Action 1: Deficit Muscle Volume Stepper */}
+                <div className="p-3.5 rounded-[12px] bg-[#151413] border border-white/[0.06] space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[13px] font-bold text-[#f8fafc]">
+                          {weakestGroup.label} (+
+                          {Math.max(1, deficitTargetSets - weakestGroup.done)} séries)
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-[#f59e0b]/20 text-[#ffb95f] text-[9px] font-bold uppercase tracking-wider">
+                          Alvo Ótimo
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#94a3b8] mt-0.5 leading-snug">
+                        Correção de déficit detectado (de {weakestGroup.done} para{' '}
+                        {deficitTargetSets} séries semanais).
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 bg-black px-2 py-1 rounded-[8px] border border-white/10 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setDeficitTargetSets((v) => Math.max(4, v - 1))}
+                        className="w-6 h-6 rounded bg-[#151413] hover:bg-white/10 flex items-center justify-center text-white text-xs font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="font-heading font-semibold text-[13px] text-[#d3e156] min-w-[42px] text-center">
+                        {deficitTargetSets}/sem
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setDeficitTargetSets((v) => Math.min(24, v + 1))}
+                        className="w-6 h-6 rounded bg-[#151413] hover:bg-white/10 flex items-center justify-center text-white text-xs font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-black/70 text-[11px] text-[#94a3b8]">
+                    <ListChecks className="w-3.5 h-3.5 text-[#d3e156] shrink-0" />
+                    <span>
+                      Ação automática: Priorizar {weakestGroup.label} no próximo ciclo de treino
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action 2: Sobrecarga Progressiva Toggle */}
+                <div className="p-3.5 rounded-[12px] bg-[#151413] border border-white/[0.06] space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="block text-[13px] font-bold text-[#f8fafc]">
+                        Sobrecarga Progressiva (+7.5%)
+                      </span>
+                      <span className="block text-[11px] text-[#94a3b8]">
+                        Meta de tensão global acelerada para 1RM
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enableOverloadBoost}
+                      onClick={() => setEnableOverloadBoost(!enableOverloadBoost)}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors shrink-0 ${
+                        enableOverloadBoost ? 'bg-[#d3e156]' : 'bg-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          enableOverloadBoost ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="px-2.5 py-2 rounded-[8px] bg-black/70 flex items-center justify-between text-[11px]">
+                    <span className="text-[#94a3b8]">
+                      Projeção {topProjectedExercise.name}:
+                    </span>
+                    <span className="text-[#d3e156] font-bold font-mono">
+                      {topProjectedExercise.currKg.toFixed(1)}kg →{' '}
+                      {topProjectedExercise.targetKg.toFixed(1)}kg (+
+                      {topProjectedExercise.deltaKg.toFixed(1)}kg)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action 3: Densidade & Descanso Toggle */}
+                <div className="p-3.5 rounded-[12px] bg-[#151413] border border-white/[0.06] space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className="block text-[13px] font-bold text-[#f8fafc]">
+                        Densidade &amp; Descanso
+                      </span>
+                      <span className="block text-[11px] text-[#94a3b8]">
+                        Fixar 90s (Hipertrofia sob alta carga)
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={enableRestTimer90s}
+                      onClick={() => setEnableRestTimer90s(!enableRestTimer90s)}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors shrink-0 ${
+                        enableRestTimer90s ? 'bg-[#d3e156]' : 'bg-white/15'
+                      }`}
+                    >
+                      <span
+                        className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          enableRestTimer90s ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#64748b] leading-tight">
+                    Dispara cronômetro automático de 90s ao concluir cada série no app.
+                  </p>
+                </div>
+
+                {/* Action 4: Metas Antropométricas (30 dias) */}
+                <div className="p-3.5 rounded-[12px] bg-[#151413] border border-white/[0.06] space-y-2">
+                  <span className="block text-[13px] font-bold text-[#f8fafc]">
+                    Metas Antropométricas (30 dias)
+                  </span>
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 rounded-[8px] bg-black/70">
+                      <span className="block text-[9px] font-bold uppercase text-[#64748b]">
+                        Peso Alvo
+                      </span>
+                      <div className="font-heading font-bold text-[15px] text-[#f8fafc] mt-0.5">
+                        {anthroTargets.targetWeight} kg
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#d3e156]">
+                        {anthroTargets.weightDeltaText}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-[8px] bg-black/70">
+                      <span className="block text-[9px] font-bold uppercase text-[#64748b]">
+                        Gordura (BF)
+                      </span>
+                      <div className="font-heading font-bold text-[15px] text-[#f8fafc] mt-0.5">
+                        {anthroTargets.targetBf}%
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#d3e156]">
+                        {anthroTargets.bfDeltaText}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-[8px] bg-black/70">
+                      <span className="block text-[9px] font-bold uppercase text-[#64748b]">
+                        Cintura
+                      </span>
+                      <div className="font-heading font-bold text-[15px] text-[#f8fafc] mt-0.5">
+                        {anthroTargets.targetWaist} cm
+                      </div>
+                      <span className="text-[10px] font-semibold text-[#ffb95f]">
+                        {anthroTargets.waistDeltaText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Sticky Footer Actions */}
+            <div className="p-4 border-t border-white/10 bg-[#151413] flex items-center gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAiGoalsModalOpen(false)}
+                className="px-4 py-3 rounded-[12px] bg-white/5 hover:bg-white/10 border border-white/10 text-[#94a3b8] hover:text-white text-[13px] font-semibold transition-colors shrink-0"
+              >
+                Descartar
+              </button>
+
+              <button
+                type="button"
+                disabled={savingGoals}
+                onClick={handleApplyAiGoals}
+                className="flex-1 py-3 px-4 rounded-[12px] bg-[#f59e0b] hover:bg-[#d97706] disabled:opacity-60 text-[#0e0f07] font-heading font-bold text-[15px] uppercase tracking-[0.4px] flex items-center justify-center gap-2 shadow-[0_8px_24px_-4px_rgba(245,158,11,0.35)] transition-transform active:scale-[0.98]"
+              >
+                {savingGoals ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 stroke-[3]" />
+                )}
+                <span>{savingGoals ? 'APLICANDO...' : 'APLICAR NOVAS METAS'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="print:hidden">
         <BottomNavigation />
