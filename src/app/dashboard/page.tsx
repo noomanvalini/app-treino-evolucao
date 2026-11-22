@@ -10,7 +10,7 @@ import { usePalette } from '@/context/PaletteContext';
 import BottomNavigation from '@/components/BottomNavigation';
 import WeeklyInsightsCard from '@/components/WeeklyInsightsCard';
 import WeeklyVolumeBars from '@/components/WeeklyVolumeBars';
-import ClipzBodyBadge from '@/components/ClipzBodyBadge';
+import AppHeader from '@/components/AppHeader';
 import DashboardStrengthScoreCard, { MuscleReadinessStat } from '@/components/DashboardStrengthScoreCard';
 import { MUSCLE_GROUPS, PREDEFINED_EXERCISES, getExerciseGuide } from '@/data/exercises';
 import { fetchAndEnsureSavedWorkouts } from '@/data/defaultWorkouts';
@@ -781,16 +781,8 @@ export default function DashboardPage() {
         isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
       } text-[#e3e3d6] pb-28 transition-colors`}
     >
-      {/* Top App Bar (Untouched as requested) */}
-      <header
-        className={`sticky top-0 z-30 -mx-4 -mt-6 ${
-          isContrast ? 'bg-[#0e0f07]/90' : 'bg-obsidian/90'
-        } backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between`}
-      >
-        <div className="flex items-center">
-          <ClipzBodyBadge className="h-7 w-auto" priority />
-        </div>
-      </header>
+      {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
+      <AppHeader />
 
       {/* Main Content Container */}
       <main className="py-4 max-w-md mx-auto space-y-4">

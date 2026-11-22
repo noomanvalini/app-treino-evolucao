@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Dumbbell, Ruler, Sparkles, User } from 'lucide-react';
+import { Home, Dumbbell, Ruler, Sparkles, History } from 'lucide-react';
 
 export default function BottomNavigation() {
   const pathname = usePathname();
@@ -13,7 +13,7 @@ export default function BottomNavigation() {
     { name: 'Força', href: '/strength', icon: Dumbbell },
     { name: 'Medidas', href: '/measures', icon: Ruler },
     { name: 'Análises', href: '/insights', icon: Sparkles },
-    { name: 'Perfil', href: '/profile', icon: User },
+    { name: 'Histórico', href: '/history', icon: History },
   ];
 
   return (

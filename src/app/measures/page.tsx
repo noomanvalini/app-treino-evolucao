@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import BottomNavigation from '@/components/BottomNavigation';
-import ClipzBodyBadge from '@/components/ClipzBodyBadge';
+import AppHeader from '@/components/AppHeader';
 import {
   Ruler,
   Plus,
@@ -1233,12 +1233,8 @@ export default function MeasuresPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
-      {/* Top App Header (Fixed at top without redundant profile avatar) */}
-      <header className="sticky top-0 z-30 -mx-4 -mt-6 bg-[#0e0f07]/90 backdrop-blur-md border-b border-border px-4 py-4 flex items-center justify-between">
-        <div className="flex items-center">
-          <ClipzBodyBadge className="h-7 w-auto" priority />
-        </div>
-      </header>
+      {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
+      <AppHeader />
 
       <main className="py-4 max-w-md mx-auto space-y-[16px]">
         {/* 1. TOP HEADER & FAST ACTION (Figma Node 30:1501) */}
