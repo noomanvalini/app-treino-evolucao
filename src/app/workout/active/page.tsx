@@ -1202,7 +1202,7 @@ function ActiveWorkoutComponent() {
   return (
     <div
       className={`min-h-screen ${
-        isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+        isContrast ? 'bg-[#100F0F]' : 'bg-[#100F0F]'
       } text-[#f8fafc] pb-48 transition-colors`}
     >
       {/* TOP WORKOUT HUD (STICKY CONTEXT - Figma Node 30:1395, without minimize icon) */}
@@ -2665,7 +2665,7 @@ export default function ActiveWorkoutPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0D1117] flex items-center justify-center text-xs text-[#94a3b8]">
+        <div className="min-h-screen bg-[#100F0F] flex items-center justify-center text-xs text-[#94a3b8]">
           Carregando treino...
         </div>
       }

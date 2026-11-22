@@ -606,7 +606,7 @@ export default function InsightsPage() {
 
   if (authLoading || (loadingData && !user)) {
     return (
-      <div className="min-h-screen bg-[#0e0f07] flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-[#100F0F] flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-[#f59e0b]" />
         <span className="mt-2 text-xs text-[#94a3b8]">Carregando análises do Coach IA...</span>
       </div>
@@ -614,7 +614,7 @@ export default function InsightsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28 print:bg-white print:text-black print:pb-4">
+    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28 print:bg-white print:text-black print:pb-4">
       {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
       <AppHeader />
 
@@ -726,7 +726,7 @@ export default function InsightsPage() {
               {/* 3 Diagnostic Insight Rows */}
               <div className="relative z-10 space-y-[8px]">
                 {currentInsight.destaqueSemanal && (
-                  <div className="bg-[#0e0f07]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
+                  <div className="bg-[#100F0F]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
                     <CheckCircle2 className="w-[16px] h-[16px] text-[#d3e156] shrink-0 mt-[2px]" />
                     <p className="text-[12px] leading-[17px] text-[#94a3b8]">
                       <strong className="text-[#f8fafc] font-semibold">Destaque: </strong>
@@ -736,7 +736,7 @@ export default function InsightsPage() {
                 )}
 
                 {currentInsight.pontosAtencao && (
-                  <div className="bg-[#0e0f07]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
+                  <div className="bg-[#100F0F]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
                     <AlertTriangle className="w-[16px] h-[16px] text-[#ffb95f] shrink-0 mt-[2px]" />
                     <p className="text-[12px] leading-[17px] text-[#94a3b8]">
                       <strong className="text-[#f8fafc] font-semibold">Atenção: </strong>
@@ -746,7 +746,7 @@ export default function InsightsPage() {
                 )}
 
                 {currentInsight.dicaTecnica && (
-                  <div className="bg-[#0e0f07]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
+                  <div className="bg-[#100F0F]/70 rounded-[10px] p-[10px] flex items-start gap-[10px]">
                     <Timer className="w-[16px] h-[16px] text-[#d3e156] shrink-0 mt-[2px]" />
                     <p className="text-[12px] leading-[17px] text-[#94a3b8]">
                       <strong className="text-[#f8fafc] font-semibold">Otimização: </strong>
@@ -1217,7 +1217,7 @@ export default function InsightsPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-[448px] bg-[#0e0f07] border-t sm:border border-white/10 rounded-t-[24px] sm:rounded-[24px] shadow-[0_-8px_32px_rgba(0,0,0,0.85)] max-h-[92vh] flex flex-col overflow-hidden"
+            className="relative w-full max-w-[448px] bg-[#100F0F] border-t sm:border border-white/10 rounded-t-[24px] sm:rounded-[24px] shadow-[0_-8px_32px_rgba(0,0,0,0.85)] max-h-[92vh] flex flex-col overflow-hidden"
           >
             {/* Mobile Drag Handle */}
             <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3 sm:hidden shrink-0" />

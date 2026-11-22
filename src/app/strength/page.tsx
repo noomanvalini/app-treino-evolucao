@@ -1655,7 +1655,7 @@ function StrengthContent() {
       : null;
 
   return (
-    <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
+    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28">
       {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
       <AppHeader />
 
@@ -3104,7 +3104,7 @@ export default function Strength() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0e0f07] flex flex-col items-center justify-center">
+        <div className="min-h-screen bg-[#100F0F] flex flex-col items-center justify-center">
           <Loader2 className="h-10 w-10 animate-spin text-[#f59e0b]" />
           <span className="mt-2 text-xs text-[#94a3b8]">Carregando evolução de força...</span>
         </div>

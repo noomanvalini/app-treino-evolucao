@@ -1232,7 +1232,7 @@ export default function MeasuresPage() {
       : 'Acima do Ideal';
 
   return (
-    <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
+    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28">
       {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
       <AppHeader />
 

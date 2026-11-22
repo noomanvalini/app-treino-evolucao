@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
+import WorkoutCalendarAndStreak, { toDayKey } from '@/components/WorkoutCalendarAndStreak';
 import { PREDEFINED_EXERCISES } from '@/data/exercises';
 import {
   Search,
@@ -15,16 +16,9 @@ import {
   Clock,
   Trophy,
   Zap,
-  Copy,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
   Plus,
   Loader2,
-  TrendingUp,
   Dumbbell,
   Star,
   History as HistoryIcon,
@@ -65,22 +59,6 @@ interface WorkoutSession {
   exercises: SessionExercise[];
 }
 
-const CALENDAR_WEEK_LABELS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-const SEQ_WEEK_LABELS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
-const MONTH_NAMES = [
-  'Janeiro',
-  'Fevereiro',
-  'Março',
-  'Abril',
-  'Maio',
-  'Junho',
-  'Julho',
-  'Agosto',
-  'Setembro',
-  'Outubro',
-  'Novembro',
-  'Dezembro',
-];
 const MONTH_SHORT = [
   'Jan',
   'Fev',
@@ -95,13 +73,6 @@ const MONTH_SHORT = [
   'Nov',
   'Dez',
 ];
-
-function toDayKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
 
 function parseDate(raw: any): Date {
   if (!raw) return new Date(0);
@@ -619,101 +590,12 @@ export default function HistoryPage() {
     return map;
   }, [sessions]);
 
-  const calendarCells = useMemo(() => {
-    const year = calMonth.getFullYear();
-    const month = calMonth.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    const startOffset = firstDay.getDay(); // Sunday-first (DOM=0 .. SÁB=6)
-    const todayKey = toDayKey(new Date());
-
-    const cells: Array<{
-      outside?: boolean;
-      day: number;
-      key: string;
-      hasWorkout: boolean;
-      hasPr: boolean;
-      isToday: boolean;
-    }> = [];
-
-    // Trailing days from previous month
-    for (let i = startOffset - 1; i >= 0; i--) {
-      const d = new Date(year, month - 1, prevMonthLastDay - i);
-      const key = toDayKey(d);
-      cells.push({
-        outside: true,
-        day: prevMonthLastDay - i,
-        key,
-        hasWorkout: false,
-        hasPr: false,
-        isToday: key === todayKey,
-      });
-    }
-
-    // Days in current month
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, month, day);
-      const key = toDayKey(d);
-      const daySess = sessionsByDayKey[key] || [];
-      cells.push({
-        outside: false,
-        day,
-        key,
-        hasWorkout: daySess.length > 0,
-        hasPr: daySess.some((s) => s.prCount > 0),
-        isToday: key === todayKey,
-      });
-    }
-
-    // Leading days from next month to fill last week row
-    const remainder = cells.length % 7;
-    if (remainder > 0) {
-      const needed = 7 - remainder;
-      for (let i = 1; i <= needed; i++) {
-        const d = new Date(year, month + 1, i);
-        const key = toDayKey(d);
-        cells.push({
-          outside: true,
-          day: i,
-          key,
-          hasWorkout: false,
-          hasPr: false,
-          isToday: key === todayKey,
-        });
-      }
-    }
-
-    return cells;
-  }, [calMonth, sessionsByDayKey]);
-
-  // Active sequence for current week (SEG..DOM)
-  const weeklySequence = useMemo(() => {
-    const today = new Date();
-    const dayOfWeek = today.getDay();
-    const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diffToMon);
-
-    return SEQ_WEEK_LABELS.map((label, idx) => {
-      const d = new Date(monday);
-      d.setDate(monday.getDate() + idx);
-      const key = toDayKey(d);
-      return {
-        label,
-        key,
-        trained: (sessionsByDayKey[key] || []).length > 0,
-      };
-    });
-  }, [sessionsByDayKey]);
-
-  const activeWeekDaysCount = weeklySequence.filter((w) => w.trained).length;
+  const trainedDayKeys = useMemo(() => Object.keys(sessionsByDayKey), [sessionsByDayKey]);
 
   const selectedDaySessions = sessionsByDayKey[selectedCalDayKey] || [];
 
   const renderSessionCard = (session: WorkoutSession, isNewest = false) => {
-    const isExpanded = expandedSessionId === session.id;
-    const visibleExercises = isExpanded ? session.exercises : session.exercises.slice(0, 4);
+    const visibleExercises = session.exercises.slice(0, 4);
 
     return (
       <div className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] border border-white/[0.06] rounded-[14px] p-[14px] space-y-[12px]">
@@ -741,15 +623,10 @@ export default function HistoryPage() {
             </h3>
           </div>
 
-          {session.prCount > 0 ? (
-            <span className="bg-[#ffb95f] text-[#0e0f07] px-[9px] py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[0.4px] flex items-center gap-1 shrink-0 shadow-sm">
+          {session.prCount > 0 && (
+            <span className="bg-[#ffb95f] text-[#100F0F] px-[9px] py-[3px] rounded-full text-[10px] font-bold uppercase tracking-[0.4px] flex items-center gap-1 shrink-0 shadow-sm">
               <Trophy className="w-[11px] h-[11px]" />
-              {session.prCount} {session.prCount === 1 ? 'Novo PR' : 'PRs'}
-            </span>
-          ) : (
-            <span className="bg-black text-[#ffb95f] border border-[#ffb95f]/25 px-[8px] py-[3px] rounded-full text-[10px] font-bold uppercase flex items-center gap-1 shrink-0">
-              <CheckCircle2 className="w-[11px] h-[11px]" />
-              100%
+              RECORDE
             </span>
           )}
         </div>
@@ -815,28 +692,15 @@ export default function HistoryPage() {
           )}
         </div>
 
-        {/* Quick Actions Row */}
-        <div className="flex items-center justify-end gap-[8px] pt-[2px]">
+        {/* Quick Actions Row (Detalhes -> Workout Details Page) */}
+        <div className="flex items-center justify-end pt-[2px]">
           <button
             type="button"
-            onClick={() => router.push('/strength')}
-            className="h-[34px] px-[12px] rounded-[8px] bg-black hover:bg-[#1c1c13] border border-white/[0.06] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
+            onClick={() => router.push(`/history/${session.dateKey}`)}
+            className="h-[34px] px-[14px] rounded-[8px] bg-black hover:bg-[#1c1c13] border border-white/[0.06] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1.5 transition-colors active:scale-95"
           >
-            <span>Comparar</span>
-            <TrendingUp className="w-[13px] h-[13px] text-[#06b6d4]" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
-            className="h-[34px] px-[12px] rounded-[8px] bg-black hover:bg-[#1c1c13] border border-white/[0.06] text-[#f8fafc] text-[12px] font-semibold flex items-center gap-1 transition-colors"
-          >
-            <span>{isExpanded ? 'Recolher' : 'Detalhes'}</span>
-            {isExpanded ? (
-              <ChevronUp className="w-[14px] h-[14px] text-[#f8fafc]" />
-            ) : (
-              <ArrowRight className="w-[14px] h-[14px] text-[#f8fafc]" />
-            )}
+            <span>Detalhes</span>
+            <ArrowRight className="w-[14px] h-[14px] text-[#ffb95f]" />
           </button>
         </div>
       </div>
@@ -845,7 +709,7 @@ export default function HistoryPage() {
 
   if (authLoading || (loadingData && !user)) {
     return (
-      <div className="min-h-screen bg-[#0e0f07] flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-[#100F0F] flex flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-[#f59e0b]" />
         <span className="mt-2 text-xs text-[#94a3b8]">Carregando histórico de treinos...</span>
       </div>
@@ -853,7 +717,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0f07] text-[#f8fafc] pb-28">
+    <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28">
       {/* Global 3-Element Header (Logo + Streak + Profile Avatar) */}
       <AppHeader />
 
@@ -986,7 +850,7 @@ export default function HistoryPage() {
                       {sp === 'Todos' && (
                         <span
                           className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold leading-none ${
-                            isActive ? 'bg-[#0e0f07] text-[#ffb95f]' : 'bg-white/10 text-white'
+                            isActive ? 'bg-[#100F0F] text-[#ffb95f]' : 'bg-white/10 text-white'
                           }`}
                         >
                           {sessions.length}
@@ -1047,7 +911,7 @@ export default function HistoryPage() {
                         return (
                           <article key={session.id} className="relative">
                             {/* Timeline Node Dot */}
-                            <div className="absolute -left-[22px] top-[16px] w-[16px] h-[16px] rounded-full bg-[#0e0f07] flex items-center justify-center">
+                            <div className="absolute -left-[22px] top-[16px] w-[16px] h-[16px] rounded-full bg-[#100F0F] flex items-center justify-center">
                               <div
                                 className={`rounded-full ${
                                   isNewest
@@ -1090,123 +954,17 @@ export default function HistoryPage() {
           </div>
         ) : (
           /* =================================================================
-              VIEW 2: CALENDÁRIO INTERATIVO
+              VIEW 2: CALENDÁRIO INTERATIVO (Shared Component)
              ================================================================= */
           <div className="space-y-[14px] animate-in fade-in duration-200">
-            <section className="bg-[#151413] bg-[linear-gradient(0deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02))] border border-white/[0.06] rounded-[14px] p-[14px] space-y-[12px]">
-              {/* Month Switcher */}
-              <div className="flex items-center justify-between">
-                <h2 className="font-heading font-semibold text-[#f8fafc] text-[18px] uppercase">
-                  {MONTH_NAMES[calMonth.getMonth()]} {calMonth.getFullYear()}
-                </h2>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))
-                    }
-                    className="w-8 h-8 rounded-[8px] bg-black hover:bg-white/10 flex items-center justify-center text-[#94a3b8] hover:text-white"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))
-                    }
-                    className="w-8 h-8 rounded-[8px] bg-black hover:bg-white/10 flex items-center justify-center text-[#94a3b8] hover:text-white"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Week Headers (DOM..SÁB matching Figma) */}
-              <div className="grid grid-cols-7 gap-1.5 text-center">
-                {CALENDAR_WEEK_LABELS.map((w) => (
-                  <span key={w} className="text-[10px] font-bold text-[#64748b] py-1">
-                    {w}
-                  </span>
-                ))}
-              </div>
-
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-1.5 text-center">
-                {calendarCells.map((cell) => (
-                  <button
-                    key={cell.key}
-                    type="button"
-                    disabled={cell.outside}
-                    onClick={() => !cell.outside && setSelectedCalDayKey(cell.key)}
-                    className={`h-[42px] rounded-[10px] flex flex-col items-center justify-center relative transition-all ${
-                      cell.outside
-                        ? 'text-[#334155] cursor-default'
-                        : cell.isToday
-                        ? 'bg-[#f59e0b] text-[#0e0f07] font-bold shadow-[0_0_12px_rgba(245,158,11,0.45)]'
-                        : selectedCalDayKey === cell.key
-                        ? 'bg-white/15 border border-[#f59e0b] text-white font-bold'
-                        : cell.hasWorkout
-                        ? 'text-[#f8fafc] font-bold hover:bg-white/5'
-                        : 'text-[#94a3b8] hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="text-[13px] leading-none">
-                      {String(cell.day).padStart(2, '0')}
-                    </span>
-                    {cell.isToday ? (
-                      <span className="text-[8px] font-extrabold uppercase tracking-tight leading-none mt-0.5">
-                        HOJE
-                      </span>
-                    ) : (
-                      cell.hasWorkout &&
-                      !cell.outside && (
-                        <span className="w-[5px] h-[5px] rounded-full bg-[#d3e156] mt-1" />
-                      )
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Legend */}
-              <div className="pt-2 flex items-center gap-1.5 text-[10px] text-[#94a3b8]">
-                <span className="w-[6px] h-[6px] rounded-full bg-[#d3e156]" />
-                <span>Treino Registrado</span>
-              </div>
-
-              {/* Sequência Ativa Strip (matching Figma) */}
-              <div className="pt-3 border-t border-white/10 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.6px] text-[#94a3b8]">
-                    SEQUÊNCIA ATIVA
-                  </span>
-                  <span className="text-[11px] font-bold text-[#f59e0b]">
-                    {activeWeekDaysCount} {activeWeekDaysCount === 1 ? 'dia' : 'dias'}/semana
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1.5 text-center">
-                  {weeklySequence.map((day) => (
-                    <div key={day.key} className="flex flex-col items-center gap-1.5">
-                      <span className="text-[9px] font-bold text-[#64748b]">{day.label}</span>
-                      <div
-                        className={`w-[30px] h-[30px] rounded-full flex items-center justify-center ${
-                          day.trained
-                            ? 'bg-[#f59e0b] text-[#0e0f07]'
-                            : 'bg-black/70 text-[#64748b]'
-                        }`}
-                      >
-                        {day.trained ? (
-                          <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-                        ) : (
-                          <span className="text-[11px] font-bold">-</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
+            <WorkoutCalendarAndStreak
+              calMonth={calMonth}
+              onChangeMonth={setCalMonth}
+              trainedDayKeys={trainedDayKeys}
+              selectedDayKey={selectedCalDayKey}
+              onSelectDay={(key) => setSelectedCalDayKey(key)}
+              showSequence={true}
+            />
 
             {/* Selected Day Sessions */}
             <section className="space-y-[10px]">

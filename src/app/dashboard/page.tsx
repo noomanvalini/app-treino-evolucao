@@ -767,7 +767,7 @@ export default function DashboardPage() {
     return (
       <div
         className={`min-h-screen ${
-          isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+          isContrast ? 'bg-[#100F0F]' : 'bg-[#100F0F]'
         } flex items-center justify-center`}
       >
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#d3e156]" />
@@ -778,7 +778,7 @@ export default function DashboardPage() {
   return (
     <div
       className={`min-h-screen ${
-        isContrast ? 'bg-[#0e0f07]' : 'bg-[#0D1117]'
+        isContrast ? 'bg-[#100F0F]' : 'bg-[#100F0F]'
       } text-[#e3e3d6] pb-28 transition-colors`}
     >
       {/* Global 3-Element Top App Bar (Logo + Streak + Profile Avatar) */}
@@ -1038,7 +1038,7 @@ export default function DashboardPage() {
           <div className="pt-[16px] w-full">
             <div
               className={`${
-                isContrast ? 'bg-black' : 'bg-[#0e0f07]'
+                isContrast ? 'bg-black' : 'bg-[#100F0F]'
               } rounded-[8px] p-[12px] w-full transition-colors`}
             >
               <div className="flex items-start justify-between gap-2 w-full">

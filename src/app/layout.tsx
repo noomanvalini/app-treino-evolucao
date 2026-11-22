@@ -48,7 +48,7 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${oswald.variable} ${inter.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0e0f07] text-foreground font-sans pb-20 select-none">
+      <body className="min-h-full flex flex-col bg-[#100F0F] text-foreground font-sans pb-20 select-none">
         <AuthProvider>
           <PaletteProvider>
             <div className="flex-1 w-full max-w-md mx-auto px-4 py-6">
