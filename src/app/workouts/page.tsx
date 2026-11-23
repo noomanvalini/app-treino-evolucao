@@ -8,11 +8,8 @@ import { useAuth, UserProfile } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import BottomNavigation from '@/components/BottomNavigation';
 import workoutPlansData from '@/data/workoutPlans.json';
-import { PREDEFINED_EXERCISES } from '@/data/exercises';
-import {
-  generatePersonalizedPlan,
-  GeneratedWorkoutSplit,
-} from '@/data/workoutPlanGenerator';
+import { PREDEFINED_EXERCISES, getExerciseGuide } from '@/data/exercises';
+import { generatePersonalizedPlan } from '@/data/workoutPlanGenerator';
 import {
   Search,
   Dumbbell,
@@ -30,6 +27,7 @@ import {
   Check,
   Loader2,
   User as UserIcon,
+  Info,
 } from 'lucide-react';
 
 type GoalFilter = 'todos' | NonNullable<UserProfile['objetivo']>;
@@ -168,6 +166,31 @@ export default function WorkoutsPage() {
   const [selectedSavedWorkout, setSelectedSavedWorkout] = useState<SavedWorkoutDoc | null>(null);
   const [savingToLibrary, setSavingToLibrary] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
+  const [exerciseGuideModal, setExerciseGuideModal] = useState<{
+    nomeExercicio: string;
+    muscleGroup: string;
+    gifUrl?: string;
+    thumbnailUrl?: string;
+    description?: string;
+  } | null>(null);
+
+  const handleOpenExerciseGuide = (exercise: {
+    id?: string;
+    nomeExercicio: string;
+    muscleGroup?: string;
+  }) => {
+    const guide = getExerciseGuide({
+      id: exercise.id,
+      name: exercise.nomeExercicio,
+    });
+    setExerciseGuideModal({
+      nomeExercicio: exercise.nomeExercicio,
+      muscleGroup: exercise.muscleGroup || guide.muscleGroup || '',
+      gifUrl: guide.gifUrl,
+      thumbnailUrl: guide.thumbnailUrl,
+      description: guide.description,
+    });
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -775,7 +798,7 @@ export default function WorkoutsPage() {
          ===================================================================== */}
       {selectedCatalogItem && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
           onClick={() => setSelectedCatalogItem(null)}
         >
           <div
@@ -847,15 +870,31 @@ export default function WorkoutsPage() {
                       {activeSplit.exercicios.map((ex, i) => (
                         <div
                           key={`${ex.nome}_${i}`}
-                          className="bg-[#151413] border border-white/[0.06] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2"
+                          className="bg-[#151413] border border-white/[0.06] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2.5"
                         >
-                          <div className="min-w-0">
-                            <span className="block text-[13px] font-semibold text-[#f8fafc] truncate">
-                              {ex.nome}
-                            </span>
-                            <span className="block text-[10px] text-[#64748b]">
-                              {ex.muscleGroup}
-                            </span>
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleOpenExerciseGuide({
+                                  nomeExercicio: ex.nome,
+                                  muscleGroup: ex.muscleGroup,
+                                })
+                              }
+                              aria-label={`Ver execução de ${ex.nome}`}
+                              title="Ver execução (GIF)"
+                              className="w-[34px] h-[34px] rounded-[9px] bg-[#ffb95f]/15 hover:bg-[#ffb95f]/25 border border-[#ffb95f]/30 text-[#ffb95f] flex items-center justify-center shrink-0 transition-transform active:scale-95"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            </button>
+                            <div className="min-w-0">
+                              <span className="block text-[13px] font-semibold text-[#f8fafc] truncate">
+                                {ex.nome}
+                              </span>
+                              <span className="block text-[10px] text-[#64748b]">
+                                {ex.muscleGroup}
+                              </span>
+                            </div>
                           </div>
                           <span className="font-mono font-bold text-[12px] text-[#d3e156] shrink-0">
                             {ex.series} × {activeGoalRule.reps}
@@ -866,7 +905,7 @@ export default function WorkoutsPage() {
                   </div>
 
                   {/* Sticky Footer */}
-                  <div className="p-4 border-t border-white/10 bg-[#151413] flex items-center gap-2.5 shrink-0">
+                  <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-white/10 bg-[#151413] flex items-center gap-2.5 shrink-0">
                     <button
                       type="button"
                       disabled={savingToLibrary}
@@ -902,7 +941,7 @@ export default function WorkoutsPage() {
          ===================================================================== */}
       {selectedSavedWorkout && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200"
           onClick={() => setSelectedSavedWorkout(null)}
         >
           <div
@@ -933,13 +972,30 @@ export default function WorkoutsPage() {
               {selectedSavedWorkout.exercises.map((ex, idx) => (
                 <div
                   key={`${ex.exerciseId}_${idx}`}
-                  className="bg-[#151413] border border-white/[0.06] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2"
+                  className="bg-[#151413] border border-white/[0.06] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2.5"
                 >
-                  <div className="min-w-0">
-                    <span className="block text-[13px] font-semibold text-[#f8fafc] truncate">
-                      {ex.nomeExercicio}
-                    </span>
-                    <span className="block text-[10px] text-[#64748b]">{ex.muscleGroup}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleOpenExerciseGuide({
+                          id: ex.exerciseId,
+                          nomeExercicio: ex.nomeExercicio,
+                          muscleGroup: ex.muscleGroup,
+                        })
+                      }
+                      aria-label={`Ver execução de ${ex.nomeExercicio}`}
+                      title="Ver execução (GIF)"
+                      className="w-[34px] h-[34px] rounded-[9px] bg-[#ffb95f]/15 hover:bg-[#ffb95f]/25 border border-[#ffb95f]/30 text-[#ffb95f] flex items-center justify-center shrink-0 transition-transform active:scale-95"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                    </button>
+                    <div className="min-w-0">
+                      <span className="block text-[13px] font-semibold text-[#f8fafc] truncate">
+                        {ex.nomeExercicio}
+                      </span>
+                      <span className="block text-[10px] text-[#64748b]">{ex.muscleGroup}</span>
+                    </div>
                   </div>
                   <span className="font-mono font-bold text-[12px] text-[#d3e156] shrink-0">
                     {ex.sets?.length || 3} séries
@@ -948,7 +1004,7 @@ export default function WorkoutsPage() {
               ))}
             </div>
 
-            <div className="p-4 border-t border-white/10 bg-[#151413] flex items-center gap-2.5 shrink-0">
+            <div className="px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-white/10 bg-[#151413] flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={() => handleDeleteSavedWorkout(selectedSavedWorkout.id)}
@@ -977,6 +1033,105 @@ export default function WorkoutsPage() {
                 </span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          MODAL: DEMONSTRAÇÃO DO EXERCÍCIO (GIF + COMO EXECUTAR)
+         ===================================================================== */}
+      {exerciseGuideModal && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          onClick={() => setExerciseGuideModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#151413] border border-white/10 rounded-[18px] p-5 shadow-2xl w-full max-w-sm flex flex-col max-h-[88vh] space-y-4"
+          >
+            <div className="flex items-start justify-between border-b border-white/[0.08] pb-3">
+              <div className="space-y-0.5 pr-2 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <div className="p-1 rounded-[6px] bg-[#ffb95f]/15 text-[#ffb95f]">
+                    <Play className="h-3.5 w-3.5 fill-current" />
+                  </div>
+                  <h3 className="font-bold text-[#f8fafc] text-sm truncate">
+                    {exerciseGuideModal.nomeExercicio}
+                  </h3>
+                </div>
+                {exerciseGuideModal.muscleGroup && (
+                  <span className="text-[10px] font-bold text-[#ffb95f] uppercase tracking-wider block">
+                    {exerciseGuideModal.muscleGroup}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setExerciseGuideModal(null)}
+                className="text-[#94a3b8] hover:text-[#f8fafc] p-1 rounded-[8px] bg-black"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="relative w-full rounded-[12px] overflow-hidden bg-black flex items-center justify-center min-h-[200px] max-h-72">
+              {exerciseGuideModal.gifUrl ? (
+                <img
+                  src={exerciseGuideModal.gifUrl}
+                  alt={`Execução de ${exerciseGuideModal.nomeExercicio}`}
+                  className="w-full h-full object-contain max-h-72"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (
+                      exerciseGuideModal.thumbnailUrl &&
+                      target.src !== exerciseGuideModal.thumbnailUrl
+                    ) {
+                      target.src = exerciseGuideModal.thumbnailUrl;
+                    }
+                  }}
+                />
+              ) : exerciseGuideModal.thumbnailUrl ? (
+                <div className="relative w-full h-full flex flex-col items-center justify-center p-4">
+                  <img
+                    src={exerciseGuideModal.thumbnailUrl}
+                    alt={exerciseGuideModal.nomeExercicio}
+                    className="w-full h-44 object-contain"
+                  />
+                  <span className="mt-2 text-[10px] font-bold text-[#94a3b8] bg-[#151413] px-2.5 py-1 rounded-full">
+                    Prévia Estática (GIF em breve)
+                  </span>
+                </div>
+              ) : (
+                <div className="p-8 text-center space-y-2">
+                  <Dumbbell className="h-8 w-8 text-[#64748b] mx-auto" />
+                  <p className="text-xs text-[#94a3b8]">
+                    GIF de demonstração em breve para este exercício.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {exerciseGuideModal.description && (
+              <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-none">
+                <div className="flex items-center gap-1.5 text-[#f8fafc]">
+                  <Info className="h-3.5 w-3.5 text-[#ffb95f] shrink-0" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">
+                    Como Executar:
+                  </span>
+                </div>
+                <div className="bg-black p-3 rounded-[12px] text-xs text-[#94a3b8] leading-relaxed">
+                  {exerciseGuideModal.description}
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setExerciseGuideModal(null)}
+              className="w-full py-2.5 rounded-full bg-[#ffb95f] hover:bg-[#f59e0b] text-[#151413] font-bold text-xs transition-all active:scale-95"
+            >
+              Entendido
+            </button>
           </div>
         </div>
       )}
