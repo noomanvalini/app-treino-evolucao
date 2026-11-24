@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth, UserProfile } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
@@ -19,6 +19,9 @@ import {
   Dumbbell,
   ChevronRight,
   Scale,
+  Camera,
+  Trash2,
+  RefreshCw,
 } from 'lucide-react';
 
 const OBJETIVO_LABELS: Record<NonNullable<UserProfile['objetivo']>, string> = {
@@ -54,6 +57,94 @@ export default function Profile() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoFeedback, setPhotoFeedback] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const compressAvatarFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Falha ao ler imagem.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Formato de imagem inválido.'));
+        img.onload = () => {
+          const size = 256;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas indisponível.'));
+            return;
+          }
+          // Center-crop square
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          resolve(canvas.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = String(reader.result);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    setErrorMsg('');
+    try {
+      const dataUrl = await compressAvatarFile(file);
+      await updateProfile({ photoURL: dataUrl });
+      setPhotoFeedback('Foto atualizada!');
+      setTimeout(() => setPhotoFeedback(null), 2500);
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+      setErrorMsg('Não foi possível salvar a foto. Tente outra imagem.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRestoreGooglePhoto = async () => {
+    if (!user?.photoURL) return;
+    setUploadingPhoto(true);
+    setErrorMsg('');
+    try {
+      await updateProfile({ photoURL: user.photoURL });
+      setPhotoFeedback('Foto do Google restaurada!');
+      setTimeout(() => setPhotoFeedback(null), 2500);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Erro ao restaurar foto do Google.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setUploadingPhoto(true);
+    setErrorMsg('');
+    try {
+      await updateProfile({ photoURL: '' });
+      setPhotoFeedback('Foto removida.');
+      setTimeout(() => setPhotoFeedback(null), 2500);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Erro ao remover foto.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   useEffect(() => {
     if (!authLoading) {
@@ -142,6 +233,11 @@ export default function Profile() {
     ? FOCO_LABELS[profile.focoMuscularGrupo]
     : 'Corpo Inteiro';
 
+  const avatarSrc =
+    profile.photoURL !== undefined ? profile.photoURL || null : user?.photoURL || null;
+  const hasGooglePhoto = Boolean(user?.photoURL);
+  const canRestoreGoogle = hasGooglePhoto && avatarSrc !== user?.photoURL;
+
   return (
     <div className="min-h-screen bg-[#100F0F] text-[#f8fafc] pb-28 -mx-4 px-4">
       <AppHeader />
@@ -159,18 +255,43 @@ export default function Profile() {
 
         {/* User Identity Hero Card */}
         <section className="bg-[#151413] border border-white/[0.08] rounded-[16px] p-5 space-y-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoFileChange}
+            className="hidden"
+          />
+
           <div className="flex items-center gap-4">
-            {user?.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={profile.nome}
-                className="w-14 h-14 rounded-full object-cover border-2 border-[#f59e0b]/40 shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#f59e0b] to-[#ffb95f] text-[#100F0F] font-heading font-bold text-[20px] flex items-center justify-center shrink-0 shadow-md">
-                {initials}
-              </div>
-            )}
+            <button
+              type="button"
+              disabled={uploadingPhoto}
+              onClick={() => fileInputRef.current?.click()}
+              className="relative group shrink-0 rounded-full focus:outline-none"
+              title="Alterar foto de perfil"
+            >
+              {avatarSrc ? (
+                <img
+                  src={avatarSrc}
+                  alt={profile.nome}
+                  referrerPolicy="no-referrer"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-[#f59e0b]/50 group-hover:border-[#f59e0b] transition-colors"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#f59e0b] to-[#ffb95f] text-[#100F0F] font-heading font-bold text-[22px] flex items-center justify-center shadow-md">
+                  {initials}
+                </div>
+              )}
+
+              <span className="absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full bg-[#151413] border border-[#f59e0b]/60 text-[#ffb95f] flex items-center justify-center shadow-md group-hover:bg-[#f59e0b] group-hover:text-[#100F0F] transition-colors">
+                {uploadingPhoto ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Camera className="w-3 h-3" />
+                )}
+              </span>
+            </button>
 
             <div className="min-w-0 flex-1">
               <h2 className="font-bold text-[17px] text-[#f8fafc] leading-tight truncate">
@@ -180,8 +301,51 @@ export default function Profile() {
                 <Mail className="h-3.5 w-3.5 shrink-0 text-[#64748b]" />
                 <span className="truncate">{user?.email || profile.email}</span>
               </div>
+
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <button
+                  type="button"
+                  disabled={uploadingPhoto}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[11px] font-semibold text-[#ffb95f] hover:underline flex items-center gap-1"
+                >
+                  <Camera className="w-3 h-3" />
+                  {avatarSrc ? 'Alterar foto' : 'Adicionar foto'}
+                </button>
+
+                {canRestoreGoogle && (
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handleRestoreGooglePhoto}
+                    className="text-[11px] font-semibold text-[#94a3b8] hover:text-[#f8fafc] flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Usar do Google
+                  </button>
+                )}
+
+                {avatarSrc && (
+                  <button
+                    type="button"
+                    disabled={uploadingPhoto}
+                    onClick={handleRemovePhoto}
+                    className="text-[11px] font-semibold text-[#ff6e61]/80 hover:text-[#ff6e61] flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Remover
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {photoFeedback && (
+            <div className="bg-[#d3e156]/15 border border-[#d3e156]/35 text-[#d3e156] text-xs font-semibold px-3 py-2 rounded-[10px] flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>{photoFeedback}</span>
+            </div>
+          )}
 
           {/* Quick Biometrics Strip */}
           <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/[0.06]">

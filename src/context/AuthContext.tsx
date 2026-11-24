@@ -13,6 +13,7 @@ export interface UserProfile {
   sexo: string;
   pesoAtual: number; // in kg
   dataCriacao: any;
+  photoURL?: string;
   objetivo?: 'hipertrofia' | 'forca' | 'definicao' | 'condicionamento';
   frequenciaSemanal?: '2-3' | '4-5' | '6' | 'flexivel';
   diasAtivos?: string[];
@@ -71,13 +72,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
 
-  const fetchProfile = async (uid: string) => {
+  const fetchProfile = async (uid: string, authPhotoURL?: string | null) => {
     setFirestoreError(null);
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setProfile(docSnap.data() as UserProfile);
+        const data = docSnap.data() as UserProfile;
+        // Auto-sync Google account thumbnail on first sign-in if photoURL was never set
+        if (data.photoURL === undefined && authPhotoURL) {
+          const synced = { ...data, photoURL: authPhotoURL };
+          setDoc(docRef, { photoURL: authPhotoURL }, { merge: true }).catch((err) =>
+            console.error('Error syncing Google photoURL:', err)
+          );
+          setProfile(synced);
+        } else {
+          setProfile(data);
+        }
         setIsOnboarding(false);
       } else {
         setProfile(null);
@@ -106,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         setIsPreviewMode(false);
         setUser(currentUser);
-        await fetchProfile(currentUser.uid);
+        await fetchProfile(currentUser.uid, currentUser.photoURL);
         setLoading(false);
         return;
       }
@@ -167,9 +178,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     try {
       const docRef = doc(db, 'users', user.uid);
+      const resolvedPhoto =
+        profileData.photoURL !== undefined
+          ? profileData.photoURL
+          : profile?.photoURL !== undefined
+          ? profile.photoURL
+          : user.photoURL || '';
       const updated = {
         ...profile,
         ...profileData,
+        photoURL: resolvedPhoto,
         email: user.email || '',
       } as UserProfile;
 
@@ -184,7 +202,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const refreshProfile = async () => {
     if (user && !isPreviewMode) {
-      await fetchProfile(user.uid);
+      await fetchProfile(user.uid, user.photoURL);
     }
   };
 

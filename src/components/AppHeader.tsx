@@ -76,7 +76,8 @@ export default function AppHeader() {
   }, [trainedDayKeys]);
 
   const userInitial = (profile?.nome || user?.displayName || 'U').charAt(0).toUpperCase();
-  const userPhoto = user?.photoURL || null;
+  const userPhoto =
+    profile?.photoURL !== undefined ? profile.photoURL || null : user?.photoURL || null;
 
   return (
     <header className="sticky top-0 z-30 -mx-4 -mt-6 bg-[#100F0F]/95 backdrop-blur-md border-b border-border px-4 py-3.5 flex items-center justify-between print:hidden">
@@ -109,6 +110,7 @@ export default function AppHeader() {
             <img
               src={userPhoto}
               alt={profile?.nome || 'Perfil'}
+              referrerPolicy="no-referrer"
               className="w-[34px] h-[34px] rounded-full object-cover ring-1 ring-[#f59e0b]/50 group-hover:ring-[#f59e0b] transition-all"
             />
           ) : (
